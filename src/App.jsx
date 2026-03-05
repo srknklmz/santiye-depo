@@ -1864,7 +1864,7 @@ const App = () => {
                                             <span className="movement-type-pill out">{pendingActions.filter(a => a.status === 'pending').length} bekleyen</span>
                                             <ExportButtons
                                                 data={pendingActions.filter(a => a.status === 'pending').map(a => ({
-                                                    tarih: String(a.data?.date || '').split(',')[0],
+                                                    tarih: String(a.data?.date || '').split(',')[0].split(' ')[0],
                                                     tur: a.actionType === 'zimmet' ? 'Zimmet' : (a.movementType === 'in' ? 'Giriş' : 'Çıkış'),
                                                     malzeme: a.data?.itemName || '',
                                                     miktar: a.data?.amount || 0,
@@ -1902,7 +1902,7 @@ const App = () => {
                                                         : action.movementType === 'in' ? 'in' : 'out';
                                                     return (
                                                         <tr key={action.id}>
-                                                            <td data-label="Tarih">{String(action.data?.date || '').split(',')[0]}</td>
+                                                            <td data-label="Tarih">{String(action.data?.date || '').split(',')[0].split(' ')[0]}</td>
                                                             <td data-label="Tür">
                                                                 <span className={`movement-type-pill ${pillClass}`}>{typeLabel}</span>
                                                             </td>
@@ -1960,7 +1960,7 @@ const App = () => {
                                             <tbody>
                                                 {movements.filter(m => m.type === 'in').slice(0, 20).map(m => (
                                                     <tr key={m.id}>
-                                                        <td data-label="Tarih">{String(m.date || '').split(',')[0]}</td>
+                                                        <td data-label="Tarih">{String(m.date || '').split(',')[0].split(' ')[0]}</td>
                                                         <td data-label="Malzeme Adı" style={{ fontWeight: '600' }}>{m.itemName}</td>
                                                         <td data-label="Miktar" style={{ color: 'var(--success)', fontWeight: '700' }}>+{formatNumber(m.amount)}</td>
                                                         <td data-label="Birim">{m.unit || '—'}</td>
@@ -1995,7 +1995,7 @@ const App = () => {
                                                     <tr key={m.id}>
                                                         <td data-label="Malzeme" style={{ fontWeight: '600' }}>{m.itemName}</td>
                                                         <td data-label="Alan Kişi / Ekip">{m.recipient || '—'}</td>
-                                                        <td data-label="İşlem Tarihi">{String(m.date || '').split(',')[0]}</td>
+                                                        <td data-label="İşlem Tarihi">{String(m.date || '').split(',')[0].split(' ')[0]}</td>
                                                         <td data-label="Miktar" style={{ color: 'var(--danger)', fontWeight: '700' }}>−{formatNumber(m.amount)}</td>
                                                     </tr>
                                                 ))}
@@ -2034,7 +2034,7 @@ const App = () => {
                                                                 {z.type === 'geri_alindi' ? 'İade' : 'Zimmet'}
                                                             </span>
                                                         </td>
-                                                        <td data-label="İşlem Tarihi">{(z.date || '').split(',')[0]}</td>
+                                                        <td data-label="İşlem Tarihi">{(z.date || '').split(',')[0].split(' ')[0]}</td>
                                                         <td data-label="Miktar" style={{ fontWeight: '700', color: z.type === 'verildi' ? 'var(--danger)' : 'var(--success)' }}>
                                                             {z.type === 'verildi' ? `−${formatNumber(z.amount)}` : `+${formatNumber(z.amount)}`}
                                                         </td>
@@ -3013,7 +3013,7 @@ const App = () => {
                                                     Malzeme: req.itemName || '',
                                                     Miktar: req.amount || 0,
                                                     TalepEden: req.requestedBy || '',
-                                                    Tarih: String(req.date || '').split(',')[0]
+                                                    Tarih: String(req.date || '').split(',')[0].split(' ')[0]
                                                 }))}
                                                 title="Bekleyen Malzeme Talepleri"
                                                 columns={[
@@ -3051,7 +3051,7 @@ const App = () => {
                                                             <td data-label="Malzeme" style={{ fontWeight: '600' }}>{req.itemName}</td>
                                                             <td data-label="Miktar" style={{ textAlign: 'center' }}><strong>{req.amount}</strong> {req.unit}</td>
                                                             <td data-label="Talep Eden">{req.requestedBy}</td>
-                                                            <td data-label="Tarih">{String(req.date || '').split(',')[0]}</td>
+                                                            <td data-label="Tarih">{String(req.date || '').split(',')[0].split(' ')[0]}</td>
                                                             {canEdit && (
                                                                 <td data-label="İşlemler" style={{ textAlign: 'center' }}>
                                                                     <div className="flex gap-2 justify-center">
@@ -3582,7 +3582,7 @@ const App = () => {
                                         <tbody>
                                             {detailModal.item.movements.filter(m => m.type === detailModal.type).sort((a, b) => b.id - a.id).map(m => (
                                                 <tr key={m.id}>
-                                                    <td data-label="Tarih">{String(m.date || '').split(',')[0]}</td>
+                                                    <td data-label="Tarih">{String(m.date || '').split(',')[0].split(' ')[0]}</td>
                                                     <td data-label={detailModal.type === 'in' ? 'Kaynak' : 'Alan'}>{m.recipient || '-'}</td>
                                                     <td style={{ textAlign: 'right' }} data-label="Miktar">{formatNumber(m.amount)}</td>
                                                     <td style={{ textAlign: 'center' }} data-label="Birim">{detailModal.item.unit}</td>
