@@ -1910,18 +1910,18 @@ const App = () => {
                                             <thead>
                                                 <tr>
                                                     <th>MALZEME</th>
-                                                    <th>KAYNAK</th>
-                                                    <th>TARİH</th>
-                                                    <th style={{ textAlign: 'right' }}>MİKTAR</th>
+                                                    <th>TEDARİKÇİ / KAYNAK</th>
+                                                    <th>İŞLEM TARİHİ</th>
+                                                    <th>MİKTAR</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {movements.filter(m => m.type === 'in').slice(0, 20).map(m => (
                                                     <tr key={m.id}>
                                                         <td data-label="Malzeme" style={{ fontWeight: '600' }}>{m.itemName}</td>
-                                                        <td data-label="Kaynak">{m.recipient || '—'}</td>
-                                                        <td data-label="Tarih">{String(m.date || '').split(',')[0]}</td>
-                                                        <td data-label="Miktar" style={{ textAlign: 'right', color: 'var(--success)', fontWeight: '700' }}>+{formatNumber(m.amount)}</td>
+                                                        <td data-label="Tedarikçi / Kaynak">{m.recipient || '—'}</td>
+                                                        <td data-label="İşlem Tarihi">{String(m.date || '').split(',')[0]}</td>
+                                                        <td data-label="Miktar" style={{ color: 'var(--success)', fontWeight: '700' }}>+{formatNumber(m.amount)}</td>
                                                     </tr>
                                                 ))}
                                                 {movements.filter(m => m.type === 'in').length === 0 && (
@@ -1943,18 +1943,18 @@ const App = () => {
                                             <thead>
                                                 <tr>
                                                     <th>MALZEME</th>
-                                                    <th>ALAN</th>
-                                                    <th>TARİH</th>
-                                                    <th style={{ textAlign: 'right' }}>MİKTAR</th>
+                                                    <th>ALAN KİŞİ / EKİP</th>
+                                                    <th>İŞLEM TARİHİ</th>
+                                                    <th>MİKTAR</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {movements.filter(m => m.type === 'out').slice(0, 20).map(m => (
                                                     <tr key={m.id}>
                                                         <td data-label="Malzeme" style={{ fontWeight: '600' }}>{m.itemName}</td>
-                                                        <td data-label="Alan">{m.recipient || '—'}</td>
-                                                        <td data-label="Tarih">{String(m.date || '').split(',')[0]}</td>
-                                                        <td data-label="Miktar" style={{ textAlign: 'right', color: 'var(--danger)', fontWeight: '700' }}>−{formatNumber(m.amount)}</td>
+                                                        <td data-label="Alan Kişi / Ekip">{m.recipient || '—'}</td>
+                                                        <td data-label="İşlem Tarihi">{String(m.date || '').split(',')[0]}</td>
+                                                        <td data-label="Miktar" style={{ color: 'var(--danger)', fontWeight: '700' }}>−{formatNumber(m.amount)}</td>
                                                     </tr>
                                                 ))}
                                                 {movements.filter(m => m.type === 'out').length === 0 && (
@@ -1976,24 +1976,24 @@ const App = () => {
                                             <thead>
                                                 <tr>
                                                     <th>MALZEME</th>
-                                                    <th>KİŞİ</th>
+                                                    <th>KİŞİ / EKİP</th>
                                                     <th>DURUM</th>
-                                                    <th>TARİH</th>
-                                                    <th style={{ textAlign: 'right' }}>MİKTAR</th>
+                                                    <th>İŞLEM TARİHİ</th>
+                                                    <th>MİKTAR</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {zimmet.slice(0, 20).map(z => (
                                                     <tr key={z.id}>
                                                         <td data-label="Malzeme" style={{ fontWeight: '600' }}>{z.itemName}</td>
-                                                        <td data-label="Kişi">{z.person || '—'}</td>
+                                                        <td data-label="Kişi / Ekip">{z.person || '—'}</td>
                                                         <td data-label="Durum">
                                                             <span className={`movement-type-pill ${z.type === 'geri_alindi' ? 'in' : 'out'}`}>
                                                                 {z.type === 'geri_alindi' ? 'İade' : 'Zimmet'}
                                                             </span>
                                                         </td>
-                                                        <td data-label="Tarih">{(z.date || '').split(',')[0]}</td>
-                                                        <td data-label="Miktar" style={{ textAlign: 'right', fontWeight: '700', color: z.type === 'verildi' ? 'var(--danger)' : 'var(--success)' }}>
+                                                        <td data-label="İşlem Tarihi">{(z.date || '').split(',')[0]}</td>
+                                                        <td data-label="Miktar" style={{ fontWeight: '700', color: z.type === 'verildi' ? 'var(--danger)' : 'var(--success)' }}>
                                                             {z.type === 'verildi' ? `−${formatNumber(z.amount)}` : `+${formatNumber(z.amount)}`}
                                                         </td>
                                                     </tr>
@@ -2138,9 +2138,9 @@ const App = () => {
                                         <tr>
                                             <th>MALZEME</th>
                                             <th>KİŞİ / EKİP</th>
-                                            <th style={{ textAlign: 'right' }}>MİKTAR</th>
-                                            <th style={{ textAlign: 'center' }}>{zimmetView === 'active' ? 'VERİLİŞ TARİHİ' : 'TARİH'}</th>
-                                            <th style={{ textAlign: 'center' }}>{zimmetView === 'active' ? 'İŞLEM' : 'TÜR'}</th>
+                                            <th>MİKTAR</th>
+                                            <th>İŞLEM TARİHİ</th>
+                                            <th>{zimmetView === 'active' ? 'İŞLEM' : 'TÜR'}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -2163,9 +2163,9 @@ const App = () => {
                                                         </div>
                                                     </td>
                                                     <td data-label="Kişi / Ekip">{z.person}</td>
-                                                    <td data-label="Miktar" style={{ textAlign: 'right' }}>{z.amount}</td>
-                                                    <td data-label="Tarih" style={{ textAlign: 'center' }}>{z.date}</td>
-                                                    <td data-label={zimmetView === 'active' ? "İşlem" : "Tür"} style={{ textAlign: 'center' }}>
+                                                    <td data-label="Miktar">{z.amount}</td>
+                                                    <td data-label="İşlem Tarihi">{z.date}</td>
+                                                    <td data-label={zimmetView === 'active' ? "İşlem" : "Tür"}>
                                                         {zimmetView === 'active' ? (
                                                             <button
                                                                 className="btn-ghost"
@@ -2286,12 +2286,12 @@ const App = () => {
                                 <table className="responsive-table col-6">
                                     <thead>
                                         <tr>
-                                            <th>TARİH</th>
+                                            <th>İŞLEM TARİHİ</th>
                                             <th>TÜR</th>
                                             <th>MALZEME</th>
-                                            <th>KAYNAK / ALAN</th>
+                                            <th>TEDARİKÇİ / ALAN KİŞİ / EKİP</th>
                                             <th>MİKTAR</th>
-                                            <th>NOT</th>
+                                            <th>NOT / AÇIKLAMA</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -2313,13 +2313,13 @@ const App = () => {
                                                         <span>{m.itemName || '-'}</span>
                                                     </div>
                                                 </td>
-                                                <td data-label="Kaynak / Alan">{m.recipient || '-'}</td>
-                                                <td style={{ textAlign: 'right' }} data-label="Miktar">
+                                                <td data-label="Tedarikçi / Alan Kişi / Ekip">{m.recipient || '-'}</td>
+                                                <td data-label="Miktar">
                                                     <span style={{ color: m.normalizedType === 'in' ? 'var(--success)' : 'var(--danger)', fontWeight: '700' }}>
                                                         {m.normalizedType === 'in' ? '+' : '−'}{formatNumber(m.amount)}
                                                     </span>
                                                 </td>
-                                                <td data-label="Not">{m.note || '-'}</td>
+                                                <td data-label="Not / Açıklama">{m.note || '-'}</td>
                                             </tr>
                                         ))}
                                     </tbody>
