@@ -286,6 +286,12 @@ const App = () => {
     const [purchaseFormId, setPurchaseFormId] = useState(String(Date.now()));
     const [isQuickAdd, setIsQuickAdd] = useState(false);
     const [isNewRecipient, setIsNewRecipient] = useState(false);
+    // ── Giriş Form State ──
+    const [inMalzemeAdi, setInMalzemeAdi] = useState('');
+    const [inFirmaAdi, setInFirmaAdi] = useState('');
+    const [teslimAlanlar, setTeslimAlanlar] = useState([]);
+    const [showAddTeslimAlan, setShowAddTeslimAlan] = useState(false);
+    const [newTeslimAlanAdi, setNewTeslimAlanAdi] = useState('');
     // ── Pending Actions State (geçmiş tarihli onay) ──
     const [pendingActions, setPendingActions] = useState([]);
     // ── User Management Modal ──
@@ -462,6 +468,16 @@ const App = () => {
         return () => unsub();
     }, []);
 
+    // ── Teslim Alanlar Effect ──
+    useEffect(() => {
+        const teslimRef = ref(db, 'teslimAlanlar');
+        const unsub = onValue(teslimRef, (snap) => {
+            const data = snap.val();
+            setTeslimAlanlar(data ? Object.values(data).sort((a, b) => a.name.localeCompare(b.name, 'tr')) : []);
+        });
+        return () => unsub();
+    }, []);
+
     // ── Pending Actions Effect (geçmiş tarihli onay bekleyenler) ──
     useEffect(() => {
         const pendingRef = ref(db, 'pendingActions');
@@ -631,6 +647,13 @@ const App = () => {
         return [...set].sort((a, b) => a.localeCompare(b, 'tr'));
     }, [movements]);
 
+    // Firma adları — geçmiş girişlerden otomatik türetilir
+    const uniqueFirmaAdlari = useMemo(() => {
+        const set = new Set();
+        movements.forEach(m => { if (m.type === 'in' && m.firmaAdi && m.firmaAdi.trim()) set.add(m.firmaAdi.trim()); });
+        return [...set].sort((a, b) => a.localeCompare(b, 'tr'));
+    }, [movements]);
+
     // Malzeme listesi — alfabetik (Türkçe)
     const sortedItems = useMemo(() =>
         [...items].sort((a, b) => a.name.localeCompare(b.name, 'tr')),
@@ -737,99 +760,118 @@ const App = () => {
             .finally(() => setIsSaving(false));
     };
 
-    const handleMoveStock = (e) => {
+    const handleMoveStock = async (e) => {
         e.preventDefault();
         setIsSaving(true);
         const formData = new FormData(e.target);
-        const amount = Number(formData.get('amount'));
-        const price = Number(formData.get('price') || 0);
-        const note = formData.get('note');
-        const rawRecipient = formData.get('recipient');
-        const recipient = rawRecipient === '__NEW__' ? '' : rawRecipient;
-        const unit = formData.get('unit') || selectedItemForMove?.unit || 'Adet';
-        const irsaliyeNo = formData.get('irsaliyeNo') || '';
-        const itemId = String(selectedItemForMove.id);
         const actionDate = formData.get('actionDate');
+        const unit = formData.get('unit') || 'Adet';
+        const irsaliyeNo = formData.get('irsaliyeNo') || '';
 
-        // Tarih kontrolü — bugün mü geçmiş mi?
+        // Tarih — DD.MM.YYYY (saat yok)
+        const [year, month, day] = actionDate.split('-');
+        const displayDate = `${day}.${month}.${year}`;
         const today = new Date().toISOString().split('T')[0];
         const isBackdated = actionDate < today;
 
-        // Seçilen tarihi display formatına çevir
-        const displayDate = isBackdated
-            ? new Date(actionDate + 'T12:00:00').toLocaleString('tr-TR')
-            : new Date().toLocaleString();
+        try {
+            if (movementType === 'in') {
+                const malzemeAdi = inMalzemeAdi.trim();
+                const malzemeTuru = formData.get('malzemeTuru') || 'Genel';
+                const firmaAdi = inFirmaAdi.trim();
+                const teslimAlan = formData.get('teslimAlan') || '';
+                const amount = parseFloat(formData.get('amount') || 0);
+                if (!malzemeAdi) { setIsSaving(false); return; }
 
-        if (isBackdated) {
-            // Geçmiş tarihli → onaya gönder
-            const pendingId = String(Date.now());
-            const pendingData = {
-                id: Number(pendingId),
-                actionType: 'movement',
-                movementType,
-                data: {
-                    itemId: Number(itemId),
-                    itemName: selectedItemForMove.name,
+                // Malzeme bul ya da yeni oluştur
+                let item = items.find(i => i.name.toLowerCase() === malzemeAdi.toLowerCase());
+                if (!item) {
+                    const newId = Date.now();
+                    item = { id: newId, name: malzemeAdi, unit, category: malzemeTuru, quantity: 0, minStock: 0 };
+                    await set(ref(db, `items/${newId}`), item);
+                }
+                const itemId = String(item.id);
+
+                const moveBaseData = {
+                    itemId: Number(item.id),
+                    itemName: item.name,
+                    malzemeTuru,
+                    firmaAdi,
+                    teslimAlan,
                     amount,
                     unit,
-                    price,
-                    note,
-                    recipient,
                     irsaliyeNo,
+                    type: 'in',
                     date: displayDate,
-                },
-                requestedBy: userProfile.name,
-                requestedByUid: authUser.uid,
-                requestedAt: new Date().toLocaleString('tr-TR'),
-                status: 'pending'
-            };
-            set(ref(db, `pendingActions/${pendingId}`), pendingData)
-                .then(() => {
-                    setShowMoveModal(false);
-                    setSelectedItemForMove(null);
+                };
+
+                if (isBackdated) {
+                    const pendingId = String(Date.now() + 1);
+                    await set(ref(db, `pendingActions/${pendingId}`), {
+                        id: Number(pendingId), actionType: 'movement', movementType: 'in',
+                        data: moveBaseData,
+                        requestedBy: userProfile.name, requestedByUid: authUser.uid,
+                        requestedAt: new Date().toLocaleString('tr-TR'), status: 'pending'
+                    });
                     showToast('Geçmiş tarihli işlem yönetici onayına gönderildi.', 'success');
-                })
-                .catch(err => alert("Hata: " + err.message))
-                .finally(() => setIsSaving(false));
-            return;
-        }
+                } else {
+                    const moveId = String(Date.now() + 1);
+                    await set(ref(db, `items/${itemId}/quantity`), Math.max(0, (item.quantity || 0) + amount));
+                    await set(ref(db, `movements/${moveId}`), { id: Number(moveId), ...moveBaseData });
+                    triggerCloudBackup();
+                }
+                setShowMoveModal(false);
+                setInMalzemeAdi('');
+                setInFirmaAdi('');
 
-        // Bugünün tarihi → doğrudan kaydet (mevcut davranış)
-        const newQty = movementType === 'in'
-            ? selectedItemForMove.quantity + amount
-            : selectedItemForMove.quantity - amount;
+            } else {
+                // ── Çıkış ──
+                const amount = Number(formData.get('amount'));
+                const price = Number(formData.get('price') || 0);
+                const note = formData.get('note') || '';
+                const rawRecipient = formData.get('recipient');
+                const recipient = rawRecipient === '__NEW__' ? '' : (rawRecipient || '');
+                const itemId = String(selectedItemForMove.id);
+                const displayDateOut = isBackdated
+                    ? new Date(actionDate + 'T12:00:00').toLocaleString('tr-TR')
+                    : new Date().toLocaleString();
 
-        const moveId = String(Date.now());
-        const moveData = {
-            id: Number(moveId),
-            itemId: Number(itemId),
-            itemName: selectedItemForMove.name,
-            amount,
-            unit,
-            price,
-            type: movementType,
-            note,
-            recipient,
-            irsaliyeNo,
-            date: displayDate,
-        };
+                const moveBaseData = {
+                    itemId: Number(itemId), itemName: selectedItemForMove.name,
+                    amount, unit, price, note, recipient, irsaliyeNo, type: 'out', date: displayDateOut,
+                };
 
-        const timeout = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("Hareket kaydedilemedi (Zaman aşımı).")), 10000)
-        );
-
-        Promise.race([
-            set(ref(db, `items/${itemId}/quantity`), Math.max(0, newQty))
-                .then(() => set(ref(db, `movements/${moveId}`), moveData)),
-            timeout
-        ])
-            .then(() => {
+                if (isBackdated) {
+                    const pendingId = String(Date.now());
+                    await set(ref(db, `pendingActions/${pendingId}`), {
+                        id: Number(pendingId), actionType: 'movement', movementType: 'out',
+                        data: moveBaseData,
+                        requestedBy: userProfile.name, requestedByUid: authUser.uid,
+                        requestedAt: new Date().toLocaleString('tr-TR'), status: 'pending'
+                    });
+                    showToast('Geçmiş tarihli işlem yönetici onayına gönderildi.', 'success');
+                } else {
+                    const newQty = selectedItemForMove.quantity - amount;
+                    const moveId = String(Date.now());
+                    const timeout = new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error("Zaman aşımı.")), 10000)
+                    );
+                    await Promise.race([
+                        set(ref(db, `items/${itemId}/quantity`), Math.max(0, newQty))
+                            .then(() => set(ref(db, `movements/${moveId}`), { id: Number(moveId), ...moveBaseData })),
+                        timeout
+                    ]);
+                    triggerCloudBackup();
+                }
                 setShowMoveModal(false);
                 setSelectedItemForMove(null);
-                triggerCloudBackup();
-            })
-            .catch(err => alert("İşlem Başarısız: " + err.message))
-            .finally(() => setIsSaving(false));
+                setIsNewRecipient(false);
+            }
+        } catch (err) {
+            alert("İşlem Başarısız: " + err.message);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleQuickAdd = (name) => {
@@ -1909,19 +1951,19 @@ const App = () => {
                                         <table className="responsive-table col-4">
                                             <thead>
                                                 <tr>
-                                                    <th>MALZEME</th>
-                                                    <th>TEDARİKÇİ / KAYNAK</th>
-                                                    <th>İŞLEM TARİHİ</th>
+                                                    <th>TARİH</th>
+                                                    <th>MALZEME ADI</th>
                                                     <th>MİKTAR</th>
+                                                    <th>BİRİM</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {movements.filter(m => m.type === 'in').slice(0, 20).map(m => (
                                                     <tr key={m.id}>
-                                                        <td data-label="Malzeme" style={{ fontWeight: '600' }}>{m.itemName}</td>
-                                                        <td data-label="Tedarikçi / Kaynak">{m.recipient || '—'}</td>
-                                                        <td data-label="İşlem Tarihi">{String(m.date || '').split(',')[0]}</td>
+                                                        <td data-label="Tarih">{String(m.date || '').split(',')[0]}</td>
+                                                        <td data-label="Malzeme Adı" style={{ fontWeight: '600' }}>{m.itemName}</td>
                                                         <td data-label="Miktar" style={{ color: 'var(--success)', fontWeight: '700' }}>+{formatNumber(m.amount)}</td>
+                                                        <td data-label="Birim">{m.unit || '—'}</td>
                                                     </tr>
                                                 ))}
                                                 {movements.filter(m => m.type === 'in').length === 0 && (
@@ -3185,109 +3227,175 @@ const App = () => {
                                 </div>
 
                                 <form onSubmit={handleMoveStock}>
-                                    <div className="mb-2">
-                                        <label className="label">İşlem Tarihi</label>
-                                        <input name="actionDate" type="date" defaultValue={new Date().toISOString().split('T')[0]} required />
-                                    </div>
-                                    <div className="mb-2">
-                                        <label className="label">Malzeme Seçin</label>
-                                        {isQuickAdd ? (
-                                            <div className="flex gap-2">
+                                    {movementType === 'in' ? (
+                                        /* ── GİRİŞ FORMU ── */
+                                        <>
+                                            {/* 1. Malzeme Adı */}
+                                            <div className="mb-2">
+                                                <label className="label">Malzeme Adı</label>
                                                 <input
-                                                    autoFocus
-                                                    placeholder="Yeni malzeme adını yazıp Enter'a basın..."
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter') {
-                                                            e.preventDefault();
-                                                            handleQuickAdd(e.target.value);
-                                                        }
-                                                        if (e.key === 'Escape') setIsQuickAdd(false);
-                                                    }}
+                                                    list="malzeme-datalist"
+                                                    value={inMalzemeAdi}
+                                                    onChange={e => setInMalzemeAdi(e.target.value)}
+                                                    placeholder="Malzeme adı yazın..."
+                                                    required
+                                                    autoComplete="off"
                                                 />
-                                                <button type="button" className="btn-ghost" onClick={() => setIsQuickAdd(false)}><X size={14} /></button>
+                                                <datalist id="malzeme-datalist">
+                                                    {sortedItems.map(i => <option key={i.id} value={i.name} />)}
+                                                </datalist>
                                             </div>
-                                        ) : (
-                                            <select
-                                                name="itemId"
-                                                required
-                                                value={selectedItemForMove?.id || ""}
-                                                onChange={(e) => {
-                                                    if (e.target.value === 'NEW') {
-                                                        setIsQuickAdd(true);
-                                                    } else {
-                                                        setSelectedItemForMove(items.find(i => i.id == e.target.value));
-                                                    }
-                                                }}
-                                            >
-                                                <option value="" disabled>-- Seçin --</option>
-                                                <option value="NEW">Yeni Malzeme Ekle</option>
-                                                {sortedItems.map(i => (
-                                                    <option key={i.id} value={i.id}>{i.name} (Stok: {i.quantity})</option>
-                                                ))}
-                                            </select>
-                                        )}
-                                    </div>
-                                    <div className="flex gap-2 mb-2">
-                                        <div style={{ flex: 1 }}>
-                                            <label className="label">Miktar</label>
-                                            <input name="amount" type="number" required min="1" placeholder="Miktar" />
-                                        </div>
-                                        <div style={{ flex: 1 }}>
-                                            <label className="label">Birim</label>
-                                            <select name="unit" defaultValue={selectedItemForMove?.unit || 'Adet'}>
-                                                <option>Adet</option><option>Torba</option><option>Metre</option><option>Palet</option><option>M3</option><option>Ton</option><option>Kg</option><option>Lt</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div className="mb-2">
-                                        <label className="label">{movementType === 'in' ? 'Tedarikçi / Kaynak' : 'Alan Kişi / Ekip'}</label>
-                                        {isNewRecipient ? (
-                                            <div className="flex gap-2">
+                                            {/* 2. Malzeme Türü */}
+                                            <div className="mb-2">
+                                                <label className="label">Malzeme Türü</label>
+                                                <select name="malzemeTuru" required>
+                                                    <option value="">-- Seçin --</option>
+                                                    <option>Yapı Malzemesi</option>
+                                                    <option>Elektrik Malzemesi</option>
+                                                    <option>Tesisat Malzemesi</option>
+                                                    <option>İSG Malzemesi</option>
+                                                    <option>Sarf Malzeme</option>
+                                                    <option>Diğer</option>
+                                                </select>
+                                            </div>
+                                            {/* 3. Tarih */}
+                                            <div className="mb-2">
+                                                <label className="label">Tarih</label>
+                                                <input name="actionDate" type="date" defaultValue={new Date().toISOString().split('T')[0]} required />
+                                            </div>
+                                            {/* 4+5. Miktar + Birim */}
+                                            <div className="flex gap-2 mb-2">
+                                                <div style={{ flex: 1 }}>
+                                                    <label className="label">Miktar</label>
+                                                    <input name="amount" type="number" required min="0.01" step="0.01" placeholder="0.00" />
+                                                </div>
+                                                <div style={{ flex: 1 }}>
+                                                    <label className="label">Birim</label>
+                                                    <select name="unit">
+                                                        <option>Adet</option><option>Kg</option><option>M</option>
+                                                        <option>M2</option><option>M3</option><option>Ton</option>
+                                                        <option>Palet</option><option>Torba</option><option>Paket</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            {/* 6. İrsaliye No */}
+                                            <div className="mb-2">
+                                                <label className="label">İrsaliye No</label>
+                                                <input name="irsaliyeNo" placeholder="Örn: IRS-2026-001" />
+                                            </div>
+                                            {/* 7. Firma Adı */}
+                                            <div className="mb-2">
+                                                <label className="label">Firma Adı</label>
                                                 <input
-                                                    autoFocus
-                                                    name="recipient"
-                                                    placeholder={movementType === 'in' ? "Yeni tedarikçi adı yazın..." : "Yeni kişi/ekip adı yazın..."}
+                                                    list="firma-datalist"
+                                                    value={inFirmaAdi}
+                                                    onChange={e => setInFirmaAdi(e.target.value)}
+                                                    placeholder="Firma adı yazın..."
+                                                    autoComplete="off"
                                                 />
-                                                <button type="button" className="btn-ghost" onClick={() => setIsNewRecipient(false)}><X size={14} /></button>
+                                                <datalist id="firma-datalist">
+                                                    {uniqueFirmaAdlari.map(f => <option key={f} value={f} />)}
+                                                </datalist>
                                             </div>
-                                        ) : (
-                                            <select
-                                                name="recipient"
-                                                defaultValue=""
-                                                onChange={(e) => {
-                                                    if (e.target.value === '__NEW__') {
-                                                        setIsNewRecipient(true);
-                                                    }
-                                                }}
-                                            >
-                                                <option value="">-- Seçin --</option>
-                                                <option value="__NEW__">Yeni Ekle</option>
-                                                {uniqueRecipients.map(r => (
-                                                    <option key={r} value={r}>{r}</option>
-                                                ))}
-                                            </select>
-                                        )}
-                                    </div>
-                                    {movementType === 'in' && (
-                                        <div className="mb-2 animate-fade">
-                                            <label className="label">İrsaliye No</label>
-                                            <input name="irsaliyeNo" placeholder="Örn: IRS-2026-001" />
-                                        </div>
-                                    )}
-                                    <div className="mb-2">
-                                        <label className="label">Not / Açıklama</label>
-                                        <input name="note" placeholder="Örn: A Blok 3. kat" />
-                                    </div>
-                                    {movementType === 'in' && (
-                                        <div className="mb-2 animate-fade">
-                                            <label className="label">Birim Fiyat (TL)</label>
-                                            <input name="price" type="number" step="0.01" placeholder="0.00 TL" />
-                                        </div>
+                                            {/* 8. Teslim Alan Kişi */}
+                                            <div className="mb-2">
+                                                <div className="flex align-center gap-2 mb-1">
+                                                    <label className="label" style={{ margin: 0 }}>Teslim Alan Kişi</label>
+                                                    {canEdit && (
+                                                        <button type="button" className="btn-ghost" style={{ fontSize: '11px', padding: '2px 8px' }}
+                                                            onClick={() => setShowAddTeslimAlan(v => !v)}>
+                                                            + Kişi Ekle
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                {showAddTeslimAlan && canEdit && (
+                                                    <div className="flex gap-2 mb-1">
+                                                        <input
+                                                            value={newTeslimAlanAdi}
+                                                            onChange={e => setNewTeslimAlanAdi(e.target.value)}
+                                                            placeholder="Yeni kişi adı..."
+                                                            style={{ flex: 1 }}
+                                                        />
+                                                        <button type="button" className="btn-primary" style={{ fontSize: '12px', padding: '4px 12px' }}
+                                                            onClick={async () => {
+                                                                if (!newTeslimAlanAdi.trim()) return;
+                                                                const id = String(Date.now());
+                                                                await set(ref(db, `teslimAlanlar/${id}`), { id, name: newTeslimAlanAdi.trim() });
+                                                                setNewTeslimAlanAdi('');
+                                                                setShowAddTeslimAlan(false);
+                                                            }}>
+                                                            Kaydet
+                                                        </button>
+                                                        <button type="button" className="btn-ghost" onClick={() => setShowAddTeslimAlan(false)}><X size={14} /></button>
+                                                    </div>
+                                                )}
+                                                <select name="teslimAlan">
+                                                    <option value="">-- Seçin --</option>
+                                                    {teslimAlanlar.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                                                </select>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        /* ── ÇIKIŞ FORMU ── */
+                                        <>
+                                            <div className="mb-2">
+                                                <label className="label">İşlem Tarihi</label>
+                                                <input name="actionDate" type="date" defaultValue={new Date().toISOString().split('T')[0]} required />
+                                            </div>
+                                            <div className="mb-2">
+                                                <label className="label">Malzeme Seçin</label>
+                                                <select name="itemId" required value={selectedItemForMove?.id || ""}
+                                                    onChange={(e) => setSelectedItemForMove(items.find(i => i.id == e.target.value))}>
+                                                    <option value="" disabled>-- Seçin --</option>
+                                                    {sortedItems.map(i => (
+                                                        <option key={i.id} value={i.id}>{i.name} (Stok: {i.quantity})</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="flex gap-2 mb-2">
+                                                <div style={{ flex: 1 }}>
+                                                    <label className="label">Miktar</label>
+                                                    <input name="amount" type="number" required min="0.01" step="0.01" placeholder="0.00" />
+                                                </div>
+                                                <div style={{ flex: 1 }}>
+                                                    <label className="label">Birim</label>
+                                                    <select name="unit" defaultValue={selectedItemForMove?.unit || 'Adet'}>
+                                                        <option>Adet</option><option>Kg</option><option>M</option>
+                                                        <option>M2</option><option>M3</option><option>Ton</option>
+                                                        <option>Palet</option><option>Torba</option><option>Paket</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div className="mb-2">
+                                                <label className="label">Alan Kişi / Ekip</label>
+                                                {isNewRecipient ? (
+                                                    <div className="flex gap-2">
+                                                        <input autoFocus name="recipient" placeholder="Yeni kişi/ekip adı yazın..." />
+                                                        <button type="button" className="btn-ghost" onClick={() => setIsNewRecipient(false)}><X size={14} /></button>
+                                                    </div>
+                                                ) : (
+                                                    <select name="recipient" defaultValue=""
+                                                        onChange={(e) => { if (e.target.value === '__NEW__') setIsNewRecipient(true); }}>
+                                                        <option value="">-- Seçin --</option>
+                                                        <option value="__NEW__">Yeni Ekle</option>
+                                                        {uniqueRecipients.map(r => <option key={r} value={r}>{r}</option>)}
+                                                    </select>
+                                                )}
+                                            </div>
+                                            <div className="mb-2">
+                                                <label className="label">Not / Açıklama</label>
+                                                <input name="note" placeholder="Örn: A Blok 3. kat" />
+                                            </div>
+                                            <div className="mb-2">
+                                                <label className="label">Birim Fiyat (TL)</label>
+                                                <input name="price" type="number" step="0.01" placeholder="0.00 TL" />
+                                            </div>
+                                        </>
                                     )}
                                     <button
                                         type="submit"
                                         className="btn-primary"
-                                        disabled={isSaving || !selectedItemForMove}
+                                        disabled={isSaving || (movementType === 'out' && !selectedItemForMove) || (movementType === 'in' && !inMalzemeAdi.trim())}
                                         style={{ width: '100%', background: movementType === 'in' ? 'var(--success)' : 'var(--danger)', marginTop: '10px', opacity: isSaving ? 0.7 : 1 }}
                                     >
                                         {isSaving ? 'İşleniyor...' : (movementType === 'in' ? 'Girişi Tamamla' : 'Çıkışı Tamamla')}
