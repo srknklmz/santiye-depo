@@ -2325,47 +2325,82 @@ const App = () => {
                                 </div>
                             </div>
                             <div className="table-responsive-wrapper">
-                                <table className="responsive-table col-6">
-                                    <thead>
-                                        <tr>
-                                            <th>İŞLEM TARİHİ</th>
-                                            <th>TÜR</th>
-                                            <th>MALZEME</th>
-                                            <th>TEDARİKÇİ / ALAN KİŞİ / EKİP</th>
-                                            <th>MİKTAR</th>
-                                            <th>NOT / AÇIKLAMA</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {filteredMovementsForPage.length === 0 ? (
-                                            <tr><td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>{movementViewType === 'in' ? 'Giriş kaydı bulunamadı.' : movementViewType === 'out' ? 'Çıkış kaydı bulunamadı.' : 'Hareket kaydı bulunamadı.'}</td></tr>
-                                        ) : filteredMovementsForPage.map((m) => (
-                                            <tr key={m.id}>
-                                                <td data-label="Tarih">{String(m.date || '-')}</td>
-                                                <td data-label="Tür">
-                                                    <span className={"movement-type-pill " + (m.normalizedType === 'in' ? 'in' : 'out')}>
-                                                        {m.category === 'zimmet'
-                                                            ? (m.type === 'verildi' ? 'Zimmet Ver' : 'Zimmet İade')
-                                                            : (m.type === 'in' ? 'Giriş' : 'Çıkış')}
-                                                    </span>
-                                                </td>
-                                                <td data-label="Malzeme">
-                                                    <div className="material-cell">
-                                                        <Package size={14} className="material-icon-small" />
-                                                        <span>{m.itemName || '-'}</span>
-                                                    </div>
-                                                </td>
-                                                <td data-label="Tedarikçi / Alan Kişi / Ekip">{m.recipient || '-'}</td>
-                                                <td data-label="Miktar">
-                                                    <span style={{ color: m.normalizedType === 'in' ? 'var(--success)' : 'var(--danger)', fontWeight: '700' }}>
-                                                        {m.normalizedType === 'in' ? '+' : '−'}{formatNumber(m.amount)}
-                                                    </span>
-                                                </td>
-                                                <td data-label="Not / Açıklama">{m.note || '-'}</td>
+                                {movementViewType === 'in' ? (
+                                    /* ── GİRİŞLER TABLOSU ── */
+                                    <table className="responsive-table">
+                                        <thead>
+                                            <tr>
+                                                <th>TARİH</th>
+                                                <th>MALZEME ADI</th>
+                                                <th>MALZEME TÜRÜ</th>
+                                                <th>MİKTAR</th>
+                                                <th>BİRİM</th>
+                                                <th>İRSALİYE NO</th>
+                                                <th>FİRMA ADI</th>
+                                                <th>TESLİM ALAN</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody>
+                                            {filteredMovementsForPage.length === 0 ? (
+                                                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Giriş kaydı bulunamadı.</td></tr>
+                                            ) : filteredMovementsForPage.map((m) => (
+                                                <tr key={m.id}>
+                                                    <td>{String(m.date || '-').split(',')[0].split(' ')[0]}</td>
+                                                    <td style={{ fontWeight: '600' }}>{m.itemName || '-'}</td>
+                                                    <td>{m.malzemeTuru || '-'}</td>
+                                                    <td style={{ color: 'var(--success)', fontWeight: '700' }}>+{formatNumber(m.amount)}</td>
+                                                    <td>{m.unit || '-'}</td>
+                                                    <td>{m.irsaliyeNo || '-'}</td>
+                                                    <td>{m.firmaAdi || m.recipient || '-'}</td>
+                                                    <td>{m.teslimAlan || '-'}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                ) : (
+                                    /* ── ÇIKIŞ / TÜM HAREKETLER TABLOSU ── */
+                                    <table className="responsive-table col-6">
+                                        <thead>
+                                            <tr>
+                                                <th>İŞLEM TARİHİ</th>
+                                                <th>TÜR</th>
+                                                <th>MALZEME</th>
+                                                <th>TEDARİKÇİ / ALAN KİŞİ / EKİP</th>
+                                                <th>MİKTAR</th>
+                                                <th>NOT / AÇIKLAMA</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filteredMovementsForPage.length === 0 ? (
+                                                <tr><td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>{movementViewType === 'out' ? 'Çıkış kaydı bulunamadı.' : 'Hareket kaydı bulunamadı.'}</td></tr>
+                                            ) : filteredMovementsForPage.map((m) => (
+                                                <tr key={m.id}>
+                                                    <td>{String(m.date || '-').split(',')[0].split(' ')[0]}</td>
+                                                    <td>
+                                                        <span className={"movement-type-pill " + (m.normalizedType === 'in' ? 'in' : 'out')}>
+                                                            {m.category === 'zimmet'
+                                                                ? (m.type === 'verildi' ? 'Zimmet Ver' : 'Zimmet İade')
+                                                                : (m.type === 'in' ? 'Giriş' : 'Çıkış')}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <div className="material-cell">
+                                                            <Package size={14} className="material-icon-small" />
+                                                            <span>{m.itemName || '-'}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td>{m.firmaAdi || m.recipient || m.person || '-'}</td>
+                                                    <td>
+                                                        <span style={{ color: m.normalizedType === 'in' ? 'var(--success)' : 'var(--danger)', fontWeight: '700' }}>
+                                                            {m.normalizedType === 'in' ? '+' : '−'}{formatNumber(m.amount)}
+                                                        </span>
+                                                    </td>
+                                                    <td>{m.note || '-'}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
                             </div>
                         </div>
                     )}
