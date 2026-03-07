@@ -1913,10 +1913,12 @@ const App = () => {
                                         <button className="btn-ghost" onClick={() => { setMovementViewType('in'); setActiveTab('movements'); }}>Tümü</button>
                                     </div>
                                     <div className="table-responsive-wrapper">
-                                        <table className="responsive-table col-4">
+                                        <table className="responsive-table col-6">
                                             <thead>
                                                 <tr>
                                                     <th>TARİH</th>
+                                                    <th>FİRMA</th>
+                                                    <th>İRSALİYE NO</th>
                                                     <th>MALZEME</th>
                                                     <th>MİKTAR</th>
                                                     <th>BİRİM</th>
@@ -1926,13 +1928,15 @@ const App = () => {
                                                 {movements.filter(m => m.type === 'in').slice(0, 5).map(m => (
                                                     <tr key={m.id}>
                                                         <td data-label="Tarih">{String(m.date || '').split(',')[0].split(' ')[0]}</td>
+                                                        <td data-label="Firma">{m.firmaAdi || '—'}</td>
+                                                        <td data-label="İrsaliye No">{m.irsaliyeNo || '—'}</td>
                                                         <td data-label="Malzeme" style={{ fontWeight: '600' }}>{m.itemName}</td>
                                                         <td data-label="Miktar" style={{ color: 'var(--success)', fontWeight: '700' }}>+{formatNumber(m.amount)}</td>
                                                         <td data-label="Birim">{m.unit || '—'}</td>
                                                     </tr>
                                                 ))}
                                                 {movements.filter(m => m.type === 'in').length === 0 && (
-                                                    <tr><td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>Henüz giriş kaydı yok.</td></tr>
+                                                    <tr><td colSpan="6" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>Henüz giriş kaydı yok.</td></tr>
                                                 )}
                                             </tbody>
                                         </table>
