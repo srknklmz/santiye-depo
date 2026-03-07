@@ -36,7 +36,9 @@ import {
     Truck,
     RotateCcw,
     Check,
-    UserPlus
+    UserPlus,
+    Sun,
+    Moon
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -242,6 +244,14 @@ const App = () => {
     const [requests, setRequests] = useState([]);
     const [categories, setCategories] = useState(['Genel', 'Elektrik', 'Tesisat', 'Kaba İnşaat', 'Hırdavat']);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+    // ── Theme State ──
+    const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
+
+    useEffect(() => {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+    }, [theme]);
 
     // ── UI State ──
     const [showModal, setShowModal] = useState(false);
@@ -1727,6 +1737,51 @@ const App = () => {
                                             </button>
                                         )}
                                         <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept=".json" onChange={restoreData} />
+                                    </div>
+
+                                    {/* Görünüm Ayarları */}
+                                    <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--border)' }}>
+                                        <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                            Görünüm
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <button
+                                                onClick={() => setTheme('light')}
+                                                style={{
+                                                    display: 'flex', alignItems: 'center', gap: '7px',
+                                                    padding: '8px 16px',
+                                                    borderRadius: '8px',
+                                                    border: theme === 'light' ? '2px solid var(--primary)' : '2px solid var(--border)',
+                                                    background: theme === 'light' ? 'var(--primary-glow)' : 'var(--bg-main)',
+                                                    color: theme === 'light' ? 'var(--primary)' : 'var(--text-muted)',
+                                                    fontWeight: theme === 'light' ? '700' : '500',
+                                                    fontSize: '13px',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.15s',
+                                                    fontFamily: 'inherit'
+                                                }}
+                                            >
+                                                <Sun size={15} /> Gündüz
+                                            </button>
+                                            <button
+                                                onClick={() => setTheme('dark')}
+                                                style={{
+                                                    display: 'flex', alignItems: 'center', gap: '7px',
+                                                    padding: '8px 16px',
+                                                    borderRadius: '8px',
+                                                    border: theme === 'dark' ? '2px solid var(--primary)' : '2px solid var(--border)',
+                                                    background: theme === 'dark' ? 'var(--primary-glow)' : 'var(--bg-main)',
+                                                    color: theme === 'dark' ? 'var(--primary)' : 'var(--text-muted)',
+                                                    fontWeight: theme === 'dark' ? '700' : '500',
+                                                    fontSize: '13px',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.15s',
+                                                    fontFamily: 'inherit'
+                                                }}
+                                            >
+                                                <Moon size={15} /> Gece
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             )}
