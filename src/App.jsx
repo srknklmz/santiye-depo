@@ -38,7 +38,8 @@ import {
     Check,
     UserPlus,
     Sun,
-    Moon
+    Moon,
+    ChevronLeft
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -1709,6 +1710,31 @@ const App = () => {
                     {!isFirebaseConfigured && (
                         <div className="firebase-warning">
                             <strong>Dikkat:</strong> Firebase bağlantısı henüz kurulmadı.
+                        </div>
+                    )}
+
+                    {/* ── BACK BUTTON (tüm sayfalarda dashboard hariç) ── */}
+                    {activeTab !== 'dashboard' && (
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+                            <button
+                                onClick={() => setActiveTab('dashboard')}
+                                style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                    padding: '7px 14px',
+                                    borderRadius: 'var(--radius-sm)',
+                                    border: '1px solid var(--border)',
+                                    background: 'var(--bg-card)',
+                                    color: 'var(--text-muted)',
+                                    fontSize: '13px', fontWeight: '500',
+                                    cursor: 'pointer',
+                                    fontFamily: 'inherit',
+                                    transition: 'border-color 0.15s, color 0.15s',
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)'; }}
+                            >
+                                <ChevronLeft size={15} /> Geri Dön
+                            </button>
                         </div>
                     )}
 
