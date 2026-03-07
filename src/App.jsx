@@ -256,7 +256,6 @@ const App = () => {
     // ── UI State ──
     const [showModal, setShowModal] = useState(false);
     const [showMoveModal, setShowMoveModal] = useState(false);
-    const [showSettings, setShowSettings] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
     const [movementType, setMovementType] = useState('in');
     const [selectedItemForMove, setSelectedItemForMove] = useState(null);
@@ -1460,7 +1459,6 @@ const App = () => {
                     set(ref(db, 'movements'), movesObj);
                     if (json.categories) set(ref(db, 'categories'), json.categories);
                     alert('Veriler başarıyla buluta yüklendi!');
-                    setShowSettings(false);
                 }
             } catch (err) {
                 alert('Hata: Geçersiz yedek dosyası.');
@@ -1661,10 +1659,10 @@ const App = () => {
 
                     {canEdit && (
                         <button
-                            className={`nav-item${showSettings ? ' active' : ''}`}
-                            onClick={() => setShowSettings(!showSettings)}
+                            className={`nav-item${activeTab === 'settings' ? ' active' : ''}`}
+                            onClick={() => { setActiveTab('settings'); setMobileSidebarOpen(false); }}
                         >
-                            <Settings size={17} /> Araçlar & Yedek
+                            <Settings size={17} /> Ayarlar
                         </button>
                     )}
                 </nav>
@@ -1717,122 +1715,6 @@ const App = () => {
                     {/* ── DASHBOARD TAB ── */}
                     {activeTab === 'dashboard' && (
                         <>
-                            {/* Settings Panel */}
-                            {showSettings && canEdit && (
-                                <div className="settings-panel animate-fade">
-                                    <div className="settings-panel-header">
-                                        <span className="section-title"><Settings size={16} /> Araçlar & Yedekleme</span>
-                                        <button className="btn-icon" onClick={() => setShowSettings(false)}><X size={15} /></button>
-                                    </div>
-                                    <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
-                                        <button className="btn-primary" style={{ background: 'linear-gradient(135deg,#1e293b,#334155)' }} onClick={() => { setExportType('stock'); setSelectedItemsForExport(items.map(i => i.id)); setShowExportModal(true); setShowSettings(false); }}>
-                                            <FileSpreadsheet size={15} /> Excel Raporları
-                                        </button>
-                                        <button className="btn-primary" style={{ background: 'linear-gradient(135deg,#475569,#64748b)' }} onClick={backupData}>
-                                            <Download size={15} /> Veriyi Yedekle
-                                        </button>
-                                        {isAdmin && (
-                                            <button className="btn-primary" style={{ background: 'linear-gradient(135deg,#64748b,#94a3b8)' }} onClick={() => fileInputRef.current.click()}>
-                                                <Upload size={15} /> Yedek Yükle
-                                            </button>
-                                        )}
-                                        <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept=".json" onChange={restoreData} />
-                                    </div>
-
-                                    {/* Görünüm Ayarları */}
-                                    <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--border)' }}>
-                                        <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                                            Görünüm
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                            <button
-                                                onClick={() => setTheme('light')}
-                                                style={{
-                                                    display: 'flex', alignItems: 'center', gap: '7px',
-                                                    padding: '8px 16px',
-                                                    borderRadius: '8px',
-                                                    border: theme === 'light' ? '2px solid var(--primary)' : '2px solid var(--border)',
-                                                    background: theme === 'light' ? 'var(--primary-glow)' : 'var(--bg-main)',
-                                                    color: theme === 'light' ? 'var(--primary)' : 'var(--text-muted)',
-                                                    fontWeight: theme === 'light' ? '700' : '500',
-                                                    fontSize: '13px',
-                                                    cursor: 'pointer',
-                                                    transition: 'all 0.15s',
-                                                    fontFamily: 'inherit'
-                                                }}
-                                            >
-                                                <Sun size={15} /> Gündüz
-                                            </button>
-                                            <button
-                                                onClick={() => setTheme('dark')}
-                                                style={{
-                                                    display: 'flex', alignItems: 'center', gap: '7px',
-                                                    padding: '8px 16px',
-                                                    borderRadius: '8px',
-                                                    border: theme === 'dark' ? '2px solid var(--primary)' : '2px solid var(--border)',
-                                                    background: theme === 'dark' ? 'var(--primary-glow)' : 'var(--bg-main)',
-                                                    color: theme === 'dark' ? 'var(--primary)' : 'var(--text-muted)',
-                                                    fontWeight: theme === 'dark' ? '700' : '500',
-                                                    fontSize: '13px',
-                                                    cursor: 'pointer',
-                                                    transition: 'all 0.15s',
-                                                    fontFamily: 'inherit'
-                                                }}
-                                            >
-                                                <Moon size={15} /> Gece
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Advanced Export Modal */}
-                            {showExportModal && (
-                                <div className="modal-overlay">
-                                    <div className="modal-card" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
-                                        <div className="modal-header">
-                                            <span className="modal-title flex align-center gap-1"><FileSpreadsheet size={18} /> Excel Raporu Hazırla</span>
-                                            <button className="btn-icon" onClick={() => setShowExportModal(false)}><X size={16} /></button>
-                                        </div>
-                                        <div className="flex gap-2 mb-2" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
-                                            <button className={`btn-${exportType === 'stock' ? 'primary' : 'ghost'}`} style={{ flex: 1 }} onClick={() => setExportType('stock')}>Mevcut Stok</button>
-                                            <button className={`btn-${exportType === 'movements' ? 'primary' : 'ghost'}`} style={{ flex: 1 }} onClick={() => setExportType('movements')}>Stok Hareketleri</button>
-                                        </div>
-                                        {exportType === 'movements' ? (
-                                            <div className="animate-fade">
-                                                <div className="flex gap-2 mb-2">
-                                                    <div style={{ flex: 1 }}>
-                                                        <label className="label">Başlangıç Tarihi</label>
-                                                        <input type="date" value={dateRange.start} onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })} />
-                                                    </div>
-                                                    <div style={{ flex: 1 }}>
-                                                        <label className="label">Bitiş Tarihi</label>
-                                                        <input type="date" value={dateRange.end} onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })} />
-                                                    </div>
-                                                </div>
-                                                <button className="btn-primary" style={{ width: '100%', background: '#059669' }} onClick={() => { exportMovementsToExcel(dateRange.start, dateRange.end); setShowExportModal(false); }}>Hareket Raporu Oluştur</button>
-                                            </div>
-                                        ) : (
-                                            <div className="animate-fade">
-                                                <label className="label">Malzemeleri Seçin ({selectedItemsForExport.length})</label>
-                                                <div style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px', marginBottom: '1rem' }}>
-                                                    {items.map(item => (
-                                                        <label key={item.id} className="flex align-center gap-2 mb-1" style={{ cursor: 'pointer' }}>
-                                                            <input type="checkbox" checked={selectedItemsForExport.includes(item.id)} onChange={(e) => {
-                                                                if (e.target.checked) setSelectedItemsForExport([...selectedItemsForExport, item.id]);
-                                                                else setSelectedItemsForExport(selectedItemsForExport.filter(id => id !== item.id));
-                                                            }} />
-                                                            <span style={{ fontSize: '14px' }}>{item.name}</span>
-                                                        </label>
-                                                    ))}
-                                                </div>
-                                                <button className="btn-primary" style={{ width: '100%', background: '#059669' }} onClick={() => { exportFilteredStockToExcel(selectedItemsForExport); setShowExportModal(false); }}>Stok Raporu Oluştur</button>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-
                             {/* Quick Action Buttons */}
                             {canEdit && (
                                 <div className="action-grid">
@@ -3277,7 +3159,160 @@ const App = () => {
                         </div>
                     )}
 
+                    {/* ── AYARLAR TAB ── */}
+                    {activeTab === 'settings' && canEdit && (
+                        <div className="animate-fade" style={{ maxWidth: '640px', margin: '0 auto' }}>
+                            {/* Sayfa başlığı */}
+                            <div style={{ marginBottom: '24px' }}>
+                                <h2 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--text-main)', margin: 0 }}>Ayarlar</h2>
+                                <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>Uygulama tercihleri ve veri yönetimi</p>
+                            </div>
+
+                            {/* Görünüm Kartı */}
+                            <div className="card" style={{ marginBottom: '16px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--primary-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
+                                        <Sun size={16} />
+                                    </div>
+                                    <div>
+                                        <div style={{ fontWeight: '600', fontSize: '14px', color: 'var(--text-main)' }}>Görünüm</div>
+                                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Gündüz veya gece modunu seçin</div>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <button
+                                        onClick={() => setTheme('light')}
+                                        style={{
+                                            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                            padding: '12px 16px', borderRadius: '10px',
+                                            border: theme === 'light' ? '2px solid var(--primary)' : '2px solid var(--border)',
+                                            background: theme === 'light' ? 'var(--primary-glow)' : 'var(--bg-main)',
+                                            color: theme === 'light' ? 'var(--primary)' : 'var(--text-muted)',
+                                            fontWeight: theme === 'light' ? '700' : '500',
+                                            fontSize: '14px', cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit'
+                                        }}
+                                    >
+                                        <Sun size={16} /> Gündüz
+                                    </button>
+                                    <button
+                                        onClick={() => setTheme('dark')}
+                                        style={{
+                                            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                            padding: '12px 16px', borderRadius: '10px',
+                                            border: theme === 'dark' ? '2px solid var(--primary)' : '2px solid var(--border)',
+                                            background: theme === 'dark' ? 'var(--primary-glow)' : 'var(--bg-main)',
+                                            color: theme === 'dark' ? 'var(--primary)' : 'var(--text-muted)',
+                                            fontWeight: theme === 'dark' ? '700' : '500',
+                                            fontSize: '14px', cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit'
+                                        }}
+                                    >
+                                        <Moon size={16} /> Gece
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Raporlar Kartı */}
+                            <div className="card" style={{ marginBottom: '16px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--success-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--success)' }}>
+                                        <FileSpreadsheet size={16} />
+                                    </div>
+                                    <div>
+                                        <div style={{ fontWeight: '600', fontSize: '14px', color: 'var(--text-main)' }}>Excel Raporları</div>
+                                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Stok ve hareket raporlarını dışa aktarın</div>
+                                    </div>
+                                </div>
+                                <button
+                                    className="btn-primary"
+                                    style={{ width: '100%', justifyContent: 'center', padding: '10px', background: 'var(--success)' }}
+                                    onClick={() => { setExportType('stock'); setSelectedItemsForExport(items.map(i => i.id)); setShowExportModal(true); }}
+                                >
+                                    <FileSpreadsheet size={15} /> Excel Raporu Hazırla
+                                </button>
+                            </div>
+
+                            {/* Veri Yönetimi Kartı */}
+                            <div className="card">
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--warning-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--warning)' }}>
+                                        <Download size={16} />
+                                    </div>
+                                    <div>
+                                        <div style={{ fontWeight: '600', fontSize: '14px', color: 'var(--text-main)' }}>Veri Yönetimi</div>
+                                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Verilerinizi yedekleyin veya geri yükleyin</div>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                    <button
+                                        className="btn-primary"
+                                        style={{ width: '100%', justifyContent: 'center', padding: '10px', background: '#475569' }}
+                                        onClick={backupData}
+                                    >
+                                        <Download size={15} /> Veriyi Yedekle (JSON)
+                                    </button>
+                                    {isAdmin && (
+                                        <button
+                                            className="btn-primary"
+                                            style={{ width: '100%', justifyContent: 'center', padding: '10px', background: '#64748b' }}
+                                            onClick={() => fileInputRef.current.click()}
+                                        >
+                                            <Upload size={15} /> Yedek Yükle
+                                        </button>
+                                    )}
+                                    <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept=".json" onChange={restoreData} />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* ── MODALS (Global) ── */}
+
+                    {/* Excel Export Modal */}
+                    {showExportModal && (
+                        <div className="modal-overlay">
+                            <div className="modal-card" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
+                                <div className="modal-header">
+                                    <span className="modal-title flex align-center gap-1"><FileSpreadsheet size={18} /> Excel Raporu Hazırla</span>
+                                    <button className="btn-icon" onClick={() => setShowExportModal(false)}><X size={16} /></button>
+                                </div>
+                                <div className="flex gap-2 mb-2" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+                                    <button className={`btn-${exportType === 'stock' ? 'primary' : 'ghost'}`} style={{ flex: 1 }} onClick={() => setExportType('stock')}>Mevcut Stok</button>
+                                    <button className={`btn-${exportType === 'movements' ? 'primary' : 'ghost'}`} style={{ flex: 1 }} onClick={() => setExportType('movements')}>Stok Hareketleri</button>
+                                </div>
+                                {exportType === 'movements' ? (
+                                    <div className="animate-fade">
+                                        <div className="flex gap-2 mb-2">
+                                            <div style={{ flex: 1 }}>
+                                                <label className="label">Başlangıç Tarihi</label>
+                                                <input type="date" value={dateRange.start} onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })} />
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <label className="label">Bitiş Tarihi</label>
+                                                <input type="date" value={dateRange.end} onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })} />
+                                            </div>
+                                        </div>
+                                        <button className="btn-primary" style={{ width: '100%', background: '#059669' }} onClick={() => { exportMovementsToExcel(dateRange.start, dateRange.end); setShowExportModal(false); }}>Hareket Raporu Oluştur</button>
+                                    </div>
+                                ) : (
+                                    <div className="animate-fade">
+                                        <label className="label">Malzemeleri Seçin ({selectedItemsForExport.length})</label>
+                                        <div style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px', marginBottom: '1rem' }}>
+                                            {items.map(item => (
+                                                <label key={item.id} className="flex align-center gap-2 mb-1" style={{ cursor: 'pointer' }}>
+                                                    <input type="checkbox" checked={selectedItemsForExport.includes(item.id)} onChange={(e) => {
+                                                        if (e.target.checked) setSelectedItemsForExport([...selectedItemsForExport, item.id]);
+                                                        else setSelectedItemsForExport(selectedItemsForExport.filter(id => id !== item.id));
+                                                    }} />
+                                                    <span style={{ fontSize: '14px' }}>{item.name}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                        <button className="btn-primary" style={{ width: '100%', background: '#059669' }} onClick={() => { exportFilteredStockToExcel(selectedItemsForExport); setShowExportModal(false); }}>Stok Raporu Oluştur</button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Add/Edit Item Modal */}
                     {showModal && canEdit && (
