@@ -839,8 +839,8 @@ const App = () => {
             } else {
                 // ── Çıkış ──
                 const amount = Number(formData.get('amount'));
-                const price = Number(formData.get('price') || 0);
-                const note = formData.get('note') || '';
+                const verilenBirim = formData.get('verilenBirim') || '';
+                const kullanimAlani = formData.get('kullanimAlani') || '';
                 const rawRecipient = formData.get('recipient');
                 const recipient = rawRecipient === '__NEW__' ? '' : (rawRecipient || '');
                 const itemId = String(selectedItemForMove.id);
@@ -850,7 +850,8 @@ const App = () => {
 
                 const moveBaseData = {
                     itemId: Number(itemId), itemName: selectedItemForMove.name,
-                    amount, unit, price, note, recipient, irsaliyeNo, type: 'out', date: displayDateOut,
+                    amount, unit, verilenBirim, recipient, kullanimAlani,
+                    note: kullanimAlani, type: 'out', date: displayDateOut,
                 };
 
                 if (isBackdated) {
@@ -1950,13 +1951,16 @@ const App = () => {
                                         <button className="btn-ghost" onClick={() => { setMovementViewType('out'); setActiveTab('movements'); }}>Tümü</button>
                                     </div>
                                     <div className="table-responsive-wrapper">
-                                        <table className="responsive-table col-4">
+                                        <table className="responsive-table col-7">
                                             <thead>
                                                 <tr>
                                                     <th>TARİH</th>
                                                     <th>MALZEME</th>
-                                                    <th>ALAN KİŞİ / EKİP</th>
                                                     <th>MİKTAR</th>
+                                                    <th>BİRİM</th>
+                                                    <th>VERİLEN BİRİM</th>
+                                                    <th>VERİLEN KİŞİ</th>
+                                                    <th>KULLANIM ALANI</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -1964,12 +1968,15 @@ const App = () => {
                                                     <tr key={m.id}>
                                                         <td data-label="Tarih">{String(m.date || '').split(',')[0].split(' ')[0]}</td>
                                                         <td data-label="Malzeme" style={{ fontWeight: '600' }}>{m.itemName}</td>
-                                                        <td data-label="Alan Kişi / Ekip">{m.recipient || '—'}</td>
                                                         <td data-label="Miktar" style={{ color: 'var(--danger)', fontWeight: '700' }}>−{formatNumber(m.amount)}</td>
+                                                        <td data-label="Birim">{m.unit || '—'}</td>
+                                                        <td data-label="Verilen Birim">{m.verilenBirim || '—'}</td>
+                                                        <td data-label="Verilen Kişi">{m.recipient || '—'}</td>
+                                                        <td data-label="Kullanım Alanı">{m.kullanimAlani || m.note || '—'}</td>
                                                     </tr>
                                                 ))}
                                                 {movements.filter(m => m.type === 'out').length === 0 && (
-                                                    <tr><td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>Henüz çıkış kaydı yok.</td></tr>
+                                                    <tr><td colSpan="7" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>Henüz çıkış kaydı yok.</td></tr>
                                                 )}
                                             </tbody>
                                         </table>
@@ -3524,10 +3531,14 @@ const App = () => {
                                                 </div>
                                             </div>
                                             <div className="mb-2">
-                                                <label className="label">Alan Kişi / Ekip</label>
+                                                <label className="label">Verilen Birim</label>
+                                                <input name="verilenBirim" placeholder="Örn: A Ekibi, Elektrik Birimi..." />
+                                            </div>
+                                            <div className="mb-2">
+                                                <label className="label">Verilen Kişi</label>
                                                 {isNewRecipient ? (
                                                     <div className="flex gap-2">
-                                                        <input autoFocus name="recipient" placeholder="Yeni kişi/ekip adı yazın..." />
+                                                        <input autoFocus name="recipient" placeholder="Yeni kişi adı yazın..." />
                                                         <button type="button" className="btn-ghost" onClick={() => setIsNewRecipient(false)}><X size={14} /></button>
                                                     </div>
                                                 ) : (
@@ -3540,12 +3551,8 @@ const App = () => {
                                                 )}
                                             </div>
                                             <div className="mb-2">
-                                                <label className="label">Not / Açıklama</label>
-                                                <input name="note" placeholder="Örn: A Blok 3. kat" />
-                                            </div>
-                                            <div className="mb-2">
-                                                <label className="label">Birim Fiyat (TL)</label>
-                                                <input name="price" type="number" step="0.01" placeholder="0.00 TL" />
+                                                <label className="label">Kullanım Alanı</label>
+                                                <input name="kullanimAlani" placeholder="Örn: A Blok 3. kat, Temel kazısı..." />
                                             </div>
                                         </>
                                     )}
