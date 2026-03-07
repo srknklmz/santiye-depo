@@ -371,9 +371,11 @@ const App = () => {
     }, [movements, zimmet]);
 
     const filteredMovementsForPage = useMemo(() => {
-        if (movementViewType === 'in') return allMovementsSorted.filter(m => m.normalizedType === 'in');
-        if (movementViewType === 'out') return allMovementsSorted.filter(m => m.normalizedType === 'out');
-        return allMovementsSorted;
+        // Zimmet hareketleri sadece zimmet sekmesinde görünür; stok hareketleri tablosunda gösterilmez
+        const onlyStockMovements = allMovementsSorted.filter(m => m.category !== 'zimmet');
+        if (movementViewType === 'in') return onlyStockMovements.filter(m => m.normalizedType === 'in');
+        if (movementViewType === 'out') return onlyStockMovements.filter(m => m.normalizedType === 'out');
+        return onlyStockMovements;
     }, [allMovementsSorted, movementViewType]);
 
     // ── Auth Effect ──
