@@ -1771,7 +1771,7 @@ const App = () => {
                                 <div className="stat-card" onClick={() => {
                                     const today = new Date().toLocaleDateString();
                                     const todayIn = movements.filter(m => m.type === 'in' && String(m.date || '').includes(today));
-                                    setDashModal({ show: true, title: 'Bugünkü Giriş İşlemleri', data: todayIn, type: 'move' });
+                                    setDashModal({ show: true, title: 'Bugünkü Giriş İşlemleri', data: todayIn, type: 'move', moveType: 'in' });
                                 }}>
                                     <div className="stat-card-top">
                                         <div className="stat-icon stat-icon-success"><ArrowUpRight size={18} /></div>
@@ -1782,7 +1782,7 @@ const App = () => {
                                 <div className="stat-card" onClick={() => {
                                     const today = new Date().toLocaleDateString();
                                     const todayOut = movements.filter(m => m.type === 'out' && String(m.date || '').includes(today));
-                                    setDashModal({ show: true, title: 'Bugünkü Çıkış İşlemleri', data: todayOut, type: 'move' });
+                                    setDashModal({ show: true, title: 'Bugünkü Çıkış İşlemleri', data: todayOut, type: 'move', moveType: 'out' });
                                 }}>
                                     <div className="stat-card-top">
                                         <div className="stat-icon stat-icon-warning"><ArrowDownLeft size={18} /></div>
@@ -3768,10 +3768,21 @@ const App = () => {
                                                 { key: 'name', label: 'MALZEME' },
                                                 { key: 'quantity', label: 'MIKTAR' },
                                                 { key: 'unit', label: 'BIRIM' }
-                                            ] : [
+                                            ] : dashModal.moveType === 'in' ? [
+                                                { key: 'date', label: 'TARİH' },
+                                                { key: 'firmaAdi', label: 'FİRMA' },
+                                                { key: 'irsaliyeNo', label: 'İRSALİYE NO' },
                                                 { key: 'itemName', label: 'MALZEME' },
-                                                { key: 'recipient', label: dashModal.title.includes('Giriş') ? 'KAYNAK' : 'ALAN' },
-                                                { key: 'amount', label: 'MIKTAR' }
+                                                { key: 'amount', label: 'MİKTAR' },
+                                                { key: 'unit', label: 'BİRİM' }
+                                            ] : [
+                                                { key: 'date', label: 'TARİH' },
+                                                { key: 'itemName', label: 'MALZEME' },
+                                                { key: 'amount', label: 'MİKTAR' },
+                                                { key: 'unit', label: 'BİRİM' },
+                                                { key: 'verilenBirim', label: 'VERİLEN BİRİM' },
+                                                { key: 'recipient', label: 'VERİLEN KİŞİ' },
+                                                { key: 'kullanimAlani', label: 'KULLANIM ALANI' }
                                             ]}
                                             filename={dashModal.title.replace(/\s+/g, '_')}
                                         />
@@ -3779,22 +3790,34 @@ const App = () => {
                                     </div>
                                 </div>
                                 <div className="table-responsive-wrapper">
-                                    <table className={`responsive-table ${dashModal.type === 'stock' ? 'col-3' : 'col-4'}`}>
+                                    <table className={`responsive-table ${dashModal.type === 'stock' ? 'col-3' : dashModal.moveType === 'in' ? 'col-6' : 'col-7'}`}>
                                         <thead>
                                             {dashModal.type === 'stock' ? (
                                                 <tr><th>MALZEME</th><th>MİKTAR</th><th>BİRİM</th></tr>
-                                            ) : (
+                                            ) : dashModal.moveType === 'in' ? (
                                                 <tr>
+                                                    <th>TARİH</th>
+                                                    <th>FİRMA</th>
+                                                    <th>İRSALİYE NO</th>
                                                     <th>MALZEME</th>
-                                                    <th>{dashModal.title.includes('Giriş') ? 'KAYNAK' : 'ALAN'}</th>
                                                     <th>MİKTAR</th>
                                                     <th>BİRİM</th>
+                                                </tr>
+                                            ) : (
+                                                <tr>
+                                                    <th>TARİH</th>
+                                                    <th>MALZEME</th>
+                                                    <th>MİKTAR</th>
+                                                    <th>BİRİM</th>
+                                                    <th>VERİLEN BİRİM</th>
+                                                    <th>VERİLEN KİŞİ</th>
+                                                    <th>KULLANIM ALANI</th>
                                                 </tr>
                                             )}
                                         </thead>
                                         <tbody>
                                             {dashModal.data.length === 0 ? (
-                                                <tr><td colSpan="4" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>Kayıt bulunamadı.</td></tr>
+                                                <tr><td colSpan="7" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>Kayıt bulunamadı.</td></tr>
                                             ) : dashModal.data.map((item, idx) => (
                                                 <tr key={idx}>
                                                     {dashModal.type === 'stock' ? (
@@ -3805,14 +3828,24 @@ const App = () => {
                                                             <td style={{ textAlign: 'right' }} data-label="Miktar">{formatNumber(item.quantity)}</td>
                                                             <td style={{ textAlign: 'center' }} data-label="Birim">{item.unit}</td>
                                                         </>
+                                                    ) : dashModal.moveType === 'in' ? (
+                                                        <>
+                                                            <td data-label="Tarih">{String(item.date || '').split(',')[0].split(' ')[0]}</td>
+                                                            <td data-label="Firma">{item.firmaAdi || '—'}</td>
+                                                            <td data-label="İrsaliye No">{item.irsaliyeNo || '—'}</td>
+                                                            <td data-label="Malzeme" style={{ fontWeight: '600' }}>{item.itemName}</td>
+                                                            <td data-label="Miktar" style={{ color: 'var(--success)', fontWeight: '700' }}>+{formatNumber(item.amount)}</td>
+                                                            <td data-label="Birim">{item.unit || '—'}</td>
+                                                        </>
                                                     ) : (
                                                         <>
-                                                            <td data-label="Malzeme">
-                                                                <div className="material-cell"><Package size={14} className="material-icon-small" /><span>{item.itemName}</span></div>
-                                                            </td>
-                                                            <td data-label={dashModal.title.includes('Giriş') ? 'Kaynak' : 'Alan'}>{item.recipient || '-'}</td>
-                                                            <td style={{ textAlign: 'right' }} data-label="Miktar">{formatNumber(item.amount)}</td>
-                                                            <td style={{ textAlign: 'center' }} data-label="Birim">{items.find(i => i.id == item.itemId)?.unit}</td>
+                                                            <td data-label="Tarih">{String(item.date || '').split(',')[0].split(' ')[0]}</td>
+                                                            <td data-label="Malzeme" style={{ fontWeight: '600' }}>{item.itemName}</td>
+                                                            <td data-label="Miktar" style={{ color: 'var(--danger)', fontWeight: '700' }}>−{formatNumber(item.amount)}</td>
+                                                            <td data-label="Birim">{item.unit || '—'}</td>
+                                                            <td data-label="Verilen Birim">{item.verilenBirim || '—'}</td>
+                                                            <td data-label="Verilen Kişi">{item.recipient || '—'}</td>
+                                                            <td data-label="Kullanım Alanı">{item.kullanimAlani || item.note || '—'}</td>
                                                         </>
                                                     )}
                                                 </tr>
