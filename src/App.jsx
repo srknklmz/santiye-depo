@@ -1909,9 +1909,9 @@ const App = () => {
                             <div className="movements-grid">
                                 {/* Son Girişler */}
                                 <div className="table-card">
-                                    <div className="table-toolbar">
-                                        <span className="section-title" style={{ color: 'var(--success)' }}><ArrowUpRight size={16} /> Son Girişler</span>
-                                        <button className="btn-ghost" onClick={() => { setMovementViewType('in'); setActiveTab('movements'); }}>Tümü</button>
+                                    <div className="table-toolbar" style={{ background: 'var(--success)', borderBottom: 'none' }}>
+                                        <span className="section-title" style={{ color: '#fff', textTransform: 'uppercase', letterSpacing: '0.04em' }}><ArrowUpRight size={16} /> Son Girişler</span>
+                                        <button className="btn-ghost" style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.4)' }} onClick={() => { setMovementViewType('in'); setActiveTab('movements'); }}>Tümü</button>
                                     </div>
                                     <div className="table-responsive-wrapper">
                                         <table className="responsive-table col-6">
@@ -1946,9 +1946,9 @@ const App = () => {
 
                                 {/* Son Çıkışlar */}
                                 <div className="table-card">
-                                    <div className="table-toolbar">
-                                        <span className="section-title" style={{ color: 'var(--danger)' }}><ArrowDownLeft size={16} /> Son Çıkışlar</span>
-                                        <button className="btn-ghost" onClick={() => { setMovementViewType('out'); setActiveTab('movements'); }}>Tümü</button>
+                                    <div className="table-toolbar" style={{ background: 'var(--danger)', borderBottom: 'none' }}>
+                                        <span className="section-title" style={{ color: '#fff', textTransform: 'uppercase', letterSpacing: '0.04em' }}><ArrowDownLeft size={16} /> Son Çıkışlar</span>
+                                        <button className="btn-ghost" style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.4)' }} onClick={() => { setMovementViewType('out'); setActiveTab('movements'); }}>Tümü</button>
                                     </div>
                                     <div className="table-responsive-wrapper">
                                         <table className="responsive-table col-7">
@@ -1985,9 +1985,9 @@ const App = () => {
 
                                 {/* Son Zimmet Hareketleri */}
                                 <div className="table-card">
-                                    <div className="table-toolbar">
-                                        <span className="section-title" style={{ color: '#4f46e5' }}><UserCheck size={16} /> Son Zimmet Hareketleri</span>
-                                        <button className="btn-ghost" onClick={() => { setActiveTab('zimmet'); setZimmetView('history'); }}>Tümü</button>
+                                    <div className="table-toolbar" style={{ background: '#4f46e5', borderBottom: 'none' }}>
+                                        <span className="section-title" style={{ color: '#fff', textTransform: 'uppercase', letterSpacing: '0.04em' }}><UserCheck size={16} /> Son Zimmet Hareketleri</span>
+                                        <button className="btn-ghost" style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.4)' }} onClick={() => { setActiveTab('zimmet'); setZimmetView('history'); }}>Tümü</button>
                                     </div>
                                     <div className="table-responsive-wrapper">
                                         <table className="responsive-table col-5">
