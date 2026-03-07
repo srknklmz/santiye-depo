@@ -622,11 +622,21 @@ input[type="date"]::-webkit-date-and-time-value {
   margin-bottom: 16px;
 }
 
-/* Dashboard dashboard hareket kartlarında satır yüksekliği azaltıldı */
+/* Dashboard hareket kartları — başlık & tablo aynı genişlik, satırlar kompakt */
+.movements-grid .table-responsive-wrapper {
+  overflow-x: hidden;
+}
+.movements-grid .responsive-table {
+  width: 100%;
+  table-layout: fixed;
+}
 .movements-grid .responsive-table th,
 .movements-grid .responsive-table td {
-  padding: 6px 12px;
-  font-size: 12.5px;
+  padding: 6px 10px;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .movements-card {

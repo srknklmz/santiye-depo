@@ -1744,35 +1744,6 @@ const App = () => {
                     {/* ── DASHBOARD TAB ── */}
                     {activeTab === 'dashboard' && (
                         <>
-                            {/* Quick Action Buttons */}
-                            {canEdit && (
-                                <div className="action-grid">
-                                    <button className="action-btn action-btn-in"
-                                        onClick={() => { setMovementType('in'); setSelectedItemForMove(null); setShowMoveModal(true); }}
-                                    >
-                                        <ArrowUpRight size={20} /> GİRİŞ
-                                    </button>
-                                    <button className="action-btn action-btn-out"
-                                        onClick={() => { setMovementType('out'); setSelectedItemForMove(null); setShowMoveModal(true); }}
-                                    >
-                                        <ArrowDownLeft size={20} /> ÇIKIŞ
-                                    </button>
-                                    <button className="action-btn action-btn-zimmet"
-                                        onClick={() => { setShowZimmetModal(true); setSelectedItemForZimmet(null); }}
-                                    >
-                                        <UserCheck size={20} /> ZİMMET
-                                    </button>
-                                </div>
-                            )}
-                            {!canEdit && (
-                                <div className="action-grid viewer-action-grid">
-                                    <div className="viewer-banner" style={{ margin: 0, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        <Eye size={17} />
-                                        <span>İzleyici modundasınız.</span>
-                                    </div>
-                                </div>
-                            )}
-
                             {/* İzleyici için bilgi */}
                             {!canEdit && (
                                 <div className="viewer-banner">
@@ -1911,7 +1882,15 @@ const App = () => {
                                 <div className="table-card">
                                     <div className="table-toolbar" style={{ background: 'var(--success)', borderBottom: 'none' }}>
                                         <span className="section-title" style={{ color: '#fff', textTransform: 'uppercase', letterSpacing: '0.04em' }}><ArrowUpRight size={16} /> Son Girişler</span>
-                                        <button className="btn-ghost" style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.4)' }} onClick={() => { setMovementViewType('in'); setActiveTab('movements'); }}>Tümü</button>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <button className="btn-ghost" style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.4)' }} onClick={() => { setMovementViewType('in'); setActiveTab('movements'); }}>Tümü</button>
+                                            {canEdit && (
+                                                <button onClick={() => { setMovementType('in'); setSelectedItemForMove(null); setShowMoveModal(true); }} title="Giriş Ekle"
+                                                    style={{ width: '30px', height: '30px', borderRadius: '5px', background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.5)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                    <ArrowUpRight size={15} />
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                     <div className="table-responsive-wrapper">
                                         <table className="responsive-table col-6">
@@ -1948,7 +1927,15 @@ const App = () => {
                                 <div className="table-card">
                                     <div className="table-toolbar" style={{ background: 'var(--danger)', borderBottom: 'none' }}>
                                         <span className="section-title" style={{ color: '#fff', textTransform: 'uppercase', letterSpacing: '0.04em' }}><ArrowDownLeft size={16} /> Son Çıkışlar</span>
-                                        <button className="btn-ghost" style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.4)' }} onClick={() => { setMovementViewType('out'); setActiveTab('movements'); }}>Tümü</button>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <button className="btn-ghost" style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.4)' }} onClick={() => { setMovementViewType('out'); setActiveTab('movements'); }}>Tümü</button>
+                                            {canEdit && (
+                                                <button onClick={() => { setMovementType('out'); setSelectedItemForMove(null); setShowMoveModal(true); }} title="Çıkış Ekle"
+                                                    style={{ width: '30px', height: '30px', borderRadius: '5px', background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.5)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                    <ArrowDownLeft size={15} />
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                     <div className="table-responsive-wrapper">
                                         <table className="responsive-table col-7">
@@ -1987,7 +1974,15 @@ const App = () => {
                                 <div className="table-card">
                                     <div className="table-toolbar" style={{ background: '#4f46e5', borderBottom: 'none' }}>
                                         <span className="section-title" style={{ color: '#fff', textTransform: 'uppercase', letterSpacing: '0.04em' }}><UserCheck size={16} /> Son Zimmet Hareketleri</span>
-                                        <button className="btn-ghost" style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.4)' }} onClick={() => { setActiveTab('zimmet'); setZimmetView('history'); }}>Tümü</button>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <button className="btn-ghost" style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.4)' }} onClick={() => { setActiveTab('zimmet'); setZimmetView('history'); }}>Tümü</button>
+                                            {canEdit && (
+                                                <button onClick={() => { setShowZimmetModal(true); setSelectedItemForZimmet(null); }} title="Zimmet Ekle"
+                                                    style={{ width: '30px', height: '30px', borderRadius: '5px', background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.5)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                    <UserCheck size={15} />
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                     <div className="table-responsive-wrapper">
                                         <table className="responsive-table col-5">
