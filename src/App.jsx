@@ -1904,109 +1904,109 @@ const App = () => {
                                 </div>
                             )}
 
-                            {/* Recent Movements — Tablo Görünümü */}
+                            {/* Recent Movements — Altalta Sıralı, Her Biri Son 5 */}
                             <div className="movements-grid">
-                                {/* Girişler */}
+                                {/* Son Girişler */}
                                 <div className="table-card">
                                     <div className="table-toolbar">
-                                        <span className="section-title" style={{ color: 'var(--success)' }}><ArrowUpRight size={17} /> Girişler</span>
+                                        <span className="section-title" style={{ color: 'var(--success)' }}><ArrowUpRight size={16} /> Son Girişler</span>
                                         <button className="btn-ghost" onClick={() => { setMovementViewType('in'); setActiveTab('movements'); }}>Tümü</button>
                                     </div>
-                                    <div className="table-responsive-wrapper" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                                    <div className="table-responsive-wrapper">
                                         <table className="responsive-table col-4">
                                             <thead>
                                                 <tr>
                                                     <th>TARİH</th>
-                                                    <th>MALZEME ADI</th>
+                                                    <th>MALZEME</th>
                                                     <th>MİKTAR</th>
                                                     <th>BİRİM</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {movements.filter(m => m.type === 'in').slice(0, 20).map(m => (
+                                                {movements.filter(m => m.type === 'in').slice(0, 5).map(m => (
                                                     <tr key={m.id}>
                                                         <td data-label="Tarih">{String(m.date || '').split(',')[0].split(' ')[0]}</td>
-                                                        <td data-label="Malzeme Adı" style={{ fontWeight: '600' }}>{m.itemName}</td>
+                                                        <td data-label="Malzeme" style={{ fontWeight: '600' }}>{m.itemName}</td>
                                                         <td data-label="Miktar" style={{ color: 'var(--success)', fontWeight: '700' }}>+{formatNumber(m.amount)}</td>
                                                         <td data-label="Birim">{m.unit || '—'}</td>
                                                     </tr>
                                                 ))}
                                                 {movements.filter(m => m.type === 'in').length === 0 && (
-                                                    <tr><td colSpan="4" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>Henüz giriş kaydı yok.</td></tr>
+                                                    <tr><td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>Henüz giriş kaydı yok.</td></tr>
                                                 )}
                                             </tbody>
                                         </table>
                                     </div>
                                 </div>
 
-                                {/* Çıkışlar */}
+                                {/* Son Çıkışlar */}
                                 <div className="table-card">
                                     <div className="table-toolbar">
-                                        <span className="section-title" style={{ color: 'var(--danger)' }}><ArrowDownLeft size={17} /> Çıkışlar</span>
+                                        <span className="section-title" style={{ color: 'var(--danger)' }}><ArrowDownLeft size={16} /> Son Çıkışlar</span>
                                         <button className="btn-ghost" onClick={() => { setMovementViewType('out'); setActiveTab('movements'); }}>Tümü</button>
                                     </div>
-                                    <div className="table-responsive-wrapper" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                                    <div className="table-responsive-wrapper">
                                         <table className="responsive-table col-4">
                                             <thead>
                                                 <tr>
+                                                    <th>TARİH</th>
                                                     <th>MALZEME</th>
                                                     <th>ALAN KİŞİ / EKİP</th>
-                                                    <th>İŞLEM TARİHİ</th>
                                                     <th>MİKTAR</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {movements.filter(m => m.type === 'out').slice(0, 20).map(m => (
+                                                {movements.filter(m => m.type === 'out').slice(0, 5).map(m => (
                                                     <tr key={m.id}>
+                                                        <td data-label="Tarih">{String(m.date || '').split(',')[0].split(' ')[0]}</td>
                                                         <td data-label="Malzeme" style={{ fontWeight: '600' }}>{m.itemName}</td>
                                                         <td data-label="Alan Kişi / Ekip">{m.recipient || '—'}</td>
-                                                        <td data-label="İşlem Tarihi">{String(m.date || '').split(',')[0].split(' ')[0]}</td>
                                                         <td data-label="Miktar" style={{ color: 'var(--danger)', fontWeight: '700' }}>−{formatNumber(m.amount)}</td>
                                                     </tr>
                                                 ))}
                                                 {movements.filter(m => m.type === 'out').length === 0 && (
-                                                    <tr><td colSpan="4" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>Henüz çıkış kaydı yok.</td></tr>
+                                                    <tr><td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>Henüz çıkış kaydı yok.</td></tr>
                                                 )}
                                             </tbody>
                                         </table>
                                     </div>
                                 </div>
 
-                                {/* Zimmetler */}
+                                {/* Son Zimmet Hareketleri */}
                                 <div className="table-card">
                                     <div className="table-toolbar">
-                                        <span className="section-title" style={{ color: '#4f46e5' }}><UserCheck size={17} /> Zimmetler</span>
+                                        <span className="section-title" style={{ color: '#4f46e5' }}><UserCheck size={16} /> Son Zimmet Hareketleri</span>
                                         <button className="btn-ghost" onClick={() => { setActiveTab('zimmet'); setZimmetView('history'); }}>Tümü</button>
                                     </div>
-                                    <div className="table-responsive-wrapper" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                                    <div className="table-responsive-wrapper">
                                         <table className="responsive-table col-5">
                                             <thead>
                                                 <tr>
+                                                    <th>TARİH</th>
                                                     <th>MALZEME</th>
                                                     <th>KİŞİ / EKİP</th>
-                                                    <th>DURUM</th>
-                                                    <th>İŞLEM TARİHİ</th>
+                                                    <th>TÜR</th>
                                                     <th>MİKTAR</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {zimmet.slice(0, 20).map(z => (
+                                                {zimmet.slice(0, 5).map(z => (
                                                     <tr key={z.id}>
+                                                        <td data-label="Tarih">{(z.date || '').split(',')[0].split(' ')[0]}</td>
                                                         <td data-label="Malzeme" style={{ fontWeight: '600' }}>{z.itemName}</td>
                                                         <td data-label="Kişi / Ekip">{z.person || '—'}</td>
-                                                        <td data-label="Durum">
+                                                        <td data-label="Tür">
                                                             <span className={`movement-type-pill ${z.type === 'geri_alindi' ? 'in' : 'out'}`}>
                                                                 {z.type === 'geri_alindi' ? 'İade' : 'Zimmet'}
                                                             </span>
                                                         </td>
-                                                        <td data-label="İşlem Tarihi">{(z.date || '').split(',')[0].split(' ')[0]}</td>
                                                         <td data-label="Miktar" style={{ fontWeight: '700', color: z.type === 'verildi' ? 'var(--danger)' : 'var(--success)' }}>
                                                             {z.type === 'verildi' ? `−${formatNumber(z.amount)}` : `+${formatNumber(z.amount)}`}
                                                         </td>
                                                     </tr>
                                                 ))}
                                                 {zimmet.length === 0 && (
-                                                    <tr><td colSpan="5" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>Henüz zimmet kaydı yok.</td></tr>
+                                                    <tr><td colSpan="5" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>Henüz zimmet kaydı yok.</td></tr>
                                                 )}
                                             </tbody>
                                         </table>

@@ -492,14 +492,14 @@ input[type="date"]::-webkit-date-and-time-value {
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
 .stat-card {
   background: var(--bg-card);
   border-radius: var(--radius-lg);
-  padding: 16px 18px;
+  padding: 10px 14px;
   border: 1px solid var(--border);
   cursor: pointer;
   transition: border-color 0.15s;
@@ -514,13 +514,13 @@ input[type="date"]::-webkit-date-and-time-value {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .stat-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -548,17 +548,17 @@ input[type="date"]::-webkit-date-and-time-value {
 }
 
 .stat-value {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--text-main);
   line-height: 1;
 }
 
 .stat-label {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-muted);
   font-weight: 500;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 /* ═══════════════════════════════════════════
@@ -567,8 +567,8 @@ input[type="date"]::-webkit-date-and-time-value {
 .action-grid {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 10px;
-  margin-bottom: 20px;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
 .viewer-action-grid {
@@ -579,11 +579,11 @@ input[type="date"]::-webkit-date-and-time-value {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 10px 20px;
+  gap: 7px;
+  padding: 8px 16px;
   border: none;
   border-radius: var(--radius);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.15s;
@@ -617,9 +617,16 @@ input[type="date"]::-webkit-date-and-time-value {
 ═══════════════════════════════════════════ */
 .movements-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 24px;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+/* Dashboard dashboard hareket kartlarında satır yüksekliği azaltıldı */
+.movements-grid .responsive-table th,
+.movements-grid .responsive-table td {
+  padding: 6px 12px;
+  font-size: 12.5px;
 }
 
 .movements-card {
