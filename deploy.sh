@@ -1,28 +1,57 @@
 #!/bin/bash
-set -e
 
-PROJECT_ID="shintea-dc091"
+# Renkli çıktı için
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+PROJECT="shintea-dc091"
 DIST_DIR="./dist"
 
-echo "🚀 Firebase Hosting'e deploy ediliyor..."
-echo "Project: $PROJECT_ID"
-echo "---"
+echo -e "${BLUE}🚀 Firebase Hosting Deploy Başlatılıyor...${NC}"
+echo -e "${BLUE}Proje: ${PROJECT}${NC}\n"
 
-# Eğer firebase CLI varsa onu kullan
+# 1. Dependencies kontrol
+echo -e "${YELLOW}1️⃣ Dependencies kontrol ediliyor...${NC}"
+if [ ! -d "node_modules" ]; then
+    echo -e "${YELLOW}   npm install çalıştırılıyor...${NC}"
+    npm install
+fi
+
+# 2. Build
+echo -e "\n${YELLOW}2️⃣ Build yapılıyor...${NC}"
+npm run build
+if [ $? -ne 0 ]; then
+    echo -e "${RED}❌ Build başarısız!${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓ Build tamamlandı${NC}"
+
+# 3. Deploy
+echo -e "\n${YELLOW}3️⃣ Firebase'e deploy ediliyor...${NC}"
+
+# Firebase CLI'ı bul
 if command -v firebase &> /dev/null; then
-    echo "Firebase CLI bulundu, kullanılıyor..."
-    firebase deploy --project "$PROJECT_ID" --only hosting
+    FIREBASE_CMD="firebase"
 elif [ -f "node_modules/.bin/firebase" ]; then
-    echo "Local firebase-tools bulundu, kullanılıyor..."
-    node_modules/.bin/firebase deploy --project "$PROJECT_ID" --only hosting
+    FIREBASE_CMD="./node_modules/.bin/firebase"
 else
-    echo "❌ Firebase CLI bulunamadı!"
-    echo "Lütfen şunu çalıştır:"
-    echo "  npm install -g firebase-tools"
-    echo "  firebase login"
-    echo "  firebase deploy --project $PROJECT_ID"
+    echo -e "${RED}❌ Firebase CLI bulunamadı!${NC}"
+    echo -e "${YELLOW}   npm install -g firebase-tools${NC}"
     exit 1
 fi
 
-echo "✓ Deploy tamamlandı!"
-echo "Site: https://$PROJECT_ID.web.app"
+# Deploy et
+$FIREBASE_CMD deploy --project $PROJECT --only hosting
+
+if [ $? -eq 0 ]; then
+    echo -e "\n${GREEN}✅ Deploy başarılı!${NC}"
+    echo -e "${GREEN}🌐 Site: https://${PROJECT}.web.app${NC}\n"
+else
+    echo -e "\n${RED}❌ Deploy başarısız!${NC}"
+    echo -e "${YELLOW}Firebase CLI'ya giriş yap:${NC}"
+    echo -e "${YELLOW}   firebase login${NC}"
+    exit 1
+fi
