@@ -36,10 +36,7 @@ import {
     Truck,
     RotateCcw,
     Check,
-    UserPlus,
-    Sun,
-    Moon,
-    ChevronLeft
+    UserPlus
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -246,21 +243,10 @@ const App = () => {
     const [categories, setCategories] = useState(['Genel', 'Elektrik', 'Tesisat', 'Kaba İnşaat', 'Hırdavat']);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-    // ── Theme State ──
-    const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
-
-    useEffect(() => {
-        document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('theme', theme);
-    }, [theme]);
-
-    useEffect(() => {
-        localStorage.setItem('sidebarPinned', sidebarPinned);
-    }, [sidebarPinned]);
-
     // ── UI State ──
     const [showModal, setShowModal] = useState(false);
     const [showMoveModal, setShowMoveModal] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
     const [movementType, setMovementType] = useState('in');
     const [selectedItemForMove, setSelectedItemForMove] = useState(null);
@@ -275,7 +261,6 @@ const App = () => {
     const [showExportModal, setShowExportModal] = useState(false);
     const [exportType, setExportType] = useState('stock');
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-    const [sidebarPinned, setSidebarPinned] = useState(() => localStorage.getItem('sidebarPinned') === 'true');
     const [selectedItemsForExport, setSelectedItemsForExport] = useState([]);
     const [movementViewType, setMovementViewType] = useState('all');
     const [showRequestModal, setShowRequestModal] = useState(false);
@@ -301,12 +286,6 @@ const App = () => {
     const [purchaseFormId, setPurchaseFormId] = useState(String(Date.now()));
     const [isQuickAdd, setIsQuickAdd] = useState(false);
     const [isNewRecipient, setIsNewRecipient] = useState(false);
-    // ── Giriş Form State ──
-    const [inMalzemeAdi, setInMalzemeAdi] = useState('');
-    const [inFirmaAdi, setInFirmaAdi] = useState('');
-    const [teslimAlanlar, setTeslimAlanlar] = useState([]);
-    const [showAddTeslimAlan, setShowAddTeslimAlan] = useState(false);
-    const [newTeslimAlanAdi, setNewTeslimAlanAdi] = useState('');
     // ── Pending Actions State (geçmiş tarihli onay) ──
     const [pendingActions, setPendingActions] = useState([]);
     // ── User Management Modal ──
@@ -337,6 +316,8 @@ const App = () => {
     const isAdmin = userProfile?.role === 'admin';
 
     const formatNumber = (num) => Number(num || 0).toLocaleString('tr-TR');
+    // "4.03.2026 14:23:00" veya "3/4/2026, 2:23 PM" → "4.03.2026"
+    const formatDateOnly = (d) => String(d || '').split(',')[0].trim().split(' ')[0];
 
     const parseMovementTime = (movement) => {
         const rawDate = String(movement?.date || '').trim();
@@ -376,11 +357,9 @@ const App = () => {
     }, [movements, zimmet]);
 
     const filteredMovementsForPage = useMemo(() => {
-        // Zimmet hareketleri sadece zimmet sekmesinde görünür; stok hareketleri tablosunda gösterilmez
-        const onlyStockMovements = allMovementsSorted.filter(m => m.category !== 'zimmet');
-        if (movementViewType === 'in') return onlyStockMovements.filter(m => m.normalizedType === 'in');
-        if (movementViewType === 'out') return onlyStockMovements.filter(m => m.normalizedType === 'out');
-        return onlyStockMovements;
+        if (movementViewType === 'in') return allMovementsSorted.filter(m => m.normalizedType === 'in');
+        if (movementViewType === 'out') return allMovementsSorted.filter(m => m.normalizedType === 'out');
+        return allMovementsSorted;
     }, [allMovementsSorted, movementViewType]);
 
     // ── Auth Effect ──
@@ -481,16 +460,6 @@ const App = () => {
         const unsub = onValue(sevkiyatRef, (snap) => {
             const data = snap.val();
             setSevkiyat(data ? Object.values(data).sort((a, b) => b.created_at - a.created_at) : []);
-        });
-        return () => unsub();
-    }, []);
-
-    // ── Teslim Alanlar Effect ──
-    useEffect(() => {
-        const teslimRef = ref(db, 'teslimAlanlar');
-        const unsub = onValue(teslimRef, (snap) => {
-            const data = snap.val();
-            setTeslimAlanlar(data ? Object.values(data).sort((a, b) => a.name.localeCompare(b.name, 'tr')) : []);
         });
         return () => unsub();
     }, []);
@@ -664,13 +633,6 @@ const App = () => {
         return [...set].sort((a, b) => a.localeCompare(b, 'tr'));
     }, [movements]);
 
-    // Firma adları — geçmiş girişlerden otomatik türetilir
-    const uniqueFirmaAdlari = useMemo(() => {
-        const set = new Set();
-        movements.forEach(m => { if (m.type === 'in' && m.firmaAdi && m.firmaAdi.trim()) set.add(m.firmaAdi.trim()); });
-        return [...set].sort((a, b) => a.localeCompare(b, 'tr'));
-    }, [movements]);
-
     // Malzeme listesi — alfabetik (Türkçe)
     const sortedItems = useMemo(() =>
         [...items].sort((a, b) => a.name.localeCompare(b.name, 'tr')),
@@ -739,10 +701,10 @@ const App = () => {
         return items.map(item => {
             const itemInMovements = movements.filter(m => Number(m.itemId) === Number(item.id) && m.type === 'in');
             const totalQtyReceived = itemInMovements.reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
-            const totalSpent = itemInMovements.reduce((sum, m) => sum + (Number(m.amount) * (Number(m.birimFiyat) || 0)), 0);
+            const totalSpent = itemInMovements.reduce((sum, m) => sum + (Number(m.amount) * (Number(m.price) || 0)), 0);
             const avgPrice = totalQtyReceived > 0 ? (totalSpent / totalQtyReceived) : 0;
             return { ...item, totalQtyReceived, totalSpent, avgPrice };
-        }).filter(r => r.totalSpent > 0).sort((a, b) => b.totalSpent - a.totalSpent);
+        }).sort((a, b) => b.totalSpent - a.totalSpent);
     }, [items, movements]);
 
     // ── Data Handlers ──
@@ -777,121 +739,102 @@ const App = () => {
             .finally(() => setIsSaving(false));
     };
 
-    const handleMoveStock = async (e) => {
+    const handleMoveStock = (e) => {
         e.preventDefault();
         setIsSaving(true);
         const formData = new FormData(e.target);
-        const actionDate = formData.get('actionDate');
-        const unit = formData.get('unit') || 'Adet';
+        const amount = Number(formData.get('amount'));
+        const price = Number(formData.get('price') || 0);
+        const note = formData.get('note');
+        const rawRecipient = formData.get('recipient');
+        const recipient = rawRecipient === '__NEW__' ? '' : rawRecipient;
+        const unit = formData.get('unit') || selectedItemForMove?.unit || 'Adet';
         const irsaliyeNo = formData.get('irsaliyeNo') || '';
-        const birimFiyat = parseFloat(formData.get('birimFiyat') || 0) || 0;
+        const category = formData.get('category') || selectedItemForMove?.category || 'Genel';
+        const itemId = String(selectedItemForMove.id);
+        const actionDate = formData.get('actionDate');
 
-        // Tarih — DD.MM.YYYY (saat yok)
-        const [year, month, day] = actionDate.split('-');
-        const displayDate = `${day}.${month}.${year}`;
+        // Tarih kontrolü — bugün mü geçmiş mi?
         const today = new Date().toISOString().split('T')[0];
         const isBackdated = actionDate < today;
 
-        try {
-            if (movementType === 'in') {
-                const malzemeAdi = inMalzemeAdi.trim();
-                const malzemeTuru = formData.get('malzemeTuru') || 'Genel';
-                const firmaAdi = inFirmaAdi.trim();
-                const teslimAlan = formData.get('teslimAlan') || '';
-                const amount = parseFloat(formData.get('amount') || 0);
-                if (!malzemeAdi) { setIsSaving(false); return; }
+        // Seçilen tarihi display formatına çevir
+        const displayDate = isBackdated
+            ? new Date(actionDate + 'T12:00:00').toLocaleString('tr-TR')
+            : new Date().toLocaleString();
 
-                // Malzeme bul ya da yeni oluştur
-                let item = items.find(i => i.name.toLowerCase() === malzemeAdi.toLowerCase());
-                if (!item) {
-                    const newId = Date.now();
-                    item = { id: newId, name: malzemeAdi, unit, category: malzemeTuru, quantity: 0, minStock: 0 };
-                    await set(ref(db, `items/${newId}`), item);
-                }
-                const itemId = String(item.id);
-
-                const moveBaseData = {
-                    itemId: Number(item.id),
-                    itemName: item.name,
-                    malzemeTuru,
-                    firmaAdi,
-                    teslimAlan,
+        if (isBackdated) {
+            // Geçmiş tarihli → onaya gönder
+            const pendingId = String(Date.now());
+            const pendingData = {
+                id: Number(pendingId),
+                actionType: 'movement',
+                movementType,
+                data: {
+                    itemId: Number(itemId),
+                    itemName: selectedItemForMove.name,
                     amount,
                     unit,
-                    birimFiyat,
+                    price,
+                    note,
+                    recipient,
                     irsaliyeNo,
-                    type: 'in',
+                    category,
                     date: displayDate,
-                };
-
-                if (isBackdated) {
-                    const pendingId = String(Date.now() + 1);
-                    await set(ref(db, `pendingActions/${pendingId}`), {
-                        id: Number(pendingId), actionType: 'movement', movementType: 'in',
-                        data: moveBaseData,
-                        requestedBy: userProfile.name, requestedByUid: authUser.uid,
-                        requestedAt: new Date().toLocaleString('tr-TR'), status: 'pending'
-                    });
+                },
+                requestedBy: userProfile.name,
+                requestedByUid: authUser.uid,
+                requestedAt: new Date().toLocaleString('tr-TR'),
+                status: 'pending'
+            };
+            set(ref(db, `pendingActions/${pendingId}`), pendingData)
+                .then(() => {
+                    setShowMoveModal(false);
+                    setSelectedItemForMove(null);
                     showToast('Geçmiş tarihli işlem yönetici onayına gönderildi.', 'success');
-                } else {
-                    const moveId = String(Date.now() + 1);
-                    await set(ref(db, `items/${itemId}/quantity`), Math.max(0, (item.quantity || 0) + amount));
-                    await set(ref(db, `movements/${moveId}`), { id: Number(moveId), ...moveBaseData });
-                    triggerCloudBackup();
-                }
-                setShowMoveModal(false);
-                setInMalzemeAdi('');
-                setInFirmaAdi('');
+                })
+                .catch(err => alert("Hata: " + err.message))
+                .finally(() => setIsSaving(false));
+            return;
+        }
 
-            } else {
-                // ── Çıkış ──
-                const amount = Number(formData.get('amount'));
-                const verilenBirim = formData.get('verilenBirim') || '';
-                const kullanimAlani = formData.get('kullanimAlani') || '';
-                const rawRecipient = formData.get('recipient');
-                const recipient = rawRecipient === '__NEW__' ? '' : (rawRecipient || '');
-                const itemId = String(selectedItemForMove.id);
-                const displayDateOut = isBackdated
-                    ? new Date(actionDate + 'T12:00:00').toLocaleString('tr-TR')
-                    : new Date().toLocaleString();
+        // Bugünün tarihi → doğrudan kaydet (mevcut davranış)
+        const newQty = movementType === 'in'
+            ? selectedItemForMove.quantity + amount
+            : selectedItemForMove.quantity - amount;
 
-                const moveBaseData = {
-                    itemId: Number(itemId), itemName: selectedItemForMove.name,
-                    amount, unit, verilenBirim, recipient, kullanimAlani,
-                    note: kullanimAlani, type: 'out', date: displayDateOut,
-                };
+        const moveId = String(Date.now());
+        const moveData = {
+            id: Number(moveId),
+            itemId: Number(itemId),
+            itemName: selectedItemForMove.name,
+            amount,
+            unit,
+            price,
+            type: movementType,
+            note,
+            recipient,
+            irsaliyeNo,
+            category,
+            date: displayDate,
+        };
 
-                if (isBackdated) {
-                    const pendingId = String(Date.now());
-                    await set(ref(db, `pendingActions/${pendingId}`), {
-                        id: Number(pendingId), actionType: 'movement', movementType: 'out',
-                        data: moveBaseData,
-                        requestedBy: userProfile.name, requestedByUid: authUser.uid,
-                        requestedAt: new Date().toLocaleString('tr-TR'), status: 'pending'
-                    });
-                    showToast('Geçmiş tarihli işlem yönetici onayına gönderildi.', 'success');
-                } else {
-                    const newQty = selectedItemForMove.quantity - amount;
-                    const moveId = String(Date.now());
-                    const timeout = new Promise((_, reject) =>
-                        setTimeout(() => reject(new Error("Zaman aşımı.")), 10000)
-                    );
-                    await Promise.race([
-                        set(ref(db, `items/${itemId}/quantity`), Math.max(0, newQty))
-                            .then(() => set(ref(db, `movements/${moveId}`), { id: Number(moveId), ...moveBaseData })),
-                        timeout
-                    ]);
-                    triggerCloudBackup();
-                }
+        const timeout = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Hareket kaydedilemedi (Zaman aşımı).")), 10000)
+        );
+
+        Promise.race([
+            set(ref(db, `items/${itemId}/quantity`), Math.max(0, newQty))
+                .then(() => set(ref(db, `movements/${moveId}`), moveData)),
+            timeout
+        ])
+            .then(() => {
                 setShowMoveModal(false);
                 setSelectedItemForMove(null);
-                setIsNewRecipient(false);
-            }
-        } catch (err) {
-            alert("İşlem Başarısız: " + err.message);
-        } finally {
-            setIsSaving(false);
-        }
+                triggerCloudBackup();
+            })
+            .catch(err => alert("İşlem Başarısız: " + err.message))
+            .finally(() => setIsSaving(false));
     };
 
     const handleQuickAdd = (name) => {
@@ -1307,7 +1250,7 @@ const App = () => {
             const mainRows = data.map(s => [
                 fixTR(s.satin_alim_form_no || ''),
                 fixTR(s.talep_eden || (s.items || []).map(it => it.requestedBy).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(', ') || ''),
-                fixTR(s.sevkiyata_gonderilme_tarihi_tr?.split(' ')[0] || ''),
+                fixTR(formatDateOnly(s.sevkiyata_gonderilme_tarihi_tr)),
                 fixTR(s.satin_alim_durumu || ''),
                 fixTR(s.gonderen || ''),
             ]);
@@ -1357,7 +1300,7 @@ const App = () => {
         const mainRows = data.map(s => ({
             'Form No': s.satin_alim_form_no || '',
             'Talep Eden': s.talep_eden || (s.items || []).map(it => it.requestedBy).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(', ') || '',
-            'Gönderilme Tarihi': s.sevkiyata_gonderilme_tarihi_tr?.split(' ')[0] || '',
+            'Gönderilme Tarihi': formatDateOnly(s.sevkiyata_gonderilme_tarihi_tr),
             'Sipariş': s.satin_alim_durumu || '',
             'Satışı Onaylayan': s.gonderen || '',
             'Malzeme Çeşit Sayısı': (s.items || []).length,
@@ -1380,6 +1323,63 @@ const App = () => {
         });
         XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(itemRows), 'Malzeme Kalemleri');
         XLSX.writeFile(wb, 'Sevkiyat_Listesi.xlsx');
+    };
+
+    const exportFormToPDF = (s) => {
+        if (!s || !s.items || s.items.length === 0) { showToast('Dışa aktarılacak veri yok.', 'error'); return; }
+        try {
+            const trMap = { 'ç': 'c', 'Ç': 'C', 'ğ': 'g', 'Ğ': 'G', 'ı': 'i', 'İ': 'I', 'ö': 'o', 'Ö': 'O', 'ş': 's', 'Ş': 'S', 'ü': 'u', 'Ü': 'U' };
+            const fixTR = (t) => t == null ? '' : String(t).replace(/[çÇğĞıİöÖşŞüÜ]/g, m => trMap[m]);
+            const doc = new jsPDF();
+            doc.setFontSize(14);
+            doc.text(fixTR(s.satin_alim_form_no || 'Malzeme Talep Formu'), 14, 15);
+            doc.setFontSize(9);
+            const talepEden = s.talep_eden || (s.items || []).map(it => it.requestedBy).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(', ') || '';
+            doc.text(fixTR(`Talep Eden: ${talepEden} | Tarih: ${formatDateOnly(s.sevkiyata_gonderilme_tarihi_tr)}`), 14, 22);
+            doc.text(fixTR(`Durum: ${s.satin_alim_durumu || ''} | Gonderen: ${s.gonderen || ''}`), 14, 28);
+            const itemRows = s.items.map((it, idx) => {
+                const st = s.itemStatuses?.[idx] || 'pending';
+                return [
+                    fixTR(it.itemName || ''),
+                    it.amount || '',
+                    fixTR(it.unit || ''),
+                    fixTR(it.requestedBy || ''),
+                    fixTR(it.note || ''),
+                    st === 'purchased' ? 'ALINDI' : st === 'cancelled' ? 'IPTAL' : 'BEKLEMEDE',
+                ];
+            });
+            autoTable(doc, {
+                head: [['Malzeme', 'Miktar', 'Birim', 'Talep Eden', 'Not', 'Durum']],
+                body: itemRows,
+                startY: 34,
+                styles: { fontSize: 8, font: 'courier', cellPadding: 2 },
+                headStyles: { fillColor: [234, 88, 12], textColor: [255, 255, 255] },
+                alternateRowStyles: { fillColor: [255, 237, 213] },
+            });
+            doc.save(fixTR(`${s.satin_alim_form_no || 'Form'}.pdf`));
+        } catch (e) { showToast('PDF hatası: ' + e.message, 'error'); }
+    };
+
+    const exportFormToExcel = (s) => {
+        if (!s || !s.items || s.items.length === 0) { showToast('Dışa aktarılacak veri yok.', 'error'); return; }
+        const talepEden = s.talep_eden || (s.items || []).map(it => it.requestedBy).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(', ') || '';
+        const rows = s.items.map((it, idx) => {
+            const st = s.itemStatuses?.[idx] || 'pending';
+            return {
+                'Form No': s.satin_alim_form_no || '',
+                'Talep Eden': talepEden,
+                'Tarih': formatDateOnly(s.sevkiyata_gonderilme_tarihi_tr),
+                'Malzeme': it.itemName || '',
+                'Miktar': it.amount || '',
+                'Birim': it.unit || '',
+                'Kişi': it.requestedBy || '',
+                'Not': it.note || '',
+                'Durum': st === 'purchased' ? 'Satın Alındı' : st === 'cancelled' ? 'İptal' : 'Beklemede',
+            };
+        });
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Malzeme Kalemleri');
+        XLSX.writeFile(wb, `${s.satin_alim_form_no || 'Form'}.xlsx`);
     };
 
     // ── Export Helpers ──
@@ -1470,6 +1470,7 @@ const App = () => {
                     set(ref(db, 'movements'), movesObj);
                     if (json.categories) set(ref(db, 'categories'), json.categories);
                     alert('Veriler başarıyla buluta yüklendi!');
+                    setShowSettings(false);
                 }
             } catch (err) {
                 alert('Hata: Geçersiz yedek dosyası.');
@@ -1563,34 +1564,14 @@ const App = () => {
         <div className="app-shell">
 
             {/* ── SIDEBAR ── */}
-            <aside className={`sidebar${mobileSidebarOpen ? ' mobile-open' : ''}${sidebarPinned ? ' sidebar-pinned' : ''}`}>
+            <aside className={`sidebar${mobileSidebarOpen ? ' mobile-open' : ''}`}>
                 {/* Brand */}
                 <div className="sidebar-brand">
                     <div className="sidebar-logo-icon">S</div>
-                    <div style={{ flex: 1 }}>
+                    <div>
                         <div className="sidebar-logo-text">Shintea</div>
                         <div className="sidebar-logo-sub">Depo Yönetimi</div>
                     </div>
-                    <button
-                        className={`sidebar-pin-btn${sidebarPinned ? ' pinned' : ''}`}
-                        onClick={() => setSidebarPinned(p => !p)}
-                        title={sidebarPinned ? 'Sidebar\'ı gizlenebilir yap' : 'Sidebar\'ı sabit tut'}
-                    >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            {sidebarPinned ? (
-                                <>
-                                    <line x1="12" y1="17" x2="12" y2="22" />
-                                    <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z" />
-                                </>
-                            ) : (
-                                <>
-                                    <line x1="2" y1="2" x2="22" y2="22" />
-                                    <line x1="12" y1="17" x2="12" y2="22" />
-                                    <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z" />
-                                </>
-                            )}
-                        </svg>
-                    </button>
                 </div>
 
                 {/* Connection Status */}
@@ -1690,10 +1671,10 @@ const App = () => {
 
                     {canEdit && (
                         <button
-                            className={`nav-item${activeTab === 'settings' ? ' active' : ''}`}
-                            onClick={() => { setActiveTab('settings'); setMobileSidebarOpen(false); }}
+                            className={`nav-item${showSettings ? ' active' : ''}`}
+                            onClick={() => setShowSettings(!showSettings)}
                         >
-                            <Settings size={17} /> Ayarlar
+                            <Settings size={17} /> Araçlar & Yedek
                         </button>
                     )}
                 </nav>
@@ -1743,34 +1724,109 @@ const App = () => {
                         </div>
                     )}
 
-                    {/* ── BACK BUTTON (tüm sayfalarda dashboard hariç) ── */}
-                    {activeTab !== 'dashboard' && (
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-                            <button
-                                onClick={() => setActiveTab('dashboard')}
-                                style={{
-                                    display: 'inline-flex', alignItems: 'center', gap: '6px',
-                                    padding: '7px 14px',
-                                    borderRadius: 'var(--radius-sm)',
-                                    border: '1px solid var(--border)',
-                                    background: 'var(--bg-card)',
-                                    color: 'var(--text-muted)',
-                                    fontSize: '13px', fontWeight: '500',
-                                    cursor: 'pointer',
-                                    fontFamily: 'inherit',
-                                    transition: 'border-color 0.15s, color 0.15s',
-                                }}
-                                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)'; }}
-                                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)'; }}
-                            >
-                                <ChevronLeft size={15} /> Geri Dön
-                            </button>
-                        </div>
-                    )}
-
                     {/* ── DASHBOARD TAB ── */}
                     {activeTab === 'dashboard' && (
                         <>
+                            {/* Settings Panel */}
+                            {showSettings && canEdit && (
+                                <div className="settings-panel animate-fade">
+                                    <div className="settings-panel-header">
+                                        <span className="section-title"><Settings size={16} /> Araçlar & Yedekleme</span>
+                                        <button className="btn-icon" onClick={() => setShowSettings(false)}><X size={15} /></button>
+                                    </div>
+                                    <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
+                                        <button className="btn-primary" style={{ background: 'linear-gradient(135deg,#1e293b,#334155)' }} onClick={() => { setExportType('stock'); setSelectedItemsForExport(items.map(i => i.id)); setShowExportModal(true); setShowSettings(false); }}>
+                                            <FileSpreadsheet size={15} /> Excel Raporları
+                                        </button>
+                                        <button className="btn-primary" style={{ background: 'linear-gradient(135deg,#475569,#64748b)' }} onClick={backupData}>
+                                            <Download size={15} /> Veriyi Yedekle
+                                        </button>
+                                        {isAdmin && (
+                                            <button className="btn-primary" style={{ background: 'linear-gradient(135deg,#64748b,#94a3b8)' }} onClick={() => fileInputRef.current.click()}>
+                                                <Upload size={15} /> Yedek Yükle
+                                            </button>
+                                        )}
+                                        <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept=".json" onChange={restoreData} />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Advanced Export Modal */}
+                            {showExportModal && (
+                                <div className="modal-overlay">
+                                    <div className="modal-card" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
+                                        <div className="modal-header">
+                                            <span className="modal-title flex align-center gap-1"><FileSpreadsheet size={18} /> Excel Raporu Hazırla</span>
+                                            <button className="btn-icon" onClick={() => setShowExportModal(false)}><X size={16} /></button>
+                                        </div>
+                                        <div className="flex gap-2 mb-2" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+                                            <button className={`btn-${exportType === 'stock' ? 'primary' : 'ghost'}`} style={{ flex: 1 }} onClick={() => setExportType('stock')}>Mevcut Stok</button>
+                                            <button className={`btn-${exportType === 'movements' ? 'primary' : 'ghost'}`} style={{ flex: 1 }} onClick={() => setExportType('movements')}>Stok Hareketleri</button>
+                                        </div>
+                                        {exportType === 'movements' ? (
+                                            <div className="animate-fade">
+                                                <div className="flex gap-2 mb-2">
+                                                    <div style={{ flex: 1 }}>
+                                                        <label className="label">Başlangıç Tarihi</label>
+                                                        <input type="date" value={dateRange.start} onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })} />
+                                                    </div>
+                                                    <div style={{ flex: 1 }}>
+                                                        <label className="label">Bitiş Tarihi</label>
+                                                        <input type="date" value={dateRange.end} onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })} />
+                                                    </div>
+                                                </div>
+                                                <button className="btn-primary" style={{ width: '100%', background: '#059669' }} onClick={() => { exportMovementsToExcel(dateRange.start, dateRange.end); setShowExportModal(false); }}>Hareket Raporu Oluştur</button>
+                                            </div>
+                                        ) : (
+                                            <div className="animate-fade">
+                                                <label className="label">Malzemeleri Seçin ({selectedItemsForExport.length})</label>
+                                                <div style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px', marginBottom: '1rem' }}>
+                                                    {items.map(item => (
+                                                        <label key={item.id} className="flex align-center gap-2 mb-1" style={{ cursor: 'pointer' }}>
+                                                            <input type="checkbox" checked={selectedItemsForExport.includes(item.id)} onChange={(e) => {
+                                                                if (e.target.checked) setSelectedItemsForExport([...selectedItemsForExport, item.id]);
+                                                                else setSelectedItemsForExport(selectedItemsForExport.filter(id => id !== item.id));
+                                                            }} />
+                                                            <span style={{ fontSize: '14px' }}>{item.name}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                                <button className="btn-primary" style={{ width: '100%', background: '#059669' }} onClick={() => { exportFilteredStockToExcel(selectedItemsForExport); setShowExportModal(false); }}>Stok Raporu Oluştur</button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Quick Action Buttons */}
+                            {canEdit && (
+                                <div className="action-grid">
+                                    <button className="action-btn action-btn-in"
+                                        onClick={() => { setMovementType('in'); setSelectedItemForMove(null); setShowMoveModal(true); }}
+                                    >
+                                        <ArrowUpRight size={20} /> GİRİŞ
+                                    </button>
+                                    <button className="action-btn action-btn-out"
+                                        onClick={() => { setMovementType('out'); setSelectedItemForMove(null); setShowMoveModal(true); }}
+                                    >
+                                        <ArrowDownLeft size={20} /> ÇIKIŞ
+                                    </button>
+                                    <button className="action-btn action-btn-zimmet"
+                                        onClick={() => { setShowZimmetModal(true); setSelectedItemForZimmet(null); }}
+                                    >
+                                        <UserCheck size={20} /> ZİMMET
+                                    </button>
+                                </div>
+                            )}
+                            {!canEdit && (
+                                <div className="action-grid viewer-action-grid">
+                                    <div className="viewer-banner" style={{ margin: 0, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <Eye size={17} />
+                                        <span>İzleyici modundasınız.</span>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* İzleyici için bilgi */}
                             {!canEdit && (
                                 <div className="viewer-banner">
@@ -1798,7 +1854,7 @@ const App = () => {
                                 <div className="stat-card" onClick={() => {
                                     const today = new Date().toLocaleDateString();
                                     const todayIn = movements.filter(m => m.type === 'in' && String(m.date || '').includes(today));
-                                    setDashModal({ show: true, title: 'Bugünkü Giriş İşlemleri', data: todayIn, type: 'move', moveType: 'in' });
+                                    setDashModal({ show: true, title: 'Bugünkü Giriş İşlemleri', data: todayIn, type: 'move' });
                                 }}>
                                     <div className="stat-card-top">
                                         <div className="stat-icon stat-icon-success"><ArrowUpRight size={18} /></div>
@@ -1809,7 +1865,7 @@ const App = () => {
                                 <div className="stat-card" onClick={() => {
                                     const today = new Date().toLocaleDateString();
                                     const todayOut = movements.filter(m => m.type === 'out' && String(m.date || '').includes(today));
-                                    setDashModal({ show: true, title: 'Bugünkü Çıkış İşlemleri', data: todayOut, type: 'move', moveType: 'out' });
+                                    setDashModal({ show: true, title: 'Bugünkü Çıkış İşlemleri', data: todayOut, type: 'move' });
                                 }}>
                                     <div className="stat-card-top">
                                         <div className="stat-icon stat-icon-warning"><ArrowDownLeft size={18} /></div>
@@ -1828,7 +1884,7 @@ const App = () => {
                                             <span className="movement-type-pill out">{pendingActions.filter(a => a.status === 'pending').length} bekleyen</span>
                                             <ExportButtons
                                                 data={pendingActions.filter(a => a.status === 'pending').map(a => ({
-                                                    tarih: String(a.data?.date || '').split(',')[0].split(' ')[0],
+                                                    tarih: formatDateOnly(a.data?.date),
                                                     tur: a.actionType === 'zimmet' ? 'Zimmet' : (a.movementType === 'in' ? 'Giriş' : 'Çıkış'),
                                                     malzeme: a.data?.itemName || '',
                                                     miktar: a.data?.amount || 0,
@@ -1866,7 +1922,7 @@ const App = () => {
                                                         : action.movementType === 'in' ? 'in' : 'out';
                                                     return (
                                                         <tr key={action.id}>
-                                                            <td data-label="Tarih">{String(action.data?.date || '').split(',')[0].split(' ')[0]}</td>
+                                                            <td data-label="Tarih">{formatDateOnly(action.data?.date)}</td>
                                                             <td data-label="Tür">
                                                                 <span className={`movement-type-pill ${pillClass}`}>{typeLabel}</span>
                                                             </td>
@@ -1903,132 +1959,105 @@ const App = () => {
                                 </div>
                             )}
 
-                            {/* Recent Movements — Altalta Sıralı, Her Biri Son 5 */}
+                            {/* Recent Movements — Tablo Görünümü */}
                             <div className="movements-grid">
-                                {/* Son Girişler */}
+                                {/* Girişler */}
                                 <div className="table-card">
-                                    <div className="table-toolbar" style={{ background: 'var(--success)', borderBottom: 'none' }}>
-                                        <span className="section-title" style={{ color: '#fff', textTransform: 'uppercase', letterSpacing: '0.04em' }}><ArrowUpRight size={16} /> Son Girişler</span>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            <button className="btn-ghost" style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.4)' }} onClick={() => { setMovementViewType('in'); setActiveTab('movements'); }}>Tümü</button>
-                                            {canEdit && (
-                                                <button onClick={() => { setMovementType('in'); setSelectedItemForMove(null); setShowMoveModal(true); }} title="Giriş Ekle"
-                                                    style={{ width: '30px', height: '30px', borderRadius: '5px', background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.5)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                                    <ArrowUpRight size={15} />
-                                                </button>
-                                            )}
-                                        </div>
+                                    <div className="table-toolbar">
+                                        <span className="section-title" style={{ color: 'var(--success)' }}><ArrowUpRight size={17} /> Girişler</span>
+                                        <button className="btn-ghost" onClick={() => { setMovementViewType('in'); setActiveTab('movements'); }}>Tümü</button>
                                     </div>
-                                    <div className="table-responsive-wrapper">
+                                    <div className="table-responsive-wrapper" style={{ maxHeight: '400px', overflowY: 'auto' }}>
                                         <table className="responsive-table col-6">
                                             <thead>
                                                 <tr>
                                                     <th>TARİH</th>
-                                                    <th>FİRMA</th>
                                                     <th>İRSALİYE NO</th>
+                                                    <th>FİRMA</th>
                                                     <th>MALZEME</th>
                                                     <th>MİKTAR</th>
                                                     <th>BİRİM</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {movements.filter(m => m.type === 'in').slice(0, 5).map(m => (
+                                                {movements.filter(m => m.type === 'in').slice(0, 20).map(m => (
                                                     <tr key={m.id}>
-                                                        <td data-label="Tarih">{String(m.date || '').split(',')[0].split(' ')[0]}</td>
-                                                        <td data-label="Firma">{m.firmaAdi || '—'}</td>
+                                                        <td data-label="Tarih">{formatDateOnly(m.date)}</td>
                                                         <td data-label="İrsaliye No">{m.irsaliyeNo || '—'}</td>
+                                                        <td data-label="Firma">{m.recipient || '—'}</td>
                                                         <td data-label="Malzeme" style={{ fontWeight: '600' }}>{m.itemName}</td>
                                                         <td data-label="Miktar" style={{ color: 'var(--success)', fontWeight: '700' }}>+{formatNumber(m.amount)}</td>
                                                         <td data-label="Birim">{m.unit || '—'}</td>
                                                     </tr>
                                                 ))}
                                                 {movements.filter(m => m.type === 'in').length === 0 && (
-                                                    <tr><td colSpan="6" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>Henüz giriş kaydı yok.</td></tr>
+                                                    <tr><td colSpan="6" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>Henüz giriş kaydı yok.</td></tr>
                                                 )}
                                             </tbody>
                                         </table>
                                     </div>
                                 </div>
 
-                                {/* Son Çıkışlar */}
+                                {/* Çıkışlar */}
                                 <div className="table-card">
-                                    <div className="table-toolbar" style={{ background: 'var(--danger)', borderBottom: 'none' }}>
-                                        <span className="section-title" style={{ color: '#fff', textTransform: 'uppercase', letterSpacing: '0.04em' }}><ArrowDownLeft size={16} /> Son Çıkışlar</span>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            <button className="btn-ghost" style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.4)' }} onClick={() => { setMovementViewType('out'); setActiveTab('movements'); }}>Tümü</button>
-                                            {canEdit && (
-                                                <button onClick={() => { setMovementType('out'); setSelectedItemForMove(null); setShowMoveModal(true); }} title="Çıkış Ekle"
-                                                    style={{ width: '30px', height: '30px', borderRadius: '5px', background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.5)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                                    <ArrowDownLeft size={15} />
-                                                </button>
-                                            )}
-                                        </div>
+                                    <div className="table-toolbar">
+                                        <span className="section-title" style={{ color: 'var(--danger)' }}><ArrowDownLeft size={17} /> Çıkışlar</span>
+                                        <button className="btn-ghost" onClick={() => { setMovementViewType('out'); setActiveTab('movements'); }}>Tümü</button>
                                     </div>
-                                    <div className="table-responsive-wrapper">
-                                        <table className="responsive-table col-7">
-                                            <thead>
-                                                <tr>
-                                                    <th>TARİH</th>
-                                                    <th>MALZEME</th>
-                                                    <th>MİKTAR</th>
-                                                    <th>BİRİM</th>
-                                                    <th>VERİLEN BİRİM</th>
-                                                    <th>VERİLEN KİŞİ</th>
-                                                    <th>KULLANIM ALANI</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {movements.filter(m => m.type === 'out').slice(0, 5).map(m => (
-                                                    <tr key={m.id}>
-                                                        <td data-label="Tarih">{String(m.date || '').split(',')[0].split(' ')[0]}</td>
-                                                        <td data-label="Malzeme" style={{ fontWeight: '600' }}>{m.itemName}</td>
-                                                        <td data-label="Miktar" style={{ color: 'var(--danger)', fontWeight: '700' }}>−{formatNumber(m.amount)}</td>
-                                                        <td data-label="Birim">{m.unit || '—'}</td>
-                                                        <td data-label="Verilen Birim">{m.verilenBirim || '—'}</td>
-                                                        <td data-label="Verilen Kişi">{m.recipient || '—'}</td>
-                                                        <td data-label="Kullanım Alanı">{m.kullanimAlani || m.note || '—'}</td>
-                                                    </tr>
-                                                ))}
-                                                {movements.filter(m => m.type === 'out').length === 0 && (
-                                                    <tr><td colSpan="7" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>Henüz çıkış kaydı yok.</td></tr>
-                                                )}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-
-                                {/* Son Zimmet Hareketleri */}
-                                <div className="table-card">
-                                    <div className="table-toolbar" style={{ background: '#4f46e5', borderBottom: 'none' }}>
-                                        <span className="section-title" style={{ color: '#fff', textTransform: 'uppercase', letterSpacing: '0.04em' }}><UserCheck size={16} /> Son Zimmet Hareketleri</span>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            <button className="btn-ghost" style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.4)' }} onClick={() => { setActiveTab('zimmet'); setZimmetView('history'); }}>Tümü</button>
-                                            {canEdit && (
-                                                <button onClick={() => { setShowZimmetModal(true); setSelectedItemForZimmet(null); }} title="Zimmet Ekle"
-                                                    style={{ width: '30px', height: '30px', borderRadius: '5px', background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.5)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                                    <UserCheck size={15} />
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="table-responsive-wrapper">
+                                    <div className="table-responsive-wrapper" style={{ maxHeight: '400px', overflowY: 'auto' }}>
                                         <table className="responsive-table col-5">
                                             <thead>
                                                 <tr>
                                                     <th>TARİH</th>
                                                     <th>MALZEME</th>
-                                                    <th>KİŞİ / EKİP</th>
-                                                    <th>TÜR</th>
+                                                    <th>ALAN</th>
                                                     <th>MİKTAR</th>
+                                                    <th>BİRİM</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {zimmet.slice(0, 5).map(z => (
+                                                {movements.filter(m => m.type === 'out').slice(0, 20).map(m => (
+                                                    <tr key={m.id}>
+                                                        <td data-label="Tarih">{formatDateOnly(m.date)}</td>
+                                                        <td data-label="Malzeme" style={{ fontWeight: '600' }}>{m.itemName}</td>
+                                                        <td data-label="Alan">{m.recipient || '—'}</td>
+                                                        <td data-label="Miktar" style={{ color: 'var(--danger)', fontWeight: '700' }}>−{formatNumber(m.amount)}</td>
+                                                        <td data-label="Birim">{m.unit || '—'}</td>
+                                                    </tr>
+                                                ))}
+                                                {movements.filter(m => m.type === 'out').length === 0 && (
+                                                    <tr><td colSpan="5" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>Henüz çıkış kaydı yok.</td></tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                {/* Zimmetler */}
+                                <div className="table-card">
+                                    <div className="table-toolbar">
+                                        <span className="section-title" style={{ color: '#4f46e5' }}><UserCheck size={17} /> Zimmetler</span>
+                                        <button className="btn-ghost" onClick={() => { setActiveTab('zimmet'); setZimmetView('history'); }}>Tümü</button>
+                                    </div>
+                                    <div className="table-responsive-wrapper" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                                        <table className="responsive-table col-6">
+                                            <thead>
+                                                <tr>
+                                                    <th>TARİH</th>
+                                                    <th>MALZEME</th>
+                                                    <th>KİŞİ</th>
+                                                    <th>DURUM</th>
+                                                    <th>MİKTAR</th>
+                                                    <th>BİRİM</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {zimmet.slice(0, 20).map(z => (
                                                     <tr key={z.id}>
-                                                        <td data-label="Tarih">{(z.date || '').split(',')[0].split(' ')[0]}</td>
+                                                        <td data-label="Tarih">{formatDateOnly(z.date)}</td>
                                                         <td data-label="Malzeme" style={{ fontWeight: '600' }}>{z.itemName}</td>
-                                                        <td data-label="Kişi / Ekip">{z.person || '—'}</td>
-                                                        <td data-label="Tür">
+                                                        <td data-label="Kişi">{z.person || '—'}</td>
+                                                        <td data-label="Durum">
                                                             <span className={`movement-type-pill ${z.type === 'geri_alindi' ? 'in' : 'out'}`}>
                                                                 {z.type === 'geri_alindi' ? 'İade' : 'Zimmet'}
                                                             </span>
@@ -2036,10 +2065,11 @@ const App = () => {
                                                         <td data-label="Miktar" style={{ fontWeight: '700', color: z.type === 'verildi' ? 'var(--danger)' : 'var(--success)' }}>
                                                             {z.type === 'verildi' ? `−${formatNumber(z.amount)}` : `+${formatNumber(z.amount)}`}
                                                         </td>
+                                                        <td data-label="Birim">{z.unit || '—'}</td>
                                                     </tr>
                                                 ))}
                                                 {zimmet.length === 0 && (
-                                                    <tr><td colSpan="5" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>Henüz zimmet kaydı yok.</td></tr>
+                                                    <tr><td colSpan="6" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>Henüz zimmet kaydı yok.</td></tr>
                                                 )}
                                             </tbody>
                                         </table>
@@ -2176,10 +2206,10 @@ const App = () => {
                                 <table className="responsive-table col-5">
                                     <thead>
                                         <tr>
+                                            <th>{zimmetView === 'active' ? 'VERİLİŞ TARİHİ' : 'TARİH'}</th>
                                             <th>MALZEME</th>
                                             <th>KİŞİ / EKİP</th>
                                             <th>MİKTAR</th>
-                                            <th>İŞLEM TARİHİ</th>
                                             <th>{zimmetView === 'active' ? 'İŞLEM' : 'TÜR'}</th>
                                         </tr>
                                     </thead>
@@ -2196,6 +2226,7 @@ const App = () => {
 
                                             return filtered.map(z => (
                                                 <tr key={z.id}>
+                                                    <td data-label="Tarih">{formatDateOnly(z.date)}</td>
                                                     <td data-label="Malzeme">
                                                         <div className="material-cell">
                                                             <Package size={14} className="material-icon-small" />
@@ -2203,9 +2234,8 @@ const App = () => {
                                                         </div>
                                                     </td>
                                                     <td data-label="Kişi / Ekip">{z.person}</td>
-                                                    <td data-label="Miktar">{z.amount}</td>
-                                                    <td data-label="İşlem Tarihi">{z.date}</td>
-                                                    <td data-label={zimmetView === 'active' ? "İşlem" : "Tür"}>
+                                                    <td data-label="Miktar" style={{ textAlign: 'right' }}>{z.amount}</td>
+                                                    <td data-label={zimmetView === 'active' ? "İşlem" : "Tür"} style={{ textAlign: 'center' }}>
                                                         {zimmetView === 'active' ? (
                                                             <button
                                                                 className="btn-ghost"
@@ -2323,82 +2353,47 @@ const App = () => {
                                 </div>
                             </div>
                             <div className="table-responsive-wrapper">
-                                {movementViewType === 'in' ? (
-                                    /* ── GİRİŞLER TABLOSU ── */
-                                    <table className="responsive-table">
-                                        <thead>
-                                            <tr>
-                                                <th>TARİH</th>
-                                                <th>MALZEME ADI</th>
-                                                <th>MALZEME TÜRÜ</th>
-                                                <th>MİKTAR</th>
-                                                <th>BİRİM</th>
-                                                <th>İRSALİYE NO</th>
-                                                <th>FİRMA ADI</th>
-                                                <th>TESLİM ALAN</th>
+                                <table className="responsive-table col-6">
+                                    <thead>
+                                        <tr>
+                                            <th>TARİH</th>
+                                            <th>TÜR</th>
+                                            <th>MALZEME</th>
+                                            <th>KAYNAK / ALAN</th>
+                                            <th>MİKTAR</th>
+                                            <th>NOT</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredMovementsForPage.length === 0 ? (
+                                            <tr><td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>{movementViewType === 'in' ? 'Giriş kaydı bulunamadı.' : movementViewType === 'out' ? 'Çıkış kaydı bulunamadı.' : 'Hareket kaydı bulunamadı.'}</td></tr>
+                                        ) : filteredMovementsForPage.map((m) => (
+                                            <tr key={m.id}>
+                                                <td data-label="Tarih">{formatDateOnly(m.date)}</td>
+                                                <td data-label="Tür">
+                                                    <span className={"movement-type-pill " + (m.normalizedType === 'in' ? 'in' : 'out')}>
+                                                        {m.category === 'zimmet'
+                                                            ? (m.type === 'verildi' ? 'Zimmet Ver' : 'Zimmet İade')
+                                                            : (m.type === 'in' ? 'Giriş' : 'Çıkış')}
+                                                    </span>
+                                                </td>
+                                                <td data-label="Malzeme">
+                                                    <div className="material-cell">
+                                                        <Package size={14} className="material-icon-small" />
+                                                        <span>{m.itemName || '-'}</span>
+                                                    </div>
+                                                </td>
+                                                <td data-label="Kaynak / Alan">{m.recipient || '-'}</td>
+                                                <td style={{ textAlign: 'right' }} data-label="Miktar">
+                                                    <span style={{ color: m.normalizedType === 'in' ? 'var(--success)' : 'var(--danger)', fontWeight: '700' }}>
+                                                        {m.normalizedType === 'in' ? '+' : '−'}{formatNumber(m.amount)}
+                                                    </span>
+                                                </td>
+                                                <td data-label="Not">{m.note || '-'}</td>
                                             </tr>
-                                        </thead>
-                                        <tbody>
-                                            {filteredMovementsForPage.length === 0 ? (
-                                                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Giriş kaydı bulunamadı.</td></tr>
-                                            ) : filteredMovementsForPage.map((m) => (
-                                                <tr key={m.id}>
-                                                    <td>{String(m.date || '-').split(',')[0].split(' ')[0]}</td>
-                                                    <td style={{ fontWeight: '600' }}>{m.itemName || '-'}</td>
-                                                    <td>{m.malzemeTuru || '-'}</td>
-                                                    <td style={{ color: 'var(--success)', fontWeight: '700' }}>+{formatNumber(m.amount)}</td>
-                                                    <td>{m.unit || '-'}</td>
-                                                    <td>{m.irsaliyeNo || '-'}</td>
-                                                    <td>{m.firmaAdi || m.recipient || '-'}</td>
-                                                    <td>{m.teslimAlan || '-'}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                ) : (
-                                    /* ── ÇIKIŞ / TÜM HAREKETLER TABLOSU ── */
-                                    <table className="responsive-table col-6">
-                                        <thead>
-                                            <tr>
-                                                <th>İŞLEM TARİHİ</th>
-                                                <th>TÜR</th>
-                                                <th>MALZEME</th>
-                                                <th>TEDARİKÇİ / ALAN KİŞİ / EKİP</th>
-                                                <th>MİKTAR</th>
-                                                <th>NOT / AÇIKLAMA</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {filteredMovementsForPage.length === 0 ? (
-                                                <tr><td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>{movementViewType === 'out' ? 'Çıkış kaydı bulunamadı.' : 'Hareket kaydı bulunamadı.'}</td></tr>
-                                            ) : filteredMovementsForPage.map((m) => (
-                                                <tr key={m.id}>
-                                                    <td>{String(m.date || '-').split(',')[0].split(' ')[0]}</td>
-                                                    <td>
-                                                        <span className={"movement-type-pill " + (m.normalizedType === 'in' ? 'in' : 'out')}>
-                                                            {m.category === 'zimmet'
-                                                                ? (m.type === 'verildi' ? 'Zimmet Ver' : 'Zimmet İade')
-                                                                : (m.type === 'in' ? 'Giriş' : 'Çıkış')}
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <div className="material-cell">
-                                                            <Package size={14} className="material-icon-small" />
-                                                            <span>{m.itemName || '-'}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td>{m.firmaAdi || m.recipient || m.person || '-'}</td>
-                                                    <td>
-                                                        <span style={{ color: m.normalizedType === 'in' ? 'var(--success)' : 'var(--danger)', fontWeight: '700' }}>
-                                                            {m.normalizedType === 'in' ? '+' : '−'}{formatNumber(m.amount)}
-                                                        </span>
-                                                    </td>
-                                                    <td>{m.note || '-'}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                )}
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     )}
@@ -2494,9 +2489,9 @@ const App = () => {
                                         <table className="responsive-table col-6" style={{ width: '100%' }}>
                                             <thead>
                                                 <tr>
+                                                    <th>KAYIT TARİHİ</th>
                                                     <th>AD SOYAD</th>
                                                     <th>E-POSTA</th>
-                                                    <th>KAYIT TARİHİ</th>
                                                     <th>DURUM</th>
                                                     <th>ROL</th>
                                                     <th>İŞLEMLER</th>
@@ -2505,6 +2500,9 @@ const App = () => {
                                             <tbody>
                                                 {allUsers.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)).map(u => (
                                                     <tr key={u.uid}>
+                                                        <td data-label="Kayıt Tarihi" style={{ color: '#64748b', fontSize: '13px', textAlign: 'center' }}>
+                                                            {u.createdAt ? new Date(u.createdAt).toLocaleDateString('tr-TR') : '—'}
+                                                        </td>
                                                         <td data-label="Ad Soyad" style={{ fontWeight: '600' }}>
                                                             {u.name}
                                                             {u.uid === authUser.uid && (
@@ -2512,9 +2510,6 @@ const App = () => {
                                                             )}
                                                         </td>
                                                         <td data-label="E-posta" style={{ color: '#64748b', fontSize: '13px' }}>{u.email}</td>
-                                                        <td data-label="Kayıt Tarihi" style={{ color: '#64748b', fontSize: '13px' }}>
-                                                            {u.createdAt ? new Date(u.createdAt).toLocaleDateString('tr-TR') : '—'}
-                                                        </td>
                                                         <td data-label="Durum">
                                                             <span style={{
                                                                 background: u.status === 'approved' ? '#dcfce7' : u.status === 'pending' ? '#fef3c7' : '#fee2e2',
@@ -2612,30 +2607,33 @@ const App = () => {
                                                 <span className="section-title"><Truck size={17} /> Malzeme Talep Formları</span>
                                             </div>
                                             <div className="table-responsive-wrapper" style={{ maxHeight: '320px', overflowY: 'auto' }}>
-                                                <table className="responsive-table col-5">
+                                                <table className="responsive-table col-6">
                                                     <thead>
                                                         <tr>
-                                                            <th>FORM NO</th>
                                                             <th>TARİH</th>
-                                                            <th style={{ textAlign: 'center' }}>MALZEME</th>
+                                                            <th>FORM NO</th>
+                                                            <th>MALZEME</th>
+                                                            <th>TALEP EDEN</th>
+                                                            <th>ONAYLAYAN</th>
                                                             <th>DURUM</th>
-                                                            <th style={{ textAlign: 'center', width: '40px' }}></th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
                                                         {sevkiyat.map((s) => {
                                                             const durum = durumMap[s.satin_alim_durumu] || durumMap.BEKLEMEDE;
+                                                            const talepEden = s.talep_eden || (s.items || []).map(it => it.requestedBy).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(', ') || '—';
                                                             return (
                                                                 <tr key={s.id} onClick={() => setSevkiyatModal({ show: true, data: s })} style={{ cursor: 'pointer' }}>
+                                                                    <td data-label="Tarih">{formatDateOnly(s.sevkiyata_gonderilme_tarihi_tr) || '-'}</td>
                                                                     <td data-label="Form No" style={{ fontWeight: '600' }}>{s.satin_alim_form_no}</td>
-                                                                    <td data-label="Tarih">{s.sevkiyata_gonderilme_tarihi_tr?.split(' ')[0] || '-'}</td>
-                                                                    <td data-label="Malzeme" style={{ textAlign: 'center' }}>{(s.items || []).length} kalem</td>
+                                                                    <td data-label="Malzeme">{(s.items || []).length} kalem</td>
+                                                                    <td data-label="Talep Eden">{talepEden}</td>
+                                                                    <td data-label="Onaylayan">{s.gonderen || '—'}</td>
                                                                     <td data-label="Durum">
                                                                         <span className={"movement-type-pill " + (durum.label === 'Tamamlandı' ? 'in' : 'out')}>
                                                                             {durum.label}
                                                                         </span>
                                                                     </td>
-                                                                    <td style={{ textAlign: 'center' }}><ArrowUpRight size={14} color="var(--text-muted)" /></td>
                                                                 </tr>
                                                             );
                                                         })}
@@ -2647,7 +2645,7 @@ const App = () => {
                                         {/* ALT PANEL: Bekleyen Malzemeler Listesi */}
                                         <div className="table-card">
                                             <div className="table-toolbar">
-                                                <span className="section-title"><History size={17} /> Satın Alım</span>
+                                                <span className="section-title"><History size={17} /> Sipariş Bekleyen Ürünler</span>
                                                 <span className="movement-type-pill out">
                                                     {(() => {
                                                         let count = 0;
@@ -2743,14 +2741,22 @@ const App = () => {
                                         </div>
                                         <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
                                             <span>👤 Talep Eden: <strong style={{ color: '#ea580c' }}>{sevkiyatModal.data.talep_eden || (sevkiyatModal.data.items || []).map(it => it.requestedBy).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(', ') || '—'}</strong></span>
-                                            <span>📅 {sevkiyatModal.data.sevkiyata_gonderilme_tarihi_tr}</span>
+                                            <span>📅 {formatDateOnly(sevkiyatModal.data.sevkiyata_gonderilme_tarihi_tr)}</span>
                                             <span>👤 {sevkiyatModal.data.gonderen}</span>
                                         </div>
                                     </div>
-                                    <button onClick={() => { setSevkiyatModal({ show: false, data: null }); setEksikSelectionMode(false); setEksikSelectedIndices([]); }} style={{
-                                        background: '#f1f5f9', border: 'none', borderRadius: '8px',
-                                        padding: '6px 10px', cursor: 'pointer', color: '#64748b'
-                                    }}><X size={16} /></button>
+                                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                        <button className="btn-export-sm" onClick={() => exportFormToExcel(sevkiyatModal.data)}>
+                                            <FileSpreadsheet size={13} className="icon-excel" /> Excel
+                                        </button>
+                                        <button className="btn-export-sm" onClick={() => exportFormToPDF(sevkiyatModal.data)}>
+                                            <Download size={13} className="icon-pdf" /> PDF
+                                        </button>
+                                        <button onClick={() => { setSevkiyatModal({ show: false, data: null }); setEksikSelectionMode(false); setEksikSelectedIndices([]); }} style={{
+                                            background: '#f1f5f9', border: 'none', borderRadius: '8px',
+                                            padding: '6px 10px', cursor: 'pointer', color: '#64748b'
+                                        }}><X size={16} /></button>
+                                    </div>
                                 </div>
 
                                 {/* Durum */}
@@ -2923,24 +2929,29 @@ const App = () => {
                                             <div>Henüz satın alınan malzeme yok</div>
                                         </div>
                                     ) : (
-                                        <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
-                                            {siparislerData.satinAlinan.map((item, idx) => (
-                                                <div key={`sa-${item.sevkiyatId}-${idx}`} style={{
-                                                    padding: '10px 18px', borderBottom: '1px solid #f1f5f9',
-                                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                                    background: idx % 2 === 0 ? '#f0fdf4' : 'white',
-                                                }}>
-                                                    <div>
-                                                        <div style={{ fontWeight: '700', color: '#166534', fontSize: '13px' }}>{item.itemName}</div>
-                                                        <div style={{ fontSize: '11px', color: '#64748b' }}>
-                                                            {item.amount} {item.unit}{item.adet ? ` x ${item.adet} adet` : ''} · {item.formNo}
-                                                        </div>
-                                                    </div>
-                                                    <div style={{ textAlign: 'right', fontSize: '11px', color: '#94a3b8' }}>
-                                                        {item.requestedBy}<br />{item.tarihTR}
-                                                    </div>
-                                                </div>
-                                            ))}
+                                        <div className="table-responsive-wrapper" style={{ maxHeight: '600px', overflowY: 'auto' }}>
+                                            <table className="responsive-table col-5">
+                                                <thead>
+                                                    <tr>
+                                                        <th>TARİH</th>
+                                                        <th>MALZEME</th>
+                                                        <th>MİKTAR</th>
+                                                        <th>BİRİM</th>
+                                                        <th>FORM NO</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {siparislerData.satinAlinan.map((item, idx) => (
+                                                        <tr key={`sa-${item.sevkiyatId}-${idx}`}>
+                                                            <td>{formatDateOnly(item.tarihTR)}</td>
+                                                            <td style={{ fontWeight: '700', color: '#166534' }}>{item.itemName}</td>
+                                                            <td>{item.amount}{item.adet ? ` x ${item.adet}` : ''}</td>
+                                                            <td>{item.unit}</td>
+                                                            <td>{item.formNo}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
                                         </div>
                                     )}
                                 </div>
@@ -2981,24 +2992,29 @@ const App = () => {
                                             <div>Eksik malzeme yok</div>
                                         </div>
                                     ) : (
-                                        <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
-                                            {siparislerData.eksikler.map((item, idx) => (
-                                                <div key={`ek-${item.sevkiyatId}-${idx}`} style={{
-                                                    padding: '10px 18px', borderBottom: '1px solid #f1f5f9',
-                                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                                    background: idx % 2 === 0 ? '#fef2f2' : 'white',
-                                                }}>
-                                                    <div>
-                                                        <div style={{ fontWeight: '700', color: '#991b1b', fontSize: '13px' }}>{item.itemName}</div>
-                                                        <div style={{ fontSize: '11px', color: '#64748b' }}>
-                                                            {item.amount} {item.unit}{item.adet ? ` x ${item.adet} adet` : ''} · {item.formNo}
-                                                        </div>
-                                                    </div>
-                                                    <div style={{ textAlign: 'right', fontSize: '11px', color: '#94a3b8' }}>
-                                                        {item.requestedBy}<br />{item.tarihTR}
-                                                    </div>
-                                                </div>
-                                            ))}
+                                        <div className="table-responsive-wrapper" style={{ maxHeight: '600px', overflowY: 'auto' }}>
+                                            <table className="responsive-table col-5">
+                                                <thead>
+                                                    <tr>
+                                                        <th>TARİH</th>
+                                                        <th>MALZEME</th>
+                                                        <th>MİKTAR</th>
+                                                        <th>BİRİM</th>
+                                                        <th>FORM NO</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {siparislerData.eksikler.map((item, idx) => (
+                                                        <tr key={`ek-${item.sevkiyatId}-${idx}`}>
+                                                            <td>{formatDateOnly(item.tarihTR)}</td>
+                                                            <td style={{ fontWeight: '700', color: '#991b1b' }}>{item.itemName}</td>
+                                                            <td>{item.amount}{item.adet ? ` x ${item.adet}` : ''}</td>
+                                                            <td>{item.unit}</td>
+                                                            <td>{item.formNo}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
                                         </div>
                                     )}
                                 </div>
@@ -3046,7 +3062,7 @@ const App = () => {
                                                     Malzeme: req.itemName || '',
                                                     Miktar: req.amount || 0,
                                                     TalepEden: req.requestedBy || '',
-                                                    Tarih: String(req.date || '').split(',')[0].split(' ')[0]
+                                                    Tarih: formatDateOnly(req.date)
                                                 }))}
                                                 title="Bekleyen Malzeme Talepleri"
                                                 columns={[
@@ -3084,7 +3100,7 @@ const App = () => {
                                                             <td data-label="Malzeme" style={{ fontWeight: '600' }}>{req.itemName}</td>
                                                             <td data-label="Miktar" style={{ textAlign: 'center' }}><strong>{req.amount}</strong> {req.unit}</td>
                                                             <td data-label="Talep Eden">{req.requestedBy}</td>
-                                                            <td data-label="Tarih">{String(req.date || '').split(',')[0].split(' ')[0]}</td>
+                                                            <td data-label="Tarih">{formatDateOnly(req.date)}</td>
                                                             {canEdit && (
                                                                 <td data-label="İşlemler" style={{ textAlign: 'center' }}>
                                                                     <div className="flex gap-2 justify-center">
@@ -3220,160 +3236,7 @@ const App = () => {
                         </div>
                     )}
 
-                    {/* ── AYARLAR TAB ── */}
-                    {activeTab === 'settings' && canEdit && (
-                        <div className="animate-fade" style={{ maxWidth: '640px', margin: '0 auto' }}>
-                            {/* Sayfa başlığı */}
-                            <div style={{ marginBottom: '24px' }}>
-                                <h2 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--text-main)', margin: 0 }}>Ayarlar</h2>
-                                <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>Uygulama tercihleri ve veri yönetimi</p>
-                            </div>
-
-                            {/* Görünüm Kartı */}
-                            <div className="card" style={{ marginBottom: '16px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-                                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--primary-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
-                                        <Sun size={16} />
-                                    </div>
-                                    <div>
-                                        <div style={{ fontWeight: '600', fontSize: '14px', color: 'var(--text-main)' }}>Görünüm</div>
-                                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Gündüz veya gece modunu seçin</div>
-                                    </div>
-                                </div>
-                                <div style={{ display: 'flex', gap: '10px' }}>
-                                    <button
-                                        onClick={() => setTheme('light')}
-                                        style={{
-                                            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                                            padding: '12px 16px', borderRadius: '10px',
-                                            border: theme === 'light' ? '2px solid var(--primary)' : '2px solid var(--border)',
-                                            background: theme === 'light' ? 'var(--primary-glow)' : 'var(--bg-main)',
-                                            color: theme === 'light' ? 'var(--primary)' : 'var(--text-muted)',
-                                            fontWeight: theme === 'light' ? '700' : '500',
-                                            fontSize: '14px', cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit'
-                                        }}
-                                    >
-                                        <Sun size={16} /> Gündüz
-                                    </button>
-                                    <button
-                                        onClick={() => setTheme('dark')}
-                                        style={{
-                                            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                                            padding: '12px 16px', borderRadius: '10px',
-                                            border: theme === 'dark' ? '2px solid var(--primary)' : '2px solid var(--border)',
-                                            background: theme === 'dark' ? 'var(--primary-glow)' : 'var(--bg-main)',
-                                            color: theme === 'dark' ? 'var(--primary)' : 'var(--text-muted)',
-                                            fontWeight: theme === 'dark' ? '700' : '500',
-                                            fontSize: '14px', cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit'
-                                        }}
-                                    >
-                                        <Moon size={16} /> Gece
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Raporlar Kartı */}
-                            <div className="card" style={{ marginBottom: '16px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-                                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--success-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--success)' }}>
-                                        <FileSpreadsheet size={16} />
-                                    </div>
-                                    <div>
-                                        <div style={{ fontWeight: '600', fontSize: '14px', color: 'var(--text-main)' }}>Excel Raporları</div>
-                                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Stok ve hareket raporlarını dışa aktarın</div>
-                                    </div>
-                                </div>
-                                <button
-                                    className="btn-primary"
-                                    style={{ width: '100%', justifyContent: 'center', padding: '10px', background: 'var(--success)' }}
-                                    onClick={() => { setExportType('stock'); setSelectedItemsForExport(items.map(i => i.id)); setShowExportModal(true); }}
-                                >
-                                    <FileSpreadsheet size={15} /> Excel Raporu Hazırla
-                                </button>
-                            </div>
-
-                            {/* Veri Yönetimi Kartı */}
-                            <div className="card">
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-                                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--warning-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--warning)' }}>
-                                        <Download size={16} />
-                                    </div>
-                                    <div>
-                                        <div style={{ fontWeight: '600', fontSize: '14px', color: 'var(--text-main)' }}>Veri Yönetimi</div>
-                                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Verilerinizi yedekleyin veya geri yükleyin</div>
-                                    </div>
-                                </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                    <button
-                                        className="btn-primary"
-                                        style={{ width: '100%', justifyContent: 'center', padding: '10px', background: '#475569' }}
-                                        onClick={backupData}
-                                    >
-                                        <Download size={15} /> Veriyi Yedekle (JSON)
-                                    </button>
-                                    {isAdmin && (
-                                        <button
-                                            className="btn-primary"
-                                            style={{ width: '100%', justifyContent: 'center', padding: '10px', background: '#64748b' }}
-                                            onClick={() => fileInputRef.current.click()}
-                                        >
-                                            <Upload size={15} /> Yedek Yükle
-                                        </button>
-                                    )}
-                                    <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept=".json" onChange={restoreData} />
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
                     {/* ── MODALS (Global) ── */}
-
-                    {/* Excel Export Modal */}
-                    {showExportModal && (
-                        <div className="modal-overlay">
-                            <div className="modal-card" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
-                                <div className="modal-header">
-                                    <span className="modal-title flex align-center gap-1"><FileSpreadsheet size={18} /> Excel Raporu Hazırla</span>
-                                    <button className="btn-icon" onClick={() => setShowExportModal(false)}><X size={16} /></button>
-                                </div>
-                                <div className="flex gap-2 mb-2" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
-                                    <button className={`btn-${exportType === 'stock' ? 'primary' : 'ghost'}`} style={{ flex: 1 }} onClick={() => setExportType('stock')}>Mevcut Stok</button>
-                                    <button className={`btn-${exportType === 'movements' ? 'primary' : 'ghost'}`} style={{ flex: 1 }} onClick={() => setExportType('movements')}>Stok Hareketleri</button>
-                                </div>
-                                {exportType === 'movements' ? (
-                                    <div className="animate-fade">
-                                        <div className="flex gap-2 mb-2">
-                                            <div style={{ flex: 1 }}>
-                                                <label className="label">Başlangıç Tarihi</label>
-                                                <input type="date" value={dateRange.start} onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })} />
-                                            </div>
-                                            <div style={{ flex: 1 }}>
-                                                <label className="label">Bitiş Tarihi</label>
-                                                <input type="date" value={dateRange.end} onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })} />
-                                            </div>
-                                        </div>
-                                        <button className="btn-primary" style={{ width: '100%', background: '#059669' }} onClick={() => { exportMovementsToExcel(dateRange.start, dateRange.end); setShowExportModal(false); }}>Hareket Raporu Oluştur</button>
-                                    </div>
-                                ) : (
-                                    <div className="animate-fade">
-                                        <label className="label">Malzemeleri Seçin ({selectedItemsForExport.length})</label>
-                                        <div style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px', marginBottom: '1rem' }}>
-                                            {items.map(item => (
-                                                <label key={item.id} className="flex align-center gap-2 mb-1" style={{ cursor: 'pointer' }}>
-                                                    <input type="checkbox" checked={selectedItemsForExport.includes(item.id)} onChange={(e) => {
-                                                        if (e.target.checked) setSelectedItemsForExport([...selectedItemsForExport, item.id]);
-                                                        else setSelectedItemsForExport(selectedItemsForExport.filter(id => id !== item.id));
-                                                    }} />
-                                                    <span style={{ fontSize: '14px' }}>{item.name}</span>
-                                                </label>
-                                            ))}
-                                        </div>
-                                        <button className="btn-primary" style={{ width: '100%', background: '#059669' }} onClick={() => { exportFilteredStockToExcel(selectedItemsForExport); setShowExportModal(false); }}>Stok Raporu Oluştur</button>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
 
                     {/* Add/Edit Item Modal */}
                     {showModal && canEdit && (
@@ -3413,180 +3276,113 @@ const App = () => {
                                 </div>
 
                                 <form onSubmit={handleMoveStock}>
-                                    {movementType === 'in' ? (
-                                        /* ── GİRİŞ FORMU ── */
-                                        <>
-                                            {/* 1. Malzeme Adı */}
-                                            <div className="mb-2">
-                                                <label className="label">Malzeme Adı</label>
+                                    <div className="mb-2">
+                                        <label className="label">Tarih</label>
+                                        <input name="actionDate" type="date" defaultValue={new Date().toISOString().split('T')[0]} required />
+                                    </div>
+                                    <div className="mb-2">
+                                        <label className="label">Malzeme Adı</label>
+                                        {isQuickAdd ? (
+                                            <div className="flex gap-2">
                                                 <input
-                                                    list="malzeme-datalist"
-                                                    value={inMalzemeAdi}
-                                                    onChange={e => setInMalzemeAdi(e.target.value)}
-                                                    placeholder="Malzeme adı yazın..."
-                                                    required
-                                                    autoComplete="off"
+                                                    autoFocus
+                                                    placeholder="Yeni malzeme adını yazıp Enter'a basın..."
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            e.preventDefault();
+                                                            handleQuickAdd(e.target.value);
+                                                        }
+                                                        if (e.key === 'Escape') setIsQuickAdd(false);
+                                                    }}
                                                 />
-                                                <datalist id="malzeme-datalist">
-                                                    {sortedItems.map(i => <option key={i.id} value={i.name} />)}
-                                                </datalist>
+                                                <button type="button" className="btn-ghost" onClick={() => setIsQuickAdd(false)}><X size={14} /></button>
                                             </div>
-                                            {/* 2. Malzeme Türü */}
-                                            <div className="mb-2">
-                                                <label className="label">Malzeme Türü</label>
-                                                <select name="malzemeTuru" required>
-                                                    <option value="">-- Seçin --</option>
-                                                    <option>Yapı Malzemesi</option>
-                                                    <option>Elektrik Malzemesi</option>
-                                                    <option>Tesisat Malzemesi</option>
-                                                    <option>İSG Malzemesi</option>
-                                                    <option>Sarf Malzeme</option>
-                                                    <option>Diğer</option>
-                                                </select>
-                                            </div>
-                                            {/* 3. Tarih */}
-                                            <div className="mb-2">
-                                                <label className="label">Tarih</label>
-                                                <input name="actionDate" type="date" defaultValue={new Date().toISOString().split('T')[0]} required />
-                                            </div>
-                                            {/* 4+5. Miktar + Birim */}
-                                            <div className="flex gap-2 mb-2">
-                                                <div style={{ flex: 1 }}>
-                                                    <label className="label">Miktar</label>
-                                                    <input name="amount" type="number" required min="0.01" step="0.01" placeholder="0.00" />
-                                                </div>
-                                                <div style={{ flex: 1 }}>
-                                                    <label className="label">Birim</label>
-                                                    <select name="unit">
-                                                        <option>Adet</option><option>Kg</option><option>M</option>
-                                                        <option>M2</option><option>M3</option><option>Ton</option>
-                                                        <option>Palet</option><option>Torba</option><option>Paket</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            {/* 6. İrsaliye No */}
-                                            <div className="mb-2">
-                                                <label className="label">İrsaliye No</label>
-                                                <input name="irsaliyeNo" placeholder="Örn: IRS-2026-001" />
-                                            </div>
-                                            {/* 6b. Birim Fiyat */}
-                                            <div className="mb-2">
-                                                <label className="label">Birim Fiyat (₺)</label>
-                                                <input name="birimFiyat" type="number" min="0" step="0.01" placeholder="0.00" />
-                                            </div>
-                                            {/* 7. Firma Adı */}
-                                            <div className="mb-2">
-                                                <label className="label">Firma Adı</label>
+                                        ) : (
+                                            <select
+                                                name="itemId"
+                                                required
+                                                value={selectedItemForMove?.id || ""}
+                                                onChange={(e) => {
+                                                    if (e.target.value === 'NEW') {
+                                                        setIsQuickAdd(true);
+                                                    } else {
+                                                        setSelectedItemForMove(items.find(i => i.id == e.target.value));
+                                                    }
+                                                }}
+                                            >
+                                                <option value="" disabled>-- Seçin --</option>
+                                                <option value="NEW">Yeni Malzeme Ekle</option>
+                                                {sortedItems.map(i => (
+                                                    <option key={i.id} value={i.id}>{i.name} (Stok: {i.quantity})</option>
+                                                ))}
+                                            </select>
+                                        )}
+                                    </div>
+                                    {movementType === 'in' && (
+                                        <div className="mb-2 animate-fade">
+                                            <label className="label">Kategori</label>
+                                            <select name="category" key={selectedItemForMove?.id || 'none'} defaultValue={selectedItemForMove?.category || 'Genel'}>
+                                                {categories.map(c => <option key={c}>{c}</option>)}
+                                            </select>
+                                        </div>
+                                    )}
+                                    <div className="mb-2">
+                                        <label className="label">{movementType === 'in' ? 'Firma' : 'Alan Kişi / Ekip'}</label>
+                                        {isNewRecipient ? (
+                                            <div className="flex gap-2">
                                                 <input
-                                                    list="firma-datalist"
-                                                    value={inFirmaAdi}
-                                                    onChange={e => setInFirmaAdi(e.target.value)}
-                                                    placeholder="Firma adı yazın..."
-                                                    autoComplete="off"
+                                                    autoFocus
+                                                    name="recipient"
+                                                    placeholder={movementType === 'in' ? "Yeni firma adı yazın..." : "Yeni kişi/ekip adı yazın..."}
                                                 />
-                                                <datalist id="firma-datalist">
-                                                    {uniqueFirmaAdlari.map(f => <option key={f} value={f} />)}
-                                                </datalist>
+                                                <button type="button" className="btn-ghost" onClick={() => setIsNewRecipient(false)}><X size={14} /></button>
                                             </div>
-                                            {/* 8. Teslim Alan Kişi */}
-                                            <div className="mb-2">
-                                                <div className="flex align-center gap-2 mb-1">
-                                                    <label className="label" style={{ margin: 0 }}>Teslim Alan Kişi</label>
-                                                    {canEdit && (
-                                                        <button type="button" className="btn-ghost" style={{ fontSize: '11px', padding: '2px 8px' }}
-                                                            onClick={() => setShowAddTeslimAlan(v => !v)}>
-                                                            + Kişi Ekle
-                                                        </button>
-                                                    )}
-                                                </div>
-                                                {showAddTeslimAlan && canEdit && (
-                                                    <div className="flex gap-2 mb-1">
-                                                        <input
-                                                            value={newTeslimAlanAdi}
-                                                            onChange={e => setNewTeslimAlanAdi(e.target.value)}
-                                                            placeholder="Yeni kişi adı..."
-                                                            style={{ flex: 1 }}
-                                                        />
-                                                        <button type="button" className="btn-primary" style={{ fontSize: '12px', padding: '4px 12px' }}
-                                                            onClick={async () => {
-                                                                if (!newTeslimAlanAdi.trim()) return;
-                                                                const id = String(Date.now());
-                                                                await set(ref(db, `teslimAlanlar/${id}`), { id, name: newTeslimAlanAdi.trim() });
-                                                                setNewTeslimAlanAdi('');
-                                                                setShowAddTeslimAlan(false);
-                                                            }}>
-                                                            Kaydet
-                                                        </button>
-                                                        <button type="button" className="btn-ghost" onClick={() => setShowAddTeslimAlan(false)}><X size={14} /></button>
-                                                    </div>
-                                                )}
-                                                <select name="teslimAlan">
-                                                    <option value="">-- Seçin --</option>
-                                                    {teslimAlanlar.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
-                                                </select>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        /* ── ÇIKIŞ FORMU ── */
-                                        <>
-                                            <div className="mb-2">
-                                                <label className="label">İşlem Tarihi</label>
-                                                <input name="actionDate" type="date" defaultValue={new Date().toISOString().split('T')[0]} required />
-                                            </div>
-                                            <div className="mb-2">
-                                                <label className="label">Malzeme Seçin</label>
-                                                <select name="itemId" required value={selectedItemForMove?.id || ""}
-                                                    onChange={(e) => setSelectedItemForMove(items.find(i => i.id == e.target.value))}>
-                                                    <option value="" disabled>-- Seçin --</option>
-                                                    {sortedItems.map(i => (
-                                                        <option key={i.id} value={i.id}>{i.name} (Stok: {i.quantity})</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            <div className="flex gap-2 mb-2">
-                                                <div style={{ flex: 1 }}>
-                                                    <label className="label">Miktar</label>
-                                                    <input name="amount" type="number" required min="0.01" step="0.01" placeholder="0.00" />
-                                                </div>
-                                                <div style={{ flex: 1 }}>
-                                                    <label className="label">Birim</label>
-                                                    <select name="unit" defaultValue={selectedItemForMove?.unit || 'Adet'}>
-                                                        <option>Adet</option><option>Kg</option><option>M</option>
-                                                        <option>M2</option><option>M3</option><option>Ton</option>
-                                                        <option>Palet</option><option>Torba</option><option>Paket</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div className="mb-2">
-                                                <label className="label">Verilen Birim</label>
-                                                <input name="verilenBirim" placeholder="Örn: A Ekibi, Elektrik Birimi..." />
-                                            </div>
-                                            <div className="mb-2">
-                                                <label className="label">Verilen Kişi</label>
-                                                {isNewRecipient ? (
-                                                    <div className="flex gap-2">
-                                                        <input autoFocus name="recipient" placeholder="Yeni kişi adı yazın..." />
-                                                        <button type="button" className="btn-ghost" onClick={() => setIsNewRecipient(false)}><X size={14} /></button>
-                                                    </div>
-                                                ) : (
-                                                    <select name="recipient" defaultValue=""
-                                                        onChange={(e) => { if (e.target.value === '__NEW__') setIsNewRecipient(true); }}>
-                                                        <option value="">-- Seçin --</option>
-                                                        <option value="__NEW__">Yeni Ekle</option>
-                                                        {uniqueRecipients.map(r => <option key={r} value={r}>{r}</option>)}
-                                                    </select>
-                                                )}
-                                            </div>
-                                            <div className="mb-2">
-                                                <label className="label">Kullanım Alanı</label>
-                                                <input name="kullanimAlani" placeholder="Örn: A Blok 3. kat, Temel kazısı..." />
-                                            </div>
-                                        </>
+                                        ) : (
+                                            <select
+                                                name="recipient"
+                                                defaultValue=""
+                                                onChange={(e) => {
+                                                    if (e.target.value === '__NEW__') {
+                                                        setIsNewRecipient(true);
+                                                    }
+                                                }}
+                                            >
+                                                <option value="">-- Seçin --</option>
+                                                <option value="__NEW__">Yeni Ekle</option>
+                                                {uniqueRecipients.map(r => (
+                                                    <option key={r} value={r}>{r}</option>
+                                                ))}
+                                            </select>
+                                        )}
+                                    </div>
+                                    {movementType === 'in' && (
+                                        <div className="mb-2 animate-fade">
+                                            <label className="label">İrsaliye No</label>
+                                            <input name="irsaliyeNo" placeholder="Örn: IRS-2026-001" />
+                                        </div>
+                                    )}
+                                    <div className="flex gap-2 mb-2">
+                                        <div style={{ flex: 1 }}>
+                                            <label className="label">Miktar</label>
+                                            <input name="amount" type="number" required min="1" placeholder="Miktar" />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <label className="label">Birim</label>
+                                            <select name="unit" defaultValue={selectedItemForMove?.unit || 'Adet'}>
+                                                <option>Adet</option><option>Torba</option><option>Metre</option><option>Palet</option><option>M3</option><option>Ton</option><option>Kg</option><option>Lt</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    {movementType === 'in' && (
+                                        <div className="mb-2 animate-fade">
+                                            <label className="label">Birim Fiyat (TL)</label>
+                                            <input name="price" type="number" step="0.01" placeholder="0.00 TL" />
+                                        </div>
                                     )}
                                     <button
                                         type="submit"
                                         className="btn-primary"
-                                        disabled={isSaving || (movementType === 'out' && !selectedItemForMove) || (movementType === 'in' && !inMalzemeAdi.trim())}
+                                        disabled={isSaving || !selectedItemForMove}
                                         style={{ width: '100%', background: movementType === 'in' ? 'var(--success)' : 'var(--danger)', marginTop: '10px', opacity: isSaving ? 0.7 : 1 }}
                                     >
                                         {isSaving ? 'İşleniyor...' : (movementType === 'in' ? 'Girişi Tamamla' : 'Çıkışı Tamamla')}
@@ -3773,7 +3569,7 @@ const App = () => {
                                         <tbody>
                                             {detailModal.item.movements.filter(m => m.type === detailModal.type).sort((a, b) => b.id - a.id).map(m => (
                                                 <tr key={m.id}>
-                                                    <td data-label="Tarih">{String(m.date || '').split(',')[0].split(' ')[0]}</td>
+                                                    <td data-label="Tarih">{formatDateOnly(m.date)}</td>
                                                     <td data-label={detailModal.type === 'in' ? 'Kaynak' : 'Alan'}>{m.recipient || '-'}</td>
                                                     <td style={{ textAlign: 'right' }} data-label="Miktar">{formatNumber(m.amount)}</td>
                                                     <td style={{ textAlign: 'center' }} data-label="Birim">{detailModal.item.unit}</td>
@@ -3800,21 +3596,10 @@ const App = () => {
                                                 { key: 'name', label: 'MALZEME' },
                                                 { key: 'quantity', label: 'MIKTAR' },
                                                 { key: 'unit', label: 'BIRIM' }
-                                            ] : dashModal.moveType === 'in' ? [
-                                                { key: 'date', label: 'TARİH' },
-                                                { key: 'firmaAdi', label: 'FİRMA' },
-                                                { key: 'irsaliyeNo', label: 'İRSALİYE NO' },
-                                                { key: 'itemName', label: 'MALZEME' },
-                                                { key: 'amount', label: 'MİKTAR' },
-                                                { key: 'unit', label: 'BİRİM' }
                                             ] : [
-                                                { key: 'date', label: 'TARİH' },
                                                 { key: 'itemName', label: 'MALZEME' },
-                                                { key: 'amount', label: 'MİKTAR' },
-                                                { key: 'unit', label: 'BİRİM' },
-                                                { key: 'verilenBirim', label: 'VERİLEN BİRİM' },
-                                                { key: 'recipient', label: 'VERİLEN KİŞİ' },
-                                                { key: 'kullanimAlani', label: 'KULLANIM ALANI' }
+                                                { key: 'recipient', label: dashModal.title.includes('Giriş') ? 'KAYNAK' : 'ALAN' },
+                                                { key: 'amount', label: 'MIKTAR' }
                                             ]}
                                             filename={dashModal.title.replace(/\s+/g, '_')}
                                         />
@@ -3822,34 +3607,22 @@ const App = () => {
                                     </div>
                                 </div>
                                 <div className="table-responsive-wrapper">
-                                    <table className={`responsive-table ${dashModal.type === 'stock' ? 'col-3' : dashModal.moveType === 'in' ? 'col-6' : 'col-7'}`}>
+                                    <table className={`responsive-table ${dashModal.type === 'stock' ? 'col-3' : 'col-4'}`}>
                                         <thead>
                                             {dashModal.type === 'stock' ? (
                                                 <tr><th>MALZEME</th><th>MİKTAR</th><th>BİRİM</th></tr>
-                                            ) : dashModal.moveType === 'in' ? (
-                                                <tr>
-                                                    <th>TARİH</th>
-                                                    <th>FİRMA</th>
-                                                    <th>İRSALİYE NO</th>
-                                                    <th>MALZEME</th>
-                                                    <th>MİKTAR</th>
-                                                    <th>BİRİM</th>
-                                                </tr>
                                             ) : (
                                                 <tr>
-                                                    <th>TARİH</th>
                                                     <th>MALZEME</th>
+                                                    <th>{dashModal.title.includes('Giriş') ? 'KAYNAK' : 'ALAN'}</th>
                                                     <th>MİKTAR</th>
                                                     <th>BİRİM</th>
-                                                    <th>VERİLEN BİRİM</th>
-                                                    <th>VERİLEN KİŞİ</th>
-                                                    <th>KULLANIM ALANI</th>
                                                 </tr>
                                             )}
                                         </thead>
                                         <tbody>
                                             {dashModal.data.length === 0 ? (
-                                                <tr><td colSpan="7" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>Kayıt bulunamadı.</td></tr>
+                                                <tr><td colSpan="4" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>Kayıt bulunamadı.</td></tr>
                                             ) : dashModal.data.map((item, idx) => (
                                                 <tr key={idx}>
                                                     {dashModal.type === 'stock' ? (
@@ -3860,24 +3633,14 @@ const App = () => {
                                                             <td style={{ textAlign: 'right' }} data-label="Miktar">{formatNumber(item.quantity)}</td>
                                                             <td style={{ textAlign: 'center' }} data-label="Birim">{item.unit}</td>
                                                         </>
-                                                    ) : dashModal.moveType === 'in' ? (
-                                                        <>
-                                                            <td data-label="Tarih">{String(item.date || '').split(',')[0].split(' ')[0]}</td>
-                                                            <td data-label="Firma">{item.firmaAdi || '—'}</td>
-                                                            <td data-label="İrsaliye No">{item.irsaliyeNo || '—'}</td>
-                                                            <td data-label="Malzeme" style={{ fontWeight: '600' }}>{item.itemName}</td>
-                                                            <td data-label="Miktar" style={{ color: 'var(--success)', fontWeight: '700' }}>+{formatNumber(item.amount)}</td>
-                                                            <td data-label="Birim">{item.unit || '—'}</td>
-                                                        </>
                                                     ) : (
                                                         <>
-                                                            <td data-label="Tarih">{String(item.date || '').split(',')[0].split(' ')[0]}</td>
-                                                            <td data-label="Malzeme" style={{ fontWeight: '600' }}>{item.itemName}</td>
-                                                            <td data-label="Miktar" style={{ color: 'var(--danger)', fontWeight: '700' }}>−{formatNumber(item.amount)}</td>
-                                                            <td data-label="Birim">{item.unit || '—'}</td>
-                                                            <td data-label="Verilen Birim">{item.verilenBirim || '—'}</td>
-                                                            <td data-label="Verilen Kişi">{item.recipient || '—'}</td>
-                                                            <td data-label="Kullanım Alanı">{item.kullanimAlani || item.note || '—'}</td>
+                                                            <td data-label="Malzeme">
+                                                                <div className="material-cell"><Package size={14} className="material-icon-small" /><span>{item.itemName}</span></div>
+                                                            </td>
+                                                            <td data-label={dashModal.title.includes('Giriş') ? 'Kaynak' : 'Alan'}>{item.recipient || '-'}</td>
+                                                            <td style={{ textAlign: 'right' }} data-label="Miktar">{formatNumber(item.amount)}</td>
+                                                            <td style={{ textAlign: 'center' }} data-label="Birim">{items.find(i => i.id == item.itemId)?.unit}</td>
                                                         </>
                                                     )}
                                                 </tr>
