@@ -248,15 +248,7 @@ const App = () => {
 
     // ── Theme State ──
     const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
-
-    useEffect(() => {
-        document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('theme', theme);
-    }, [theme]);
-
-    useEffect(() => {
-        localStorage.setItem('sidebarPinned', sidebarPinned);
-    }, [sidebarPinned]);
+    const [sidebarPinned, setSidebarPinned] = useState(() => localStorage.getItem('sidebarPinned') === 'true');
 
     // ── UI State ──
     const [showModal, setShowModal] = useState(false);
@@ -275,7 +267,6 @@ const App = () => {
     const [showExportModal, setShowExportModal] = useState(false);
     const [exportType, setExportType] = useState('stock');
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-    const [sidebarPinned, setSidebarPinned] = useState(() => localStorage.getItem('sidebarPinned') === 'true');
     const [selectedItemsForExport, setSelectedItemsForExport] = useState([]);
     const [movementViewType, setMovementViewType] = useState('all');
     const [showRequestModal, setShowRequestModal] = useState(false);
@@ -335,6 +326,15 @@ const App = () => {
     // ── Computed Permissions ──
     const canEdit = userProfile?.role === 'admin' || userProfile?.role === 'yonetici';
     const isAdmin = userProfile?.role === 'admin';
+
+    useEffect(() => {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+    }, [theme]);
+
+    useEffect(() => {
+        localStorage.setItem('sidebarPinned', sidebarPinned);
+    }, [sidebarPinned]);
 
     const formatNumber = (num) => Number(num || 0).toLocaleString('tr-TR');
 
@@ -1938,7 +1938,7 @@ const App = () => {
                                                         <td data-label="Firma">{m.firmaAdi || '—'}</td>
                                                         <td data-label="İrsaliye No">{m.irsaliyeNo || '—'}</td>
                                                         <td data-label="Malzeme" style={{ fontWeight: '600' }}>{m.itemName}</td>
-                                                        <td data-label="Miktar" style={{ color: 'var(--success)', fontWeight: '700' }}>+{formatNumber(m.amount)}</td>
+                                                        <td className="num-cell" data-label="Miktar" style={{ color: 'var(--success)', fontWeight: '700' }}>+{formatNumber(m.amount)}</td>
                                                         <td data-label="Birim">{m.unit || '—'}</td>
                                                     </tr>
                                                 ))}
@@ -1982,7 +1982,7 @@ const App = () => {
                                                     <tr key={m.id}>
                                                         <td data-label="Tarih">{String(m.date || '').split(',')[0].split(' ')[0]}</td>
                                                         <td data-label="Malzeme" style={{ fontWeight: '600' }}>{m.itemName}</td>
-                                                        <td data-label="Miktar" style={{ color: 'var(--danger)', fontWeight: '700' }}>−{formatNumber(m.amount)}</td>
+                                                        <td className="num-cell" data-label="Miktar" style={{ color: 'var(--danger)', fontWeight: '700' }}>−{formatNumber(m.amount)}</td>
                                                         <td data-label="Birim">{m.unit || '—'}</td>
                                                         <td data-label="Verilen Birim">{m.verilenBirim || '—'}</td>
                                                         <td data-label="Verilen Kişi">{m.recipient || '—'}</td>
@@ -2033,7 +2033,7 @@ const App = () => {
                                                                 {z.type === 'geri_alindi' ? 'İade' : 'Zimmet'}
                                                             </span>
                                                         </td>
-                                                        <td data-label="Miktar" style={{ fontWeight: '700', color: z.type === 'verildi' ? 'var(--danger)' : 'var(--success)' }}>
+                                                        <td className="num-cell" data-label="Miktar" style={{ fontWeight: '700', color: z.type === 'verildi' ? 'var(--danger)' : 'var(--success)' }}>
                                                             {z.type === 'verildi' ? `−${formatNumber(z.amount)}` : `+${formatNumber(z.amount)}`}
                                                         </td>
                                                     </tr>
@@ -2097,16 +2097,16 @@ const App = () => {
                                                             <span>{row.name}</span>
                                                         </div>
                                                     </td>
-                                                    <td style={{ textAlign: 'right' }} data-label="Giriş">
+                                                    <td className="num-cell" data-label="Giriş">
                                                         <button onClick={() => setDetailModal({ show: true, item: row, type: 'in' })}>{formatNumber(row.totalReceived)}</button>
                                                     </td>
-                                                    <td style={{ textAlign: 'right' }} data-label="Çıkış">
+                                                    <td className="num-cell" data-label="Çıkış">
                                                         <button onClick={() => setDetailModal({ show: true, item: row, type: 'out' })}>{formatNumber(row.totalUsed)}</button>
                                                     </td>
-                                                    <td style={{ textAlign: 'right' }} data-label="Depo">{formatNumber(depoCount)}</td>
-                                                    <td style={{ textAlign: 'right' }} data-label="Zimmet">{formatNumber(row.zimmetteCount)}</td>
-                                                    <td style={{ textAlign: 'right', fontWeight: '600' }} data-label="Toplam">{formatNumber(row.quantity)}</td>
-                                                    <td style={{ textAlign: 'center' }} data-label="Birim">{row.unit}</td>
+                                                    <td className="num-cell" data-label="Depo">{formatNumber(depoCount)}</td>
+                                                    <td className="num-cell" data-label="Zimmet">{formatNumber(row.zimmetteCount)}</td>
+                                                    <td className="num-cell" style={{ fontWeight: '600' }} data-label="Toplam">{formatNumber(row.quantity)}</td>
+                                                    <td data-label="Birim">{row.unit}</td>
                                                 </tr>
                                             );
                                         })}
@@ -2264,10 +2264,10 @@ const App = () => {
                                     <thead>
                                         <tr>
                                             <th>MALZEME</th>
+                                            <th>BİRİM</th>
                                             <th>TOPLAM ALIM</th>
                                             <th>ORT. BİRİM FİYAT</th>
                                             <th>TOPLAM TUTAR</th>
-                                            <th>BİRİM</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -2281,10 +2281,10 @@ const App = () => {
                                                         <span>{row.name}</span>
                                                     </div>
                                                 </td>
-                                                <td style={{ textAlign: 'right' }}>{formatNumber(row.totalQtyReceived)}</td>
-                                                <td style={{ textAlign: 'right', color: 'var(--primary)', fontWeight: '600' }}>{formatNumber(row.avgPrice)} ₺</td>
-                                                <td style={{ textAlign: 'right', fontWeight: '700' }}>{formatNumber(row.totalSpent)} ₺</td>
-                                                <td style={{ textAlign: 'center' }}>{row.unit}</td>
+                                                <td>{row.unit}</td>
+                                                <td className="num-cell">{formatNumber(row.totalQtyReceived)}</td>
+                                                <td className="num-cell" style={{ color: 'var(--primary)', fontWeight: '600' }}>{formatNumber(row.avgPrice)} ₺</td>
+                                                <td className="num-cell" style={{ fontWeight: '700' }}>{formatNumber(row.totalSpent)} ₺</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -2346,7 +2346,7 @@ const App = () => {
                                                     <td>{String(m.date || '-').split(',')[0].split(' ')[0]}</td>
                                                     <td style={{ fontWeight: '600' }}>{m.itemName || '-'}</td>
                                                     <td>{m.malzemeTuru || '-'}</td>
-                                                    <td style={{ color: 'var(--success)', fontWeight: '700' }}>+{formatNumber(m.amount)}</td>
+                                                    <td className="num-cell" style={{ color: 'var(--success)', fontWeight: '700' }}>+{formatNumber(m.amount)}</td>
                                                     <td>{m.unit || '-'}</td>
                                                     <td>{m.irsaliyeNo || '-'}</td>
                                                     <td>{m.firmaAdi || m.recipient || '-'}</td>
@@ -2388,7 +2388,7 @@ const App = () => {
                                                         </div>
                                                     </td>
                                                     <td>{m.firmaAdi || m.recipient || m.person || '-'}</td>
-                                                    <td>
+                                                    <td className="num-cell">
                                                         <span style={{ color: m.normalizedType === 'in' ? 'var(--success)' : 'var(--danger)', fontWeight: '700' }}>
                                                             {m.normalizedType === 'in' ? '+' : '−'}{formatNumber(m.amount)}
                                                         </span>
@@ -3775,8 +3775,8 @@ const App = () => {
                                                 <tr key={m.id}>
                                                     <td data-label="Tarih">{String(m.date || '').split(',')[0].split(' ')[0]}</td>
                                                     <td data-label={detailModal.type === 'in' ? 'Kaynak' : 'Alan'}>{m.recipient || '-'}</td>
-                                                    <td style={{ textAlign: 'right' }} data-label="Miktar">{formatNumber(m.amount)}</td>
-                                                    <td style={{ textAlign: 'center' }} data-label="Birim">{detailModal.item.unit}</td>
+                                                    <td className="num-cell" data-label="Miktar">{formatNumber(m.amount)}</td>
+                                                    <td data-label="Birim">{detailModal.item.unit}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -3857,8 +3857,8 @@ const App = () => {
                                                             <td data-label="Malzeme">
                                                                 <div className="material-cell"><Package size={14} className="material-icon-small" /><span>{item.name}</span></div>
                                                             </td>
-                                                            <td style={{ textAlign: 'right' }} data-label="Miktar">{formatNumber(item.quantity)}</td>
-                                                            <td style={{ textAlign: 'center' }} data-label="Birim">{item.unit}</td>
+                                                            <td className="num-cell" data-label="Miktar">{formatNumber(item.quantity)}</td>
+                                                            <td data-label="Birim">{item.unit}</td>
                                                         </>
                                                     ) : dashModal.moveType === 'in' ? (
                                                         <>
@@ -3866,14 +3866,14 @@ const App = () => {
                                                             <td data-label="Firma">{item.firmaAdi || '—'}</td>
                                                             <td data-label="İrsaliye No">{item.irsaliyeNo || '—'}</td>
                                                             <td data-label="Malzeme" style={{ fontWeight: '600' }}>{item.itemName}</td>
-                                                            <td data-label="Miktar" style={{ color: 'var(--success)', fontWeight: '700' }}>+{formatNumber(item.amount)}</td>
+                                                            <td className="num-cell" data-label="Miktar" style={{ color: 'var(--success)', fontWeight: '700' }}>+{formatNumber(item.amount)}</td>
                                                             <td data-label="Birim">{item.unit || '—'}</td>
                                                         </>
                                                     ) : (
                                                         <>
                                                             <td data-label="Tarih">{String(item.date || '').split(',')[0].split(' ')[0]}</td>
                                                             <td data-label="Malzeme" style={{ fontWeight: '600' }}>{item.itemName}</td>
-                                                            <td data-label="Miktar" style={{ color: 'var(--danger)', fontWeight: '700' }}>−{formatNumber(item.amount)}</td>
+                                                            <td className="num-cell" data-label="Miktar" style={{ color: 'var(--danger)', fontWeight: '700' }}>−{formatNumber(item.amount)}</td>
                                                             <td data-label="Birim">{item.unit || '—'}</td>
                                                             <td data-label="Verilen Birim">{item.verilenBirim || '—'}</td>
                                                             <td data-label="Verilen Kişi">{item.recipient || '—'}</td>

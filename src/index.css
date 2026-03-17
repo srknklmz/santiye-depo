@@ -272,7 +272,7 @@ input[type="date"]::-webkit-date-and-time-value {
   justify-content: center;
   transition: all 0.2s ease;
   flex-shrink: 0;
-  opacity: 0;
+  opacity: 0.5;
 }
 
 .sidebar:hover .sidebar-pin-btn,
@@ -1040,6 +1040,14 @@ input[type="date"]::-webkit-date-and-time-value {
   text-align: center;
 }
 
+.num-cell,
+.responsive-table td.num-cell,
+.movements-grid .responsive-table td.num-cell {
+  text-align: right !important;
+  padding-right: 20px !important;
+  font-variant-numeric: tabular-nums;
+}
+
 .responsive-table tbody tr:last-child td {
   border-bottom: 1px solid var(--border-light);
 }
@@ -1184,6 +1192,17 @@ input[type="date"]::-webkit-date-and-time-value {
 .col-6 th:nth-child(6),
 .col-6 td:nth-child(6) {
   width: 16%;
+}
+
+/* num-cell her zaman sağa yaslı — col-N center kurallarını override eder */
+.col-3 td.num-cell,
+.col-4 td.num-cell,
+.col-5 td.num-cell,
+.col-6 td.num-cell,
+.col-7 td.num-cell,
+.responsive-table td.num-cell {
+  text-align: right !important;
+  padding-right: 20px !important;
 }
 
 .material-cell {
