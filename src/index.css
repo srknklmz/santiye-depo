@@ -233,65 +233,12 @@ input[type="date"]::-webkit-date-and-time-value {
   left: 0;
   top: 0;
   z-index: 100;
-  transform: translateX(calc(-100% + 6px));
-  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-              box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.sidebar:hover {
   transform: translateX(0);
-  box-shadow: 6px 0 24px rgba(0, 0, 0, 0.12);
+  box-shadow: 6px 0 24px rgba(0, 0, 0, 0.08);
 }
 
-[data-theme="dark"] .sidebar:hover {
-  box-shadow: 6px 0 32px rgba(0, 0, 0, 0.5);
-}
-
-/* Sidebar Pinned State */
-.sidebar.sidebar-pinned {
-  transform: translateX(0);
-  box-shadow: none;
-}
-
-.sidebar.sidebar-pinned ~ .main-content,
-.sidebar.sidebar-pinned ~ .content-wrapper {
-  margin-left: var(--sidebar-width);
-}
-
-/* Pin Button */
-.sidebar-pin-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  border: none;
-  background: transparent;
-  color: var(--sidebar-text);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-  opacity: 0;
-}
-
-.sidebar:hover .sidebar-pin-btn,
-.sidebar.sidebar-pinned .sidebar-pin-btn {
-  opacity: 1;
-}
-
-.sidebar-pin-btn:hover {
-  background: var(--sidebar-hover-bg);
-  color: var(--sidebar-text-hover);
-}
-
-.sidebar-pin-btn.pinned {
-  color: var(--primary);
-  opacity: 1;
-}
-
-.sidebar-pin-btn.pinned:hover {
-  background: rgba(79, 70, 229, 0.1);
+[data-theme="dark"] .sidebar {
+  box-shadow: 6px 0 32px rgba(0, 0, 0, 0.4);
 }
 
 .sidebar-brand {
@@ -491,9 +438,8 @@ input[type="date"]::-webkit-date-and-time-value {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-left: 0;
-  width: 100%;
-  transition: margin-left 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-left: var(--sidebar-width);
+  width: calc(100% - var(--sidebar-width));
 }
 
 .page-content {
@@ -542,6 +488,53 @@ input[type="date"]::-webkit-date-and-time-value {
   grid-template-columns: repeat(4, 1fr);
   gap: 10px;
   margin-bottom: 12px;
+}
+.stats-grid-with-actions {
+  grid-template-columns: repeat(7, 1fr);
+}
+
+/* Action cards (Giriş/Çıkış/Zimmet Ekle) */
+.action-card {
+  border-radius: var(--radius-lg);
+  padding: 8px 4px;
+  border: 1.5px solid;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: opacity 0.15s, transform 0.1s;
+  font-weight: 800;
+  font-size: 13px;
+  line-height: 1.2;
+  text-align: center;
+  user-select: none;
+  width: 100%;
+  min-height: 68px;
+}
+.action-card:hover { opacity: 0.82; }
+.action-card:active { transform: scale(0.96); }
+.action-card-success { background: var(--success-soft); border-color: var(--success); color: var(--success); }
+.action-card-danger  { background: var(--danger-soft);  border-color: var(--danger);  color: var(--danger);  }
+.action-card-purple  { background: #ede9fe; border-color: #4f46e5; color: #4f46e5; }
+
+/* 3D filtre butonları */
+.btn-filter-3d {
+  padding: 6px 0;
+  width: 68px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  outline: none;
+  user-select: none;
+  text-align: center;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+.btn-filter-3d:active {
+  transform: translateY(2px) !important;
 }
 
 .stat-card {
@@ -682,6 +675,32 @@ input[type="date"]::-webkit-date-and-time-value {
 .movements-grid .responsive-table td {
   padding: 6px 10px;
   font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Date input browser min-width sıfırla */
+input[type="date"] {
+  min-width: 0;
+}
+
+/* Global: tüm tablo gövde hücreleri ince, siyah renk */
+.responsive-table tbody td {
+  font-weight: 400 !important;
+  color: var(--text-main) !important;
+}
+
+/* Birleşik dashboard listesi */
+.dash-unified-wrap .responsive-table {
+  width: 100%;
+  table-layout: fixed;
+}
+.dash-unified-wrap .responsive-table th,
+.dash-unified-wrap .responsive-table td {
+  padding: 6px 10px;
+  font-size: 12px;
+  font-family: inherit;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1739,21 +1758,7 @@ input[type="date"]::-webkit-date-and-time-value {
   }
 
   .main-content {
-    margin-left: 0 !important;
-  }
-
-  .sidebar.sidebar-pinned {
-    transform: translateX(calc(-100% + 6px));
-    box-shadow: none;
-  }
-
-  .sidebar.sidebar-pinned.mobile-open {
-    transform: translateX(0);
-    box-shadow: 6px 0 32px rgba(0, 0, 0, 0.4);
-  }
-
-  .sidebar-pin-btn {
-    display: none;
+    margin-left: 0;
   }
 
   .sidebar-overlay {
