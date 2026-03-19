@@ -301,11 +301,15 @@ const DateRangePicker = ({ startDate, endDate, onChange }) => {
 
     const handleApply = () => { onChange(tempStart, tempEnd); setOpen(false); };
 
-    const formatDisplay = (iso) => {
-        if (!iso) return 'Seçiniz';
+    const formatDate = (iso) => {
+        if (!iso) return '';
         const [y, m, d] = iso.split('-');
         return `${d}/${m}/${y}`;
     };
+
+    const displayText = tempStart
+        ? (tempEnd ? `${formatDate(tempStart)}  —  ${formatDate(tempEnd)}` : `${formatDate(tempStart)}  —  ...`)
+        : 'Tarih aralığı seçiniz';
 
     const isStart = (day) => toISO(year, month, day) === tempStart;
     const isEnd = (day) => toISO(year, month, day) === tempEnd;
@@ -376,15 +380,10 @@ const DateRangePicker = ({ startDate, endDate, onChange }) => {
     );
 
     return (
-        <div ref={triggerRef} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <div onClick={handleOpen} style={triggerStyle}>
+        <div ref={triggerRef} style={{ display: 'flex', alignItems: 'center' }}>
+            <div onClick={handleOpen} style={{ ...triggerStyle, width: '100%' }}>
                 {calIcon}
-                <span style={{ color: tempStart ? 'var(--text-main)' : 'var(--text-muted)' }}>{formatDisplay(tempStart)}</span>
-            </div>
-            <span style={{ color: 'var(--text-muted)', fontSize: '13px', flexShrink: 0 }}>—</span>
-            <div onClick={handleOpen} style={triggerStyle}>
-                {calIcon}
-                <span style={{ color: tempEnd ? 'var(--text-main)' : 'var(--text-muted)' }}>{formatDisplay(tempEnd)}</span>
+                <span style={{ color: tempStart ? 'var(--text-main)' : 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displayText}</span>
             </div>
             {dropdown}
         </div>
