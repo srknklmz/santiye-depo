@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
     Package,
     Plus,
@@ -244,16 +245,31 @@ const DateRangePicker = ({ startDate, endDate, onChange }) => {
     const [tempEnd, setTempEnd] = useState(endDate || '');
     const [viewDate, setViewDate] = useState(() => startDate ? new Date(startDate + 'T00:00:00') : new Date());
     const [selectingEnd, setSelectingEnd] = useState(false);
-    const ref = useRef(null);
+    const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
+    const triggerRef = useRef(null);
+    const dropdownRef = useRef(null);
 
     useEffect(() => {
-        const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+        const handler = (e) => {
+            if (
+                triggerRef.current && !triggerRef.current.contains(e.target) &&
+                dropdownRef.current && !dropdownRef.current.contains(e.target)
+            ) setOpen(false);
+        };
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
     }, []);
 
     useEffect(() => { setTempStart(startDate || ''); }, [startDate]);
     useEffect(() => { setTempEnd(endDate || ''); }, [endDate]);
+
+    const handleOpen = () => {
+        if (triggerRef.current) {
+            const rect = triggerRef.current.getBoundingClientRect();
+            setDropdownPos({ top: rect.bottom + window.scrollY + 4, left: rect.left + window.scrollX });
+        }
+        setOpen(o => !o);
+    };
 
     const MONTHS = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
     const DAYS = ['Pt','Sa','Ça','Pe','Cu','Ct','Pz'];
@@ -280,8 +296,7 @@ const DateRangePicker = ({ startDate, endDate, onChange }) => {
         const start = new Date();
         start.setDate(start.getDate() - days + 1);
         const fmt = (d) => d.toISOString().split('T')[0];
-        const s = fmt(start); const e = fmt(end);
-        setTempStart(s); setTempEnd(e); setViewDate(start); setSelectingEnd(false);
+        setTempStart(fmt(start)); setTempEnd(fmt(end)); setViewDate(start); setSelectingEnd(false);
     };
 
     const handleApply = () => { onChange(tempStart, tempEnd); setOpen(false); };
@@ -307,68 +322,71 @@ const DateRangePicker = ({ startDate, endDate, onChange }) => {
         color: 'var(--text-main)', flex: 1, userSelect: 'none',
     };
 
+    const calIcon = <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
+
+    const dropdown = open && createPortal(
+        <div ref={dropdownRef} style={{ position: 'absolute', top: dropdownPos.top, left: dropdownPos.left, background: 'white', borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.18)', padding: '16px', zIndex: 99999, width: '276px', border: '1px solid #e2e8f0' }}>
+            {/* Hızlı seçimler */}
+            <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
+                {[['7 Gün', 7], ['30 Gün', 30], ['90 Gün', 90]].map(([label, days]) => (
+                    <button key={label} onClick={() => handlePreset(days)} style={{ flex: 1, padding: '5px 0', borderRadius: '6px', border: '1px solid #e2e8f0', background: '#f8fafc', color: '#374151', fontSize: '11px', cursor: 'pointer', fontWeight: '500', fontFamily: 'inherit' }}>{label}</button>
+                ))}
+                <button style={{ flex: 1, padding: '5px 0', borderRadius: '6px', border: '1px solid #4A90D9', background: '#EBF3FC', color: '#4A90D9', fontSize: '11px', cursor: 'default', fontWeight: '600', fontFamily: 'inherit' }}>Özel</button>
+            </div>
+
+            {/* Ay navigasyonu */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <button onClick={() => setViewDate(new Date(year, month - 1, 1))} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 8px', fontSize: '18px', color: '#6b7280', lineHeight: 1 }}>‹</button>
+                <span style={{ fontWeight: '600', fontSize: '13px', color: '#111827' }}>{MONTHS[month]} {year}</span>
+                <button onClick={() => setViewDate(new Date(year, month + 1, 1))} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 8px', fontSize: '18px', color: '#6b7280', lineHeight: 1 }}>›</button>
+            </div>
+
+            {/* Gün başlıkları */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', marginBottom: '4px' }}>
+                {DAYS.map(d => <div key={d} style={{ textAlign: 'center', fontSize: '10px', fontWeight: '600', color: '#9ca3af', padding: '3px 0' }}>{d}</div>)}
+            </div>
+
+            {/* Günler */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: '2px' }}>
+                {Array.from({ length: firstDay }).map((_, i) => <div key={`e${i}`} />)}
+                {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
+                    const start = isStart(day);
+                    const end = isEnd(day);
+                    const inRange = isInRange(day);
+                    return (
+                        <div key={day} onClick={() => handleDayClick(day)} style={{
+                            textAlign: 'center', padding: '5px 0', fontSize: '12px', cursor: 'pointer', borderRadius: '6px',
+                            background: (start || end) ? '#4A90D9' : inRange ? 'rgba(74,144,217,0.13)' : 'transparent',
+                            color: (start || end) ? 'white' : '#111827',
+                            fontWeight: (start || end) ? '700' : '400',
+                        }}>
+                            {day}
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Footer */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #e2e8f0' }}>
+                <button onClick={() => { setTempStart(''); setTempEnd(''); setSelectingEnd(false); onChange('', ''); setOpen(false); }} style={{ padding: '5px 14px', borderRadius: '6px', border: '1px solid #e2e8f0', background: '#f8fafc', color: '#6b7280', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit' }}>Temizle</button>
+                <button onClick={handleApply} style={{ padding: '5px 16px', borderRadius: '6px', border: 'none', background: '#4A90D9', color: 'white', fontWeight: '600', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit' }}>Seç</button>
+            </div>
+        </div>,
+        document.body
+    );
+
     return (
-        <div ref={ref} style={{ position: 'relative', display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <div onClick={() => setOpen(o => !o)} style={triggerStyle}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <div ref={triggerRef} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div onClick={handleOpen} style={triggerStyle}>
+                {calIcon}
                 <span style={{ color: tempStart ? 'var(--text-main)' : 'var(--text-muted)' }}>{formatDisplay(tempStart)}</span>
             </div>
             <span style={{ color: 'var(--text-muted)', fontSize: '13px', flexShrink: 0 }}>—</span>
-            <div onClick={() => setOpen(o => !o)} style={triggerStyle}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <div onClick={handleOpen} style={triggerStyle}>
+                {calIcon}
                 <span style={{ color: tempEnd ? 'var(--text-main)' : 'var(--text-muted)' }}>{formatDisplay(tempEnd)}</span>
             </div>
-
-            {open && (
-                <div style={{ position: 'absolute', top: '38px', left: 0, background: 'var(--bg-card, white)', borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.16)', padding: '16px', zIndex: 9999, width: '276px', border: '1px solid var(--border)' }}>
-                    {/* Hızlı seçimler */}
-                    <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
-                        {[['7 Gün', 7], ['30 Gün', 30], ['90 Gün', 90]].map(([label, days]) => (
-                            <button key={label} onClick={() => handlePreset(days)} style={{ flex: 1, padding: '5px 0', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-hover)', color: 'var(--text-main)', fontSize: '11px', cursor: 'pointer', fontWeight: '500', fontFamily: 'inherit' }}>{label}</button>
-                        ))}
-                        <button style={{ flex: 1, padding: '5px 0', borderRadius: '6px', border: '1px solid #4A90D9', background: '#EBF3FC', color: '#4A90D9', fontSize: '11px', cursor: 'pointer', fontWeight: '600', fontFamily: 'inherit' }}>Özel</button>
-                    </div>
-
-                    {/* Ay navigasyonu */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                        <button onClick={() => setViewDate(new Date(year, month - 1, 1))} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 8px', fontSize: '18px', color: 'var(--text-muted)', lineHeight: 1 }}>‹</button>
-                        <span style={{ fontWeight: '600', fontSize: '13px', color: 'var(--text-main)' }}>{MONTHS[month]} {year}</span>
-                        <button onClick={() => setViewDate(new Date(year, month + 1, 1))} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 8px', fontSize: '18px', color: 'var(--text-muted)', lineHeight: 1 }}>›</button>
-                    </div>
-
-                    {/* Gün başlıkları */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', marginBottom: '4px' }}>
-                        {DAYS.map(d => <div key={d} style={{ textAlign: 'center', fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', padding: '3px 0' }}>{d}</div>)}
-                    </div>
-
-                    {/* Günler */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: '2px' }}>
-                        {Array.from({ length: firstDay }).map((_, i) => <div key={`e${i}`} />)}
-                        {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
-                            const start = isStart(day);
-                            const end = isEnd(day);
-                            const inRange = isInRange(day);
-                            return (
-                                <div key={day} onClick={() => handleDayClick(day)} style={{
-                                    textAlign: 'center', padding: '5px 0', fontSize: '12px', cursor: 'pointer', borderRadius: '6px',
-                                    background: (start || end) ? '#4A90D9' : inRange ? 'rgba(74,144,217,0.12)' : 'transparent',
-                                    color: (start || end) ? 'white' : 'var(--text-main)',
-                                    fontWeight: (start || end) ? '700' : '400',
-                                    transition: 'background 0.1s',
-                                }}>
-                                    {day}
-                                </div>
-                            );
-                        })}
-                    </div>
-
-                    {/* Footer */}
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
-                        <button onClick={() => { setTempStart(''); setTempEnd(''); setSelectingEnd(false); onChange('', ''); }} style={{ padding: '5px 14px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-hover)', color: 'var(--text-muted)', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit' }}>Temizle</button>
-                        <button onClick={handleApply} style={{ padding: '5px 16px', borderRadius: '6px', border: 'none', background: '#4A90D9', color: 'white', fontWeight: '600', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit' }}>Seç</button>
-                    </div>
-                </div>
-            )}
+            {dropdown}
         </div>
     );
 };
