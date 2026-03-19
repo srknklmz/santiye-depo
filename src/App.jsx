@@ -236,6 +236,143 @@ const PendingScreen = ({ userName, userStatus, onSignOut }) => (
     </div>
 );
 
+// ─── DateRangePicker ──────────────────────────────────────────────────────────
+
+const DateRangePicker = ({ startDate, endDate, onChange }) => {
+    const [open, setOpen] = useState(false);
+    const [tempStart, setTempStart] = useState(startDate || '');
+    const [tempEnd, setTempEnd] = useState(endDate || '');
+    const [viewDate, setViewDate] = useState(() => startDate ? new Date(startDate + 'T00:00:00') : new Date());
+    const [selectingEnd, setSelectingEnd] = useState(false);
+    const ref = useRef(null);
+
+    useEffect(() => {
+        const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    useEffect(() => { setTempStart(startDate || ''); }, [startDate]);
+    useEffect(() => { setTempEnd(endDate || ''); }, [endDate]);
+
+    const MONTHS = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+    const DAYS = ['Pt','Sa','Ça','Pe','Cu','Ct','Pz'];
+
+    const year = viewDate.getFullYear();
+    const month = viewDate.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDay = (() => { const d = new Date(year, month, 1).getDay(); return d === 0 ? 6 : d - 1; })();
+    const toISO = (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+    const handleDayClick = (day) => {
+        const iso = toISO(year, month, day);
+        if (!tempStart || !selectingEnd) {
+            setTempStart(iso); setTempEnd(''); setSelectingEnd(true);
+        } else {
+            if (iso < tempStart) { setTempEnd(tempStart); setTempStart(iso); }
+            else { setTempEnd(iso); }
+            setSelectingEnd(false);
+        }
+    };
+
+    const handlePreset = (days) => {
+        const end = new Date();
+        const start = new Date();
+        start.setDate(start.getDate() - days + 1);
+        const fmt = (d) => d.toISOString().split('T')[0];
+        const s = fmt(start); const e = fmt(end);
+        setTempStart(s); setTempEnd(e); setViewDate(start); setSelectingEnd(false);
+    };
+
+    const handleApply = () => { onChange(tempStart, tempEnd); setOpen(false); };
+
+    const formatDisplay = (iso) => {
+        if (!iso) return 'Seçiniz';
+        const [y, m, d] = iso.split('-');
+        return `${d}/${m}/${y}`;
+    };
+
+    const isStart = (day) => toISO(year, month, day) === tempStart;
+    const isEnd = (day) => toISO(year, month, day) === tempEnd;
+    const isInRange = (day) => {
+        if (!tempStart || !tempEnd) return false;
+        const iso = toISO(year, month, day);
+        return iso > tempStart && iso < tempEnd;
+    };
+
+    const triggerStyle = {
+        display: 'flex', alignItems: 'center', gap: '6px', padding: '0 10px',
+        height: '32px', borderRadius: '6px', border: `1px solid ${open ? '#4A90D9' : 'var(--border)'}`,
+        background: 'var(--bg-main)', cursor: 'pointer', fontSize: '12px',
+        color: 'var(--text-main)', flex: 1, userSelect: 'none',
+    };
+
+    return (
+        <div ref={ref} style={{ position: 'relative', display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div onClick={() => setOpen(o => !o)} style={triggerStyle}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <span style={{ color: tempStart ? 'var(--text-main)' : 'var(--text-muted)' }}>{formatDisplay(tempStart)}</span>
+            </div>
+            <span style={{ color: 'var(--text-muted)', fontSize: '13px', flexShrink: 0 }}>—</span>
+            <div onClick={() => setOpen(o => !o)} style={triggerStyle}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <span style={{ color: tempEnd ? 'var(--text-main)' : 'var(--text-muted)' }}>{formatDisplay(tempEnd)}</span>
+            </div>
+
+            {open && (
+                <div style={{ position: 'absolute', top: '38px', left: 0, background: 'var(--bg-card, white)', borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.16)', padding: '16px', zIndex: 9999, width: '276px', border: '1px solid var(--border)' }}>
+                    {/* Hızlı seçimler */}
+                    <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
+                        {[['7 Gün', 7], ['30 Gün', 30], ['90 Gün', 90]].map(([label, days]) => (
+                            <button key={label} onClick={() => handlePreset(days)} style={{ flex: 1, padding: '5px 0', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-hover)', color: 'var(--text-main)', fontSize: '11px', cursor: 'pointer', fontWeight: '500', fontFamily: 'inherit' }}>{label}</button>
+                        ))}
+                        <button style={{ flex: 1, padding: '5px 0', borderRadius: '6px', border: '1px solid #4A90D9', background: '#EBF3FC', color: '#4A90D9', fontSize: '11px', cursor: 'pointer', fontWeight: '600', fontFamily: 'inherit' }}>Özel</button>
+                    </div>
+
+                    {/* Ay navigasyonu */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                        <button onClick={() => setViewDate(new Date(year, month - 1, 1))} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 8px', fontSize: '18px', color: 'var(--text-muted)', lineHeight: 1 }}>‹</button>
+                        <span style={{ fontWeight: '600', fontSize: '13px', color: 'var(--text-main)' }}>{MONTHS[month]} {year}</span>
+                        <button onClick={() => setViewDate(new Date(year, month + 1, 1))} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 8px', fontSize: '18px', color: 'var(--text-muted)', lineHeight: 1 }}>›</button>
+                    </div>
+
+                    {/* Gün başlıkları */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', marginBottom: '4px' }}>
+                        {DAYS.map(d => <div key={d} style={{ textAlign: 'center', fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', padding: '3px 0' }}>{d}</div>)}
+                    </div>
+
+                    {/* Günler */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: '2px' }}>
+                        {Array.from({ length: firstDay }).map((_, i) => <div key={`e${i}`} />)}
+                        {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
+                            const start = isStart(day);
+                            const end = isEnd(day);
+                            const inRange = isInRange(day);
+                            return (
+                                <div key={day} onClick={() => handleDayClick(day)} style={{
+                                    textAlign: 'center', padding: '5px 0', fontSize: '12px', cursor: 'pointer', borderRadius: '6px',
+                                    background: (start || end) ? '#4A90D9' : inRange ? 'rgba(74,144,217,0.12)' : 'transparent',
+                                    color: (start || end) ? 'white' : 'var(--text-main)',
+                                    fontWeight: (start || end) ? '700' : '400',
+                                    transition: 'background 0.1s',
+                                }}>
+                                    {day}
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* Footer */}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
+                        <button onClick={() => { setTempStart(''); setTempEnd(''); setSelectingEnd(false); onChange('', ''); }} style={{ padding: '5px 14px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-hover)', color: 'var(--text-muted)', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit' }}>Temizle</button>
+                        <button onClick={handleApply} style={{ padding: '5px 16px', borderRadius: '6px', border: 'none', background: '#4A90D9', color: 'white', fontWeight: '600', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit' }}>Seç</button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 // ─── Main App ─────────────────────────────────────────────────────────────────
 
 const App = () => {
@@ -2603,14 +2740,14 @@ const App = () => {
                                 const uniqueMalzemeler = [...new Set(filteredMovementsForPage.map(m => m.itemName).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'tr'));
                                 const uniqueFirmalar = [...new Set(filteredMovementsForPage.map(m => m.firmaAdi || m.recipient).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'tr'));
                                 return (
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px', padding: '12px 16px', borderBottom: '1px solid var(--border)', alignItems: 'end' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '10px', padding: '12px 16px', borderBottom: '1px solid var(--border)', alignItems: 'end' }}>
                                         <div style={colStyle}>
-                                            <label style={labelStyle}>Tarih Başlangıç</label>
-                                            <input type="date" value={movFilter.tarihBas} onChange={e => setMovFilter(f => ({ ...f, tarihBas: e.target.value }))} style={inputStyle} />
-                                        </div>
-                                        <div style={colStyle}>
-                                            <label style={labelStyle}>Tarih Bitiş</label>
-                                            <input type="date" value={movFilter.tarihBitis} min={movFilter.tarihBas || undefined} onChange={e => setMovFilter(f => ({ ...f, tarihBitis: e.target.value }))} style={inputStyle} />
+                                            <label style={labelStyle}>Tarih Aralığı</label>
+                                            <DateRangePicker
+                                                startDate={movFilter.tarihBas}
+                                                endDate={movFilter.tarihBitis}
+                                                onChange={(s, e) => setMovFilter(f => ({ ...f, tarihBas: s, tarihBitis: e }))}
+                                            />
                                         </div>
                                         <div style={colStyle}>
                                             <label style={labelStyle}>Firma</label>
