@@ -40,7 +40,10 @@ import {
     UserPlus,
     Sun,
     Moon,
-    ChevronLeft
+    ChevronLeft,
+    ChevronDown,
+    ChevronRight,
+    FileText
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -84,11 +87,15 @@ const ROLE_COLORS = {
 
 // Sayfa tanımları — sayfa izin sistemi için
 const PAGE_DEFS = [
-    { key: 'dashboard',  label: 'Panel',           icon: '🏠' },
-    { key: 'summary',    label: 'Stok Özeti',       icon: '📦' },
-    { key: 'price',      label: 'Fiyat Analizi',    icon: '📈' },
-    { key: 'movements',  label: 'Tüm Hareketler',   icon: '🔄' },
-    { key: 'zimmet',     label: 'Zimmet',            icon: '🔑' },
+    { key: 'dashboard',      label: 'Panel',           icon: '🏠' },
+    { key: 'summary',        label: 'Stok Özeti',       icon: '📦' },
+    { key: 'price',          label: 'Fiyat Analizi',    icon: '📈' },
+    { key: 'movements',      label: 'Tüm Hareketler',   icon: '🔄' },
+    { key: 'irsaliyeler',    label: 'İrsaliyeler',      icon: '📄' },
+    { key: 'zimmet',         label: 'Zimmet',            icon: '🔑' },
+    { key: 'action_giris',   label: 'Giriş Ekle',       icon: '⬆️',  isAction: true },
+    { key: 'action_cikis',   label: 'Çıkış Ekle',       icon: '⬇️',  isAction: true },
+    { key: 'action_zimmet',  label: 'Zimmet Ekle',       icon: '📋',  isAction: true },
 ];
 
 const normalizeRole = (role) => {
@@ -135,7 +142,6 @@ const LoginScreen = ({ onLogin, onSwitchToRegister, error, loading }) => {
                 <div className="auth-logo">
                     <div className="auth-logo-icon">S</div>
                     <div className="auth-logo-text">Shintea</div>
-                    <div className="auth-logo-sub">Depo Yönetim Sistemi</div>
                 </div>
                 <div className="auth-section-title">Giriş Yap</div>
 
@@ -180,7 +186,6 @@ const RegisterScreen = ({ onRegister, onSwitchToLogin, error, loading }) => {
                 <div className="auth-logo">
                     <div className="auth-logo-icon">S</div>
                     <div className="auth-logo-text">Shintea</div>
-                    <div className="auth-logo-sub">Depo Yönetim Sistemi</div>
                 </div>
                 <div className="auth-section-title">Kayıt Ol</div>
 
@@ -590,6 +595,7 @@ const App = () => {
     const [dashModal, setDashModal] = useState({ show: false, title: '', data: [], type: '' });
     const [dashboardFilters, setDashboardFilters] = useState(new Set(['in', 'out', 'zimmet']));
     const [movFilter, setMovFilter] = useState({ malzeme: '', tarihBas: '', tarihBitis: '', firma: '', irsaliye: '' });
+    const [expandedIrsaliye, setExpandedIrsaliye] = useState(null);
     const [showPriceModal, setShowPriceModal] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -676,16 +682,23 @@ const App = () => {
     const [pendingRoleMap, setPendingRoleMap] = useState({});
 
     // ── Computed Permissions ──
-    const canEdit = userProfile?.role === 'admin' || userProfile?.role === 'yonetici';
-    const isAdmin = userProfile?.role === 'admin';
+    const roleNorm = (userProfile?.role || '').toLowerCase()
+        .replace(/İ/g, 'i').replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ü/g, 'u')
+        .replace(/ş/g, 's').replace(/ğ/g, 'g').replace(/ç/g, 'c')
+        .replace(/[^a-z]/g, '');
+    const canEdit = roleNorm === 'yonetici';
+    const isAdmin = canEdit; // yönetici = tam yetki
 
     // ── Per-Page Permission Helper ──
     // Döndürür: 'edit' | 'view' | 'none'
+    const ACTION_KEYS = ['action_giris', 'action_cikis', 'action_zimmet'];
     const pagePerm = (tab) => {
         if (isAdmin) return 'edit';
         const saved = userProfile?.pagePermissions?.[tab];
         if (saved !== undefined) return saved;
-        // Kayıtlı ayar yoksa role göre varsayılan
+        // Aksiyon izinleri: yönetici 'edit', izleyici 'none' (varsayılan)
+        if (ACTION_KEYS.includes(tab)) return canEdit ? 'edit' : 'none';
+        // Sayfa izinleri: yönetici 'edit', izleyici 'view' (varsayılan)
         return canEdit ? 'edit' : 'view';
     };
 
@@ -945,14 +958,14 @@ const App = () => {
 
     // ── Admin: All Users Effect ──
     useEffect(() => {
-        if (!isAdmin) return;
+        if (!canEdit) return;
         const usersRef = ref(db, 'users');
         const unsub = onValue(usersRef, (snap) => {
             const data = snap.val();
             setAllUsers(data ? Object.entries(data).map(([uid, user]) => normalizeUserProfile(user, uid)).filter(Boolean) : []);
         });
         return () => unsub();
-    }, [isAdmin]);
+    }, [canEdit]);
 
     // ── Presence (online/offline) ──
     const [presence, setPresence] = useState({});
@@ -972,13 +985,13 @@ const App = () => {
     }, [authUser?.uid]);
 
     useEffect(() => {
-        if (!isAdmin) return;
+        if (!canEdit) return;
         const presenceAllRef = ref(db, 'presence');
         const unsub = onValue(presenceAllRef, (snap) => {
             setPresence(snap.val() || {});
         });
         return () => unsub();
-    }, [isAdmin]);
+    }, [canEdit]);
 
     // ── Auth Handlers ──
     const handleLogin = async (email, password) => {
@@ -1007,7 +1020,7 @@ const App = () => {
                 uid,
                 name,
                 email,
-                role: isFirstUser ? 'admin' : 'izleyici',
+                role: isFirstUser ? 'YÖNETİCİ' : 'izleyici',
                 status: isFirstUser ? 'approved' : 'pending',
                 createdAt: Date.now()
             });
@@ -1052,10 +1065,7 @@ const App = () => {
             updates[`users/${editingUser.uid}/name`] = name;
             updates[`users/${editingUser.uid}/role`] = role;
             updates[`users/${editingUser.uid}/status`] = status;
-            // Sayfa izinlerini kaydet (admin için kaydetme)
-            if (role !== 'admin') {
-                updates[`users/${editingUser.uid}/pagePermissions`] = pagePermissionsEdit;
-            }
+            updates[`users/${editingUser.uid}/pagePermissions`] = pagePermissionsEdit;
             update(ref(db), updates)
                 .then(() => {
                     setShowUserModal(false);
@@ -2249,9 +2259,8 @@ const App = () => {
                     <div>
                         <div style={{ position: 'relative', display: 'inline-block' }}>
                             <div className="sidebar-logo-text">Shintea</div>
-                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.031</span>
+                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.032</span>
                         </div>
-                        <div className="sidebar-logo-sub">Depo Yönetimi</div>
                     </div>
                 </div>
 
@@ -2262,21 +2271,21 @@ const App = () => {
                 </div>
 
                 {/* Quick Actions — Panel'in üstünde */}
-                {canEdit && (pagePerm('movements') === 'edit' || pagePerm('zimmet') === 'edit') && (
+                {(pagePerm('action_giris') === 'edit' || pagePerm('action_cikis') === 'edit' || pagePerm('action_zimmet') === 'edit') && (
                     <div className="sidebar-actions">
-                        {pagePerm('movements') === 'edit' && (
+                        {pagePerm('action_giris') === 'edit' && (
                             <button className="sidebar-action-btn sidebar-action-success"
                                 onClick={() => { setMovementType('in'); setSelectedItemForMove(null); setShowMoveModal(true); }}>
                                 <ArrowUpRight size={15} /> <span>Giriş Ekle</span>
                             </button>
                         )}
-                        {pagePerm('movements') === 'edit' && (
+                        {pagePerm('action_cikis') === 'edit' && (
                             <button className="sidebar-action-btn sidebar-action-danger"
                                 onClick={() => { setMovementType('out'); setSelectedItemForMove(null); setShowMoveModal(true); }}>
                                 <ArrowDownLeft size={15} /> <span>Çıkış Ekle</span>
                             </button>
                         )}
-                        {pagePerm('zimmet') === 'edit' && (
+                        {pagePerm('action_zimmet') === 'edit' && (
                             <button className="sidebar-action-btn sidebar-action-purple"
                                 onClick={() => { setShowZimmetModal(true); setSelectedItemForZimmet(null); }}>
                                 <UserCheck size={15} /> <span>Zimmet Ekle</span>
@@ -2321,6 +2330,15 @@ const App = () => {
                         >
                             <History size={17} /> Tüm Hareketler
                             {pagePerm('movements') === 'view' && <Eye size={12} style={{ marginLeft: 'auto', opacity: 0.5 }} />}
+                        </button>
+                    )}
+                    {pagePerm('irsaliyeler') !== 'none' && (
+                        <button
+                            className={`nav-item${activeTab === 'irsaliyeler' ? ' active' : ''}`}
+                            onClick={() => { setActiveTab('irsaliyeler'); setMobileSidebarOpen(false); }}
+                        >
+                            <FileText size={17} /> İrsaliyeler
+                            {pagePerm('irsaliyeler') === 'view' && <Eye size={12} style={{ marginLeft: 'auto', opacity: 0.5 }} />}
                         </button>
                     )}
                     {/* PASIF: Malzeme Talep - aktif etmek için bu yorum bloğunu kaldır
@@ -2392,7 +2410,7 @@ const App = () => {
                     </button>
                     */}
 
-                    {isAdmin && (
+                    {canEdit && (
                         <button
                             className={`nav-item${activeTab === 'users' ? ' active' : ''}`}
                             onClick={() => { setActiveTab('users'); setMobileSidebarOpen(false); }}
@@ -2990,7 +3008,18 @@ const App = () => {
                         return (
                         <div className="table-card animate-fade">
                             <div className="table-toolbar">
-                                <span className="section-title"><History size={17} /> {movementViewType === 'in' ? 'Tüm Girişler' : movementViewType === 'out' ? 'Tüm Çıkışlar' : 'Tüm Stok Hareketleri'}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span className="section-title"><History size={17} /> {movementViewType === 'in' ? 'Tüm Girişler' : movementViewType === 'out' ? 'Tüm Çıkışlar' : 'Tüm Stok Hareketleri'}</span>
+                                    {[['all','Tümü','var(--accent)'], ['in','Giriş','var(--success)'], ['out','Çıkış','var(--danger)']].map(([val, lbl, clr]) => (
+                                        <button key={val} onClick={() => setMovementViewType(val)} style={{
+                                            padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit',
+                                            border: movementViewType === val ? `2px solid ${clr}` : '2px solid var(--border)',
+                                            background: movementViewType === val ? clr : 'transparent',
+                                            color: movementViewType === val ? '#fff' : 'var(--text-muted)',
+                                            transition: 'all 0.15s',
+                                        }}>{lbl}</button>
+                                    ))}
+                                </div>
                                 <div className="flex align-center gap-2">
                                     <div className="export-container">
                                         <button className="btn-export-sm" onClick={() => exportToExcelGeneral(
@@ -3113,8 +3142,90 @@ const App = () => {
                         );
                     })()}
 
-                    {/* ── USERS TAB (Admin Only) ── */}
-                    {activeTab === 'users' && isAdmin && (
+                    {/* ── İRSALİYELER TAB ── */}
+                    {activeTab === 'irsaliyeler' && pagePerm('irsaliyeler') !== 'none' && (() => {
+                        const inMovements = movements.filter(m => m.type === 'in' && m.irsaliyeNo && m.irsaliyeNo.trim());
+                        const grouped = {};
+                        inMovements.forEach(m => {
+                            const key = m.irsaliyeNo.trim();
+                            if (!grouped[key]) {
+                                grouped[key] = { irsaliyeNo: key, items: [], date: m.date, firma: m.firmaAdi || m.recipient || '—', teslimAlan: m.teslimAlan || m.recipient || '—' };
+                            }
+                            grouped[key].items.push(m);
+                        });
+                        const irsaliyeList = Object.values(grouped).sort((a, b) => String(b.date || '') > String(a.date || '') ? 1 : -1);
+                        // col widths: tarih | irsaliyeNo/malzeme | firma | adet | teslimAlan
+                        const cw = ['11%', '22%', '26%', '9%', '32%'];
+                        const subCell = { padding: '9px 12px', fontSize: '13px', verticalAlign: 'middle', overflow: 'hidden' };
+                        return (
+                            <div className="table-card animate-fade">
+                                <div className="table-toolbar">
+                                    <span className="section-title"><FileText size={17} /> İrsaliyeler</span>
+                                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{irsaliyeList.length} irsaliye</span>
+                                </div>
+                                {irsaliyeList.length === 0 ? (
+                                    <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)', fontSize: '14px' }}>
+                                        Henüz irsaliyeli giriş kaydı yok.
+                                    </div>
+                                ) : (
+                                    <div className="table-responsive-wrapper">
+                                        <table className="responsive-table col-5">
+                                            <colgroup>
+                                                {cw.map((w, i) => <col key={i} style={{ width: w }} />)}
+                                            </colgroup>
+                                            <thead>
+                                                <tr>
+                                                    <th>TARİH</th>
+                                                    <th>İRSALİYE NO</th>
+                                                    <th>FİRMA</th>
+                                                    <th style={{ textAlign: 'center' }}>ÜRÜN</th>
+                                                    <th>TESLİM ALAN</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {irsaliyeList.map(irsaliye => {
+                                                    const expanded = expandedIrsaliye === irsaliye.irsaliyeNo;
+                                                    const tarih = String(irsaliye.date || '—').split(',')[0].split(' ')[0];
+                                                    return (
+                                                        <React.Fragment key={irsaliye.irsaliyeNo}>
+                                                            <tr
+                                                                onClick={() => setExpandedIrsaliye(expanded ? null : irsaliye.irsaliyeNo)}
+                                                                style={{ cursor: 'pointer', background: expanded ? 'var(--bg-hover)' : undefined }}
+                                                            >
+                                                                <td>{tarih}</td>
+                                                                <td style={{ fontWeight: '600' }}>{irsaliye.irsaliyeNo}</td>
+                                                                <td>{irsaliye.firma}</td>
+                                                                <td style={{ textAlign: 'center', fontWeight: '700', color: 'var(--text-main)' }}>{irsaliye.items.length}</td>
+                                                                <td>{irsaliye.teslimAlan}</td>
+                                                            </tr>
+                                                            <tr style={{ padding: 0 }}>
+                                                                <td colSpan={5} style={{ padding: 0, border: 'none' }}>
+                                                                    <div style={{ overflow: 'hidden', maxHeight: expanded ? `${irsaliye.items.length * 40}px` : '0', transition: 'max-height 0.35s cubic-bezier(0.4,0,0.2,1)', borderLeft: '3px solid var(--success)' }}>
+                                                                        {irsaliye.items.map((item, i) => (
+                                                                            <div key={i} style={{ display: 'grid', gridTemplateColumns: cw.join(' '), borderBottom: '1px solid var(--border)', background: 'var(--bg-main)', alignItems: 'center' }}>
+                                                                                <div style={{ ...subCell, color: 'var(--text-muted)' }}>{String(item.date || '').split(',')[0].split(' ')[0]}</div>
+                                                                                <div style={{ ...subCell, fontWeight: '500', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{item.itemName || '—'}</div>
+                                                                                <div style={{ ...subCell, color: 'var(--text-muted)' }}>{item.firmaAdi || item.recipient || '—'}</div>
+                                                                                <div style={{ ...subCell, fontWeight: '700', color: 'var(--success)', textAlign: 'right' }}>+{formatNumber(item.amount)} {item.unit || ''}</div>
+                                                                                <div style={{ ...subCell, color: 'var(--text-muted)' }}>{item.teslimAlan || item.recipient || '—'}</div>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        </React.Fragment>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
+
+                    {/* ── USERS TAB (Admin + Yönetici) ── */}
+                    {activeTab === 'users' && canEdit && (
                         <div className="animate-fade">
                             {/* Pending Approvals */}
                             {pendingUsers.length > 0 && (
@@ -3250,7 +3361,7 @@ const App = () => {
                                                                 >
                                                                     <Edit3 size={15} />
                                                                 </button>
-                                                                {u.uid !== authUser.uid && u.role !== 'admin' && (
+                                                                {u.uid !== authUser.uid && (
                                                                     <button
                                                                         className="btn-icon"
                                                                         title="Sil"
@@ -4216,7 +4327,7 @@ const App = () => {
                     )}
 
                     {/* Move Stock Modal */}
-                    {showMoveModal && canEdit && (() => {
+                    {showMoveModal && (pagePerm('action_giris') === 'edit' || pagePerm('action_cikis') === 'edit') && (() => {
                         const isIn = movementType === 'in';
                         const accentGradient = isIn
                             ? 'linear-gradient(160deg, #34d399 0%, #059669 100%)'
@@ -4459,7 +4570,7 @@ const App = () => {
                     })()}
 
                     {/* Zimmet Modal */}
-                    {showZimmetModal && canEdit && (
+                    {showZimmetModal && pagePerm('action_zimmet') === 'edit' && (
                         <div className="modal-overlay">
                             <div className="fm-modal">
                                 {/* Sol Panel */}
@@ -4655,9 +4766,12 @@ const App = () => {
                                         </div>
                                     )}
 
-                                    {/* ── Sayfa İzinleri (admin olmayanlar için) ── */}
-                                    {editingUser && editingUser.role !== 'admin' && (() => {
-                                        const editedRole = editingUser.role;
+                                    {/* ── Sayfa İzinleri ── */}
+                                    {editingUser && (() => {
+                                        const editedRole = (editingUser.role || '').toLowerCase()
+                                            .replace(/İ/g, 'i').replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ü/g, 'u')
+                                            .replace(/ş/g, 's').replace(/ğ/g, 'g').replace(/ç/g, 'c')
+                                            .replace(/[^a-z]/g, '');
                                         const roleDefault = (editedRole === 'yonetici') ? 'edit' : 'view';
                                         return (
                                             <div className="mb-3">
@@ -4671,20 +4785,27 @@ const App = () => {
                                                 </div>
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                                     {PAGE_DEFS.map(page => {
+                                                        const actionDefault = canEdit ? 'edit' : 'none';
                                                         const current = pagePermissionsEdit[page.key] !== undefined
                                                             ? pagePermissionsEdit[page.key]
-                                                            : roleDefault;
+                                                            : (page.isAction ? actionDefault : roleDefault);
+                                                        const options = page.isAction
+                                                            ? [
+                                                                { val: 'none', lbl: 'Gizli',    bg: '#fee2e2', color: '#dc2626', border: '#fca5a5' },
+                                                                { val: 'edit', lbl: 'Yönetim',  bg: '#dcfce7', color: '#16a34a', border: '#86efac' },
+                                                              ]
+                                                            : [
+                                                                { val: 'none', lbl: 'Gizli',    bg: '#fee2e2', color: '#dc2626', border: '#fca5a5' },
+                                                                { val: 'view', lbl: 'İzle',     bg: '#dbeafe', color: '#1d4ed8', border: '#93c5fd' },
+                                                                { val: 'edit', lbl: 'Düzenle',  bg: '#dcfce7', color: '#16a34a', border: '#86efac' },
+                                                              ];
                                                         return (
                                                             <div key={page.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 12px', background: 'var(--bg-main)', borderRadius: '8px', border: '1px solid var(--border)' }}>
                                                                 <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-main)' }}>
                                                                     {page.icon} {page.label}
                                                                 </span>
                                                                 <div style={{ display: 'flex', gap: '4px' }}>
-                                                                    {[
-                                                                        { val: 'none', lbl: 'Gizli',    bg: '#fee2e2', color: '#dc2626', border: '#fca5a5' },
-                                                                        { val: 'view', lbl: 'İzle',     bg: '#dbeafe', color: '#1d4ed8', border: '#93c5fd' },
-                                                                        { val: 'edit', lbl: 'Düzenle',  bg: '#dcfce7', color: '#16a34a', border: '#86efac' },
-                                                                    ].map(({ val, lbl, bg, color, border }) => {
+                                                                    {options.map(({ val, lbl, bg, color, border }) => {
                                                                         const active = current === val;
                                                                         return (
                                                                             <button
