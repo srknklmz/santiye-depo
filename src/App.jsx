@@ -82,6 +82,15 @@ const ROLE_COLORS = {
     viewer: { bg: '#f1f5f9', color: '#475569' },
 };
 
+// Sayfa tanımları — sayfa izin sistemi için
+const PAGE_DEFS = [
+    { key: 'dashboard',  label: 'Panel',           icon: '🏠' },
+    { key: 'summary',    label: 'Stok Özeti',       icon: '📦' },
+    { key: 'price',      label: 'Fiyat Analizi',    icon: '📈' },
+    { key: 'movements',  label: 'Tüm Hareketler',   icon: '🔄' },
+    { key: 'zimmet',     label: 'Zimmet',            icon: '🔑' },
+];
+
 const normalizeRole = (role) => {
     if (role === 'viewer') return 'izleyici';
     if (role === 'manager') return 'yonetici';
@@ -645,6 +654,7 @@ const App = () => {
     // ── User Management Modal ──
     const [showUserModal, setShowUserModal] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
+    const [pagePermissionsEdit, setPagePermissionsEdit] = useState({});
 
     const fileInputRef = useRef(null);
     const satinAlimRef = useRef(null);
@@ -668,6 +678,16 @@ const App = () => {
     // ── Computed Permissions ──
     const canEdit = userProfile?.role === 'admin' || userProfile?.role === 'yonetici';
     const isAdmin = userProfile?.role === 'admin';
+
+    // ── Per-Page Permission Helper ──
+    // Döndürür: 'edit' | 'view' | 'none'
+    const pagePerm = (tab) => {
+        if (isAdmin) return 'edit';
+        const saved = userProfile?.pagePermissions?.[tab];
+        if (saved !== undefined) return saved;
+        // Kayıtlı ayar yoksa role göre varsayılan
+        return canEdit ? 'edit' : 'view';
+    };
 
     // ── Admin Right-Click ──
     const [ctxMenu, setCtxMenu] = useState(null);   // { x, y, row, collection }
@@ -1033,6 +1053,10 @@ const App = () => {
             updates[`users/${editingUser.uid}/name`] = name;
             updates[`users/${editingUser.uid}/role`] = role;
             updates[`users/${editingUser.uid}/status`] = status;
+            // Sayfa izinlerini kaydet (admin için kaydetme)
+            if (role !== 'admin') {
+                updates[`users/${editingUser.uid}/pagePermissions`] = pagePermissionsEdit;
+            }
             update(ref(db), updates)
                 .then(() => {
                     setShowUserModal(false);
@@ -2244,24 +2268,33 @@ const App = () => {
                             <span className="nav-badge" style={{ background: 'var(--warning)' }}>{pendingActions.filter(a => a.status === 'pending').length}</span>
                         )}
                     </button>
-                    <button
-                        className={`nav-item${activeTab === 'summary' ? ' active' : ''}`}
-                        onClick={() => { setActiveTab('summary'); setMobileSidebarOpen(false); }}
-                    >
-                        <BarChart2 size={17} /> Stok Özeti
-                    </button>
-                    <button
-                        className={`nav-item${activeTab === 'price' ? ' active' : ''}`}
-                        onClick={() => { setActiveTab('price'); setMobileSidebarOpen(false); }}
-                    >
-                        <TrendingUp size={17} /> Fiyat Analizi
-                    </button>
-                    <button
-                        className={`nav-item${activeTab === 'movements' ? ' active' : ''}`}
-                        onClick={() => { setMovementViewType('all'); setActiveTab('movements'); setMobileSidebarOpen(false); }}
-                    >
-                        <History size={17} /> Tüm Hareketler
-                    </button>
+                    {pagePerm('summary') !== 'none' && (
+                        <button
+                            className={`nav-item${activeTab === 'summary' ? ' active' : ''}`}
+                            onClick={() => { setActiveTab('summary'); setMobileSidebarOpen(false); }}
+                        >
+                            <BarChart2 size={17} /> Stok Özeti
+                            {pagePerm('summary') === 'view' && <Eye size={12} style={{ marginLeft: 'auto', opacity: 0.5 }} />}
+                        </button>
+                    )}
+                    {pagePerm('price') !== 'none' && (
+                        <button
+                            className={`nav-item${activeTab === 'price' ? ' active' : ''}`}
+                            onClick={() => { setActiveTab('price'); setMobileSidebarOpen(false); }}
+                        >
+                            <TrendingUp size={17} /> Fiyat Analizi
+                            {pagePerm('price') === 'view' && <Eye size={12} style={{ marginLeft: 'auto', opacity: 0.5 }} />}
+                        </button>
+                    )}
+                    {pagePerm('movements') !== 'none' && (
+                        <button
+                            className={`nav-item${activeTab === 'movements' ? ' active' : ''}`}
+                            onClick={() => { setMovementViewType('all'); setActiveTab('movements'); setMobileSidebarOpen(false); }}
+                        >
+                            <History size={17} /> Tüm Hareketler
+                            {pagePerm('movements') === 'view' && <Eye size={12} style={{ marginLeft: 'auto', opacity: 0.5 }} />}
+                        </button>
+                    )}
                     {/* PASIF: Malzeme Talep - aktif etmek için bu yorum bloğunu kaldır
                     <button
                         className={`nav-item${activeTab === 'requests' ? ' active' : ''}`}
@@ -2288,17 +2321,20 @@ const App = () => {
                     </button>
                     */}
 
-                    <button
-                        className={`nav-item${activeTab === 'zimmet' ? ' active' : ''}`}
-                        onClick={() => { setActiveTab('zimmet'); setMobileSidebarOpen(false); setZimmetView('active'); }}
-                    >
-                        <UserCheck size={17} /> Zimmet
-                        {zimmet.filter(z => z.status === 'zimmette').length > 0 && (
-                            <span className="nav-badge" style={{ background: '#4f46e5' }}>
-                                {zimmet.filter(z => z.status === 'zimmette').length}
-                            </span>
-                        )}
-                    </button>
+                    {pagePerm('zimmet') !== 'none' && (
+                        <button
+                            className={`nav-item${activeTab === 'zimmet' ? ' active' : ''}`}
+                            onClick={() => { setActiveTab('zimmet'); setMobileSidebarOpen(false); setZimmetView('active'); }}
+                        >
+                            <UserCheck size={17} /> Zimmet
+                            {zimmet.filter(z => z.status === 'zimmette').length > 0 && (
+                                <span className="nav-badge" style={{ background: '#4f46e5' }}>
+                                    {zimmet.filter(z => z.status === 'zimmette').length}
+                                </span>
+                            )}
+                            {pagePerm('zimmet') === 'view' && <Eye size={12} style={{ marginLeft: 'auto', opacity: 0.5 }} />}
+                        </button>
+                    )}
 
                     {/* PASIF: Satın Alım - aktif etmek için bu yorum bloğunu kaldır
                     <button
@@ -2353,20 +2389,26 @@ const App = () => {
                 </nav>
 
                 {/* Quick Actions */}
-                {canEdit && (
+                {canEdit && (pagePerm('movements') === 'edit' || pagePerm('zimmet') === 'edit') && (
                     <div className="sidebar-actions">
-                        <button className="sidebar-action-btn sidebar-action-success"
-                            onClick={() => { setMovementType('in'); setSelectedItemForMove(null); setShowMoveModal(true); }}>
-                            <ArrowUpRight size={15} /> <span>Giriş Ekle</span>
-                        </button>
-                        <button className="sidebar-action-btn sidebar-action-danger"
-                            onClick={() => { setMovementType('out'); setSelectedItemForMove(null); setShowMoveModal(true); }}>
-                            <ArrowDownLeft size={15} /> <span>Çıkış Ekle</span>
-                        </button>
-                        <button className="sidebar-action-btn sidebar-action-purple"
-                            onClick={() => { setShowZimmetModal(true); setSelectedItemForZimmet(null); }}>
-                            <UserCheck size={15} /> <span>Zimmet Ekle</span>
-                        </button>
+                        {pagePerm('movements') === 'edit' && (
+                            <button className="sidebar-action-btn sidebar-action-success"
+                                onClick={() => { setMovementType('in'); setSelectedItemForMove(null); setShowMoveModal(true); }}>
+                                <ArrowUpRight size={15} /> <span>Giriş Ekle</span>
+                            </button>
+                        )}
+                        {pagePerm('movements') === 'edit' && (
+                            <button className="sidebar-action-btn sidebar-action-danger"
+                                onClick={() => { setMovementType('out'); setSelectedItemForMove(null); setShowMoveModal(true); }}>
+                                <ArrowDownLeft size={15} /> <span>Çıkış Ekle</span>
+                            </button>
+                        )}
+                        {pagePerm('zimmet') === 'edit' && (
+                            <button className="sidebar-action-btn sidebar-action-purple"
+                                onClick={() => { setShowZimmetModal(true); setSelectedItemForZimmet(null); }}>
+                                <UserCheck size={15} /> <span>Zimmet Ekle</span>
+                            </button>
+                        )}
                     </div>
                 )}
 
@@ -2651,7 +2693,14 @@ const App = () => {
                     )}
 
                     {/* ── SUMMARY TAB ── */}
-                    {activeTab === 'summary' && (
+                    {activeTab === 'summary' && pagePerm('summary') === 'none' && (
+                        <div className="table-card animate-fade" style={{ padding: '60px 20px', textAlign: 'center' }}>
+                            <Shield size={36} style={{ color: '#cbd5e1', marginBottom: '14px' }} />
+                            <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-main)' }}>Erişim Yetkiniz Yok</div>
+                            <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '6px' }}>Bu sayfayı görüntüleme yetkiniz bulunmuyor. Yöneticinizle iletişime geçin.</div>
+                        </div>
+                    )}
+                    {activeTab === 'summary' && pagePerm('summary') !== 'none' && (
                         <div className="table-card animate-fade">
                             <div className="table-toolbar">
                                 <span className="section-title"><BarChart2 size={17} /> Stok Listesi</span>
@@ -2722,7 +2771,14 @@ const App = () => {
                     )}
 
                     {/* ── ZİMMET TAB ── */}
-                    {activeTab === 'zimmet' && (
+                    {activeTab === 'zimmet' && pagePerm('zimmet') === 'none' && (
+                        <div className="table-card animate-fade" style={{ padding: '60px 20px', textAlign: 'center' }}>
+                            <Shield size={36} style={{ color: '#cbd5e1', marginBottom: '14px' }} />
+                            <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-main)' }}>Erişim Yetkiniz Yok</div>
+                            <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '6px' }}>Bu sayfayı görüntüleme yetkiniz bulunmuyor. Yöneticinizle iletişime geçin.</div>
+                        </div>
+                    )}
+                    {activeTab === 'zimmet' && pagePerm('zimmet') !== 'none' && (
                         <div className="table-card animate-fade" style={{ minHeight: '400px' }}>
                             <div className="table-toolbar">
                                 <div className="flex align-center gap-3">
@@ -2807,13 +2863,19 @@ const App = () => {
                                                     <td data-label="Miktar" style={{ textAlign: 'right' }}>{z.amount}</td>
                                                     <td data-label={zimmetView === 'active' ? "İşlem" : "Tür"}>
                                                         {zimmetView === 'active' ? (
-                                                            <button
-                                                                className="btn-ghost"
-                                                                style={{ color: '#4f46e5', fontWeight: '600', padding: '6px 12px', borderRadius: '6px', background: '#f5f3ff', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-                                                                onClick={() => handleReturnZimmet(z)}
-                                                            >
-                                                                <RotateCcw size={14} /> Geri Alındı
-                                                            </button>
+                                                            pagePerm('zimmet') === 'edit' ? (
+                                                                <button
+                                                                    className="btn-ghost"
+                                                                    style={{ color: '#4f46e5', fontWeight: '600', padding: '6px 12px', borderRadius: '6px', background: '#f5f3ff', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                                                                    onClick={() => handleReturnZimmet(z)}
+                                                                >
+                                                                    <RotateCcw size={14} /> Geri Alındı
+                                                                </button>
+                                                            ) : (
+                                                                <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                                                    <Eye size={13} /> Zimmette
+                                                                </span>
+                                                            )
                                                         ) : (
                                                             <span style={{
                                                                 padding: '4px 10px',
@@ -2838,7 +2900,14 @@ const App = () => {
                     )}
 
                     {/* ── PRICE TAB ── */}
-                    {activeTab === 'price' && (
+                    {activeTab === 'price' && pagePerm('price') === 'none' && (
+                        <div className="table-card animate-fade" style={{ padding: '60px 20px', textAlign: 'center' }}>
+                            <Shield size={36} style={{ color: '#cbd5e1', marginBottom: '14px' }} />
+                            <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-main)' }}>Erişim Yetkiniz Yok</div>
+                            <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '6px' }}>Bu sayfayı görüntüleme yetkiniz bulunmuyor. Yöneticinizle iletişime geçin.</div>
+                        </div>
+                    )}
+                    {activeTab === 'price' && pagePerm('price') !== 'none' && (
                         <div className="table-card animate-fade">
                             <div className="table-toolbar">
                                 <div>
@@ -2896,7 +2965,14 @@ const App = () => {
                     )}
 
                     {/* ── MOVEMENTS TAB ── */}
-                    {activeTab === 'movements' && (() => {
+                    {activeTab === 'movements' && pagePerm('movements') === 'none' && (
+                        <div className="table-card animate-fade" style={{ padding: '60px 20px', textAlign: 'center' }}>
+                            <Shield size={36} style={{ color: '#cbd5e1', marginBottom: '14px' }} />
+                            <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-main)' }}>Erişim Yetkiniz Yok</div>
+                            <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '6px' }}>Bu sayfayı görüntüleme yetkiniz bulunmuyor. Yöneticinizle iletişime geçin.</div>
+                        </div>
+                    )}
+                    {activeTab === 'movements' && pagePerm('movements') !== 'none' && (() => {
                         const toISODate2 = (dateStr) => {
                             const s = String(dateStr || '').split(',')[0].trim();
                             const parts = s.split('.');
@@ -3182,7 +3258,7 @@ const App = () => {
                                                                 <button
                                                                     className="btn-icon"
                                                                     title="Düzenle"
-                                                                    onClick={() => { setEditingUser(u); setShowUserModal(true); }}
+                                                                    onClick={() => { setEditingUser(u); setPagePermissionsEdit(u.pagePermissions || {}); setShowUserModal(true); }}
                                                                     style={{ color: '#3b82f6' }}
                                                                 >
                                                                     <Edit3 size={15} />
@@ -4682,6 +4758,70 @@ const App = () => {
                                             </select>
                                         </div>
                                     )}
+
+                                    {/* ── Sayfa İzinleri (admin olmayanlar için) ── */}
+                                    {editingUser && editingUser.role !== 'admin' && (() => {
+                                        const editedRole = editingUser.role;
+                                        const roleDefault = (editedRole === 'yonetici') ? 'edit' : 'view';
+                                        return (
+                                            <div className="mb-3">
+                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                                    <label className="label" style={{ margin: 0 }}>Sayfa İzinleri</label>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setPagePermissionsEdit({})}
+                                                        style={{ fontSize: '11px', padding: '2px 10px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-hover)', color: 'var(--text-muted)', cursor: 'pointer' }}
+                                                    >Varsayılana Sıfırla</button>
+                                                </div>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                    {PAGE_DEFS.map(page => {
+                                                        const current = pagePermissionsEdit[page.key] !== undefined
+                                                            ? pagePermissionsEdit[page.key]
+                                                            : roleDefault;
+                                                        return (
+                                                            <div key={page.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 12px', background: 'var(--bg-main)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                                                                <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-main)' }}>
+                                                                    {page.icon} {page.label}
+                                                                </span>
+                                                                <div style={{ display: 'flex', gap: '4px' }}>
+                                                                    {[
+                                                                        { val: 'none', lbl: 'Gizli',    bg: '#fee2e2', color: '#dc2626', border: '#fca5a5' },
+                                                                        { val: 'view', lbl: 'İzle',     bg: '#dbeafe', color: '#1d4ed8', border: '#93c5fd' },
+                                                                        { val: 'edit', lbl: 'Düzenle',  bg: '#dcfce7', color: '#16a34a', border: '#86efac' },
+                                                                    ].map(({ val, lbl, bg, color, border }) => {
+                                                                        const active = current === val;
+                                                                        return (
+                                                                            <button
+                                                                                key={val}
+                                                                                type="button"
+                                                                                onClick={() => setPagePermissionsEdit(prev => ({ ...prev, [page.key]: val }))}
+                                                                                style={{
+                                                                                    padding: '4px 10px',
+                                                                                    borderRadius: '6px',
+                                                                                    fontSize: '11px',
+                                                                                    fontWeight: '700',
+                                                                                    border: active ? `2px solid ${border}` : '2px solid var(--border)',
+                                                                                    background: active ? bg : 'transparent',
+                                                                                    color: active ? color : 'var(--text-muted)',
+                                                                                    cursor: 'pointer',
+                                                                                    transition: 'all 0.15s',
+                                                                                }}
+                                                                            >{lbl}</button>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px', display: 'flex', gap: '12px' }}>
+                                                    <span>🔴 <strong>Gizli</strong> — Sayfayı göremez</span>
+                                                    <span>🔵 <strong>İzle</strong> — Sadece okuyabilir</span>
+                                                    <span>🟢 <strong>Düzenle</strong> — Tam erişim</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
 
                                     <button
                                         type="submit"
