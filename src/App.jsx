@@ -46,7 +46,7 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { db, auth, secondaryAuth } from './firebase';
-import { ref, onValue, set, remove, get, update } from 'firebase/database';
+import { ref, onValue, set, remove, get, update, onDisconnect } from 'firebase/database';
 import {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
@@ -236,6 +236,166 @@ const PendingScreen = ({ userName, userStatus, onSignOut }) => (
         </div>
     </div>
 );
+
+// ─── Admin Context Menu ────────────────────────────────────────────────────────
+
+const EDIT_CONFIGS = {
+    movements: {
+        label: 'Stok Hareketi',
+        path: (r) => `movements/${r.id}`,
+        fields: [
+            { key: 'date',        label: 'Tarih',      type: 'text' },
+            { key: 'itemName',    label: 'Malzeme',    type: 'text' },
+            { key: 'amount',      label: 'Miktar',     type: 'number' },
+            { key: 'unit',        label: 'Birim',      type: 'text' },
+            { key: 'firmaAdi',    label: 'Firma',      type: 'text' },
+            { key: 'irsaliyeNo',  label: 'İrsaliye No',type: 'text' },
+            { key: 'recipient',   label: 'Kişi',       type: 'text' },
+            { key: 'note',        label: 'Not',        type: 'text' },
+        ],
+    },
+    zimmet: {
+        label: 'Zimmet',
+        path: (r) => `zimmet/${r.id}`,
+        fields: [
+            { key: 'date',     label: 'Tarih',    type: 'text' },
+            { key: 'itemName', label: 'Malzeme',  type: 'text' },
+            { key: 'amount',   label: 'Miktar',   type: 'number' },
+            { key: 'unit',     label: 'Birim',    type: 'text' },
+            { key: 'person',   label: 'Kişi/Ekip',type: 'text' },
+        ],
+    },
+    requests: {
+        label: 'Malzeme Talebi',
+        path: (r) => `requests/${r.id}`,
+        fields: [
+            { key: 'date',        label: 'Tarih',       type: 'text' },
+            { key: 'itemName',    label: 'Malzeme',     type: 'text' },
+            { key: 'amount',      label: 'Miktar',      type: 'number' },
+            { key: 'unit',        label: 'Birim',       type: 'text' },
+            { key: 'requestedBy', label: 'Talep Eden',  type: 'text' },
+            { key: 'note',        label: 'Not',         type: 'text' },
+        ],
+    },
+    items: {
+        label: 'Malzeme',
+        path: (r) => `items/${r.id}`,
+        fields: [
+            { key: 'name',     label: 'Malzeme Adı', type: 'text' },
+            { key: 'unit',     label: 'Birim',       type: 'text' },
+            { key: 'category', label: 'Kategori',    type: 'text' },
+        ],
+    },
+    sevkiyat: {
+        label: 'Sevkiyat',
+        path: (r) => `sevkiyat/${r.id}`,
+        fields: [
+            { key: 'date',       label: 'Tarih',  type: 'text' },
+            { key: 'firmaAdi',   label: 'Firma',  type: 'text' },
+            { key: 'irsaliyeNo', label: 'İrsaliye No', type: 'text' },
+        ],
+    },
+    personel: {
+        label: 'Personel',
+        path: (r) => `personel/${r.id}`,
+        fields: [
+            { key: 'adSoyad',      label: 'Ad Soyad',    type: 'text' },
+            { key: 'tc',           label: 'TC',          type: 'text' },
+            { key: 'pozisyon',     label: 'Pozisyon',    type: 'text' },
+            { key: 'taseron',      label: 'Taşeron',     type: 'text' },
+            { key: 'girisTarihi',  label: 'Giriş Tarihi',type: 'text' },
+            { key: 'cikisTarihi',  label: 'Çıkış Tarihi',type: 'text' },
+        ],
+    },
+    users: {
+        label: 'Kullanıcı',
+        path: (r) => `users/${r.uid}`,
+        fields: [
+            { key: 'name',   label: 'Ad Soyad', type: 'text' },
+            { key: 'role',   label: 'Rol',      type: 'select', options: ['admin','yonetici','izleyici'] },
+            { key: 'status', label: 'Durum',    type: 'select', options: ['approved','pending','rejected'] },
+        ],
+    },
+};
+
+const AdminContextMenu = ({ ctx, onEdit, onDelete, onClose }) => {
+    const ref = useRef(null);
+    useEffect(() => {
+        const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [onClose]);
+
+    if (!ctx) return null;
+    return createPortal(
+        <div ref={ref} style={{
+            position: 'fixed', top: ctx.y, left: ctx.x, zIndex: 99999,
+            background: 'white', borderRadius: '8px', boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
+            border: '1px solid #e2e8f0', minWidth: '150px', overflow: 'hidden', userSelect: 'none',
+        }}>
+            <div onClick={onEdit} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 14px', fontSize: '13px', cursor: 'pointer', color: '#1e293b' }}
+                onMouseEnter={e => e.currentTarget.style.background='#f1f5f9'}
+                onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Düzenle
+            </div>
+            <div style={{ height: '1px', background: '#f1f5f9' }} />
+            <div onClick={onDelete} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 14px', fontSize: '13px', cursor: 'pointer', color: '#dc2626' }}
+                onMouseEnter={e => e.currentTarget.style.background='#fef2f2'}
+                onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                Sil
+            </div>
+        </div>,
+        document.body
+    );
+};
+
+const EditRowModal = ({ ctx, onSave, onClose }) => {
+    const [form, setForm] = useState({});
+    useEffect(() => {
+        if (ctx) {
+            const cfg = EDIT_CONFIGS[ctx.collection];
+            const initial = {};
+            cfg.fields.forEach(f => { initial[f.key] = ctx.row[f.key] ?? ''; });
+            setForm(initial);
+        }
+    }, [ctx]);
+
+    if (!ctx) return null;
+    const cfg = EDIT_CONFIGS[ctx.collection];
+    const inputStyle = { width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '13px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' };
+
+    return createPortal(
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 99998, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
+            <div style={{ background: 'white', borderRadius: '12px', padding: '24px', width: '420px', maxWidth: '95vw', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+                    <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#111827' }}>{cfg.label} Düzenle</h3>
+                    <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#9ca3af', lineHeight: 1 }}>×</button>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {cfg.fields.map(f => (
+                        <div key={f.key}>
+                            <label style={{ fontSize: '11px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '4px' }}>{f.label}</label>
+                            {f.type === 'select' ? (
+                                <select value={form[f.key] || ''} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} style={inputStyle}>
+                                    {f.options.map(o => <option key={o} value={o}>{o}</option>)}
+                                </select>
+                            ) : (
+                                <input type={f.type} value={form[f.key] || ''} onChange={e => setForm(p => ({ ...p, [f.key]: f.type === 'number' ? Number(e.target.value) : e.target.value }))} style={inputStyle} />
+                            )}
+                        </div>
+                    ))}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '20px' }}>
+                    <button onClick={onClose} style={{ padding: '7px 16px', borderRadius: '6px', border: '1px solid #e2e8f0', background: '#f8fafc', color: '#6b7280', fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit' }}>İptal</button>
+                    <button onClick={() => onSave(form)} style={{ padding: '7px 16px', borderRadius: '6px', border: 'none', background: '#4A90D9', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>Kaydet</button>
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
+};
 
 // ─── DateRangePicker ──────────────────────────────────────────────────────────
 
@@ -509,6 +669,37 @@ const App = () => {
     const canEdit = userProfile?.role === 'admin' || userProfile?.role === 'yonetici';
     const isAdmin = userProfile?.role === 'admin';
 
+    // ── Admin Right-Click ──
+    const [ctxMenu, setCtxMenu] = useState(null);   // { x, y, row, collection }
+    const [editRow, setEditRow] = useState(null);   // { row, collection }
+
+    const handleCtxMenu = (e, row, collection) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setCtxMenu({ x: e.clientX, y: e.clientY, row, collection });
+    };
+
+    const handleCtxDelete = () => {
+        if (!ctxMenu) return;
+        const cfg = EDIT_CONFIGS[ctxMenu.collection];
+        if (!window.confirm('Bu satırı silmek istediğinize emin misiniz?')) { setCtxMenu(null); return; }
+        remove(ref(db, cfg.path(ctxMenu.row)));
+        setCtxMenu(null);
+    };
+
+    const handleCtxEdit = () => {
+        if (!ctxMenu) return;
+        setEditRow({ row: ctxMenu.row, collection: ctxMenu.collection });
+        setCtxMenu(null);
+    };
+
+    const handleEditSave = (formData) => {
+        if (!editRow) return;
+        const cfg = EDIT_CONFIGS[editRow.collection];
+        update(ref(db, cfg.path(editRow.row)), formData);
+        setEditRow(null);
+    };
+
     const formatNumber = (num) => Number(num || 0).toLocaleString('tr-TR');
 
     const parseMovementTime = (movement) => {
@@ -740,6 +931,32 @@ const App = () => {
         const unsub = onValue(usersRef, (snap) => {
             const data = snap.val();
             setAllUsers(data ? Object.entries(data).map(([uid, user]) => normalizeUserProfile(user, uid)).filter(Boolean) : []);
+        });
+        return () => unsub();
+    }, [isAdmin]);
+
+    // ── Presence (online/offline) ──
+    const [presence, setPresence] = useState({});
+
+    useEffect(() => {
+        if (!authUser?.uid || authUser.uid === 'guest') return;
+        const uid = authUser.uid;
+        const presenceRef = ref(db, `presence/${uid}`);
+        const connectedRef = ref(db, '.info/connected');
+        const unsub = onValue(connectedRef, (snap) => {
+            if (snap.val() === true) {
+                onDisconnect(presenceRef).set({ online: false, lastSeen: Date.now() });
+                set(presenceRef, { online: true, lastSeen: Date.now() });
+            }
+        });
+        return () => { unsub(); set(presenceRef, { online: false, lastSeen: Date.now() }); };
+    }, [authUser?.uid]);
+
+    useEffect(() => {
+        if (!isAdmin) return;
+        const presenceAllRef = ref(db, 'presence');
+        const unsub = onValue(presenceAllRef, (snap) => {
+            setPresence(snap.val() || {});
         });
         return () => unsub();
     }, [isAdmin]);
@@ -2135,6 +2352,24 @@ const App = () => {
                     )}
                 </nav>
 
+                {/* Quick Actions */}
+                {canEdit && (
+                    <div className="sidebar-actions">
+                        <button className="sidebar-action-btn sidebar-action-success"
+                            onClick={() => { setMovementType('in'); setSelectedItemForMove(null); setShowMoveModal(true); }}>
+                            <ArrowUpRight size={15} /> <span>Giriş Ekle</span>
+                        </button>
+                        <button className="sidebar-action-btn sidebar-action-danger"
+                            onClick={() => { setMovementType('out'); setSelectedItemForMove(null); setShowMoveModal(true); }}>
+                            <ArrowDownLeft size={15} /> <span>Çıkış Ekle</span>
+                        </button>
+                        <button className="sidebar-action-btn sidebar-action-purple"
+                            onClick={() => { setShowZimmetModal(true); setSelectedItemForZimmet(null); }}>
+                            <UserCheck size={15} /> <span>Zimmet Ekle</span>
+                        </button>
+                    </div>
+                )}
+
                 {/* User Section */}
                 <div className="sidebar-user">
                     <div className="sidebar-user-avatar">
@@ -2216,60 +2451,7 @@ const App = () => {
                                 </div>
                             )}
 
-                            {/* Stats Cards */}
-                            <div className={`stats-grid${canEdit ? ' stats-grid-with-actions' : ''}`}>
-                                <div className="stat-card" onClick={() => setDashModal({ show: true, title: 'Tüm Malzemeler', data: items, type: 'stock' })}>
-                                    <div className="stat-card-top">
-                                        <div className="stat-icon stat-icon-primary"><Package size={18} /></div>
-                                    </div>
-                                    <div className="stat-value">{stats.totalItems}</div>
-                                    <div className="stat-label">Toplam Malzeme</div>
-                                </div>
-                                <div className="stat-card" onClick={() => setDashModal({ show: true, title: 'Kritik Stoktaki Malzemeler', data: items.filter(i => i.quantity <= i.minStock), type: 'stock' })}>
-                                    <div className="stat-card-top">
-                                        <div className="stat-icon stat-icon-danger"><AlertTriangle size={18} /></div>
-                                    </div>
-                                    <div className="stat-value">{stats.lowStock}</div>
-                                    <div className="stat-label">Kritik Stok</div>
-                                </div>
-                                <div className="stat-card" onClick={() => {
-                                    const today = new Date().toLocaleDateString();
-                                    const todayIn = movements.filter(m => m.type === 'in' && String(m.date || '').includes(today));
-                                    setDashModal({ show: true, title: 'Bugünkü Giriş İşlemleri', data: todayIn, type: 'move', moveType: 'in' });
-                                }}>
-                                    <div className="stat-card-top">
-                                        <div className="stat-icon stat-icon-success"><ArrowUpRight size={18} /></div>
-                                    </div>
-                                    <div className="stat-value">{stats.todayIn}</div>
-                                    <div className="stat-label">Bugün Giriş</div>
-                                </div>
-                                <div className="stat-card" onClick={() => {
-                                    const today = new Date().toLocaleDateString();
-                                    const todayOut = movements.filter(m => m.type === 'out' && String(m.date || '').includes(today));
-                                    setDashModal({ show: true, title: 'Bugünkü Çıkış İşlemleri', data: todayOut, type: 'move', moveType: 'out' });
-                                }}>
-                                    <div className="stat-card-top">
-                                        <div className="stat-icon stat-icon-warning"><ArrowDownLeft size={18} /></div>
-                                    </div>
-                                    <div className="stat-value">{stats.todayOut}</div>
-                                    <div className="stat-label">Bugün Çıkış</div>
-                                </div>
-                                {canEdit && (<>
-                                    <div className="action-card action-card-success" onClick={() => { setMovementType('in'); setSelectedItemForMove(null); setShowMoveModal(true); }}>
-                                        <ArrowUpRight size={24} />
-                                        <span>Giriş Ekle</span>
-                                    </div>
-                                    <div className="action-card action-card-danger" onClick={() => { setMovementType('out'); setSelectedItemForMove(null); setShowMoveModal(true); }}>
-                                        <ArrowDownLeft size={24} />
-                                        <span>Çıkış Ekle</span>
-                                    </div>
-                                    <div className="action-card action-card-purple" onClick={() => { setShowZimmetModal(true); setSelectedItemForZimmet(null); }}>
-                                        <UserCheck size={24} />
-                                        <span>Zimmet Ekle</span>
-                                    </div>
-                                </>)}
-                            </div>
-
+            
                             {/* Pending Actions — Onay Bekleyen Geçmiş Tarihli İşlemler */}
                             {canEdit && pendingActions.filter(a => a.status === 'pending').length > 0 && (
                                 <div className="table-card animate-fade mb-4">
@@ -2376,20 +2558,42 @@ const App = () => {
                                     if (m.category === 'movement' && m.normalizedType === 'out') return dashboardFilters.has('out');
                                     if (m.category === 'zimmet') return dashboardFilters.has('zimmet');
                                     return false;
-                                }).slice(0, 10);
+                                }).slice(0, 20);
                                 return (
                                     <div className="table-card">
                                         {/* Filtre Butonları */}
                                         <div className="table-toolbar" style={{ justifyContent: 'space-between', gap: '8px' }}>
-                                            <button className="btn-filter-3d" onClick={() => { setMovementViewType('all'); setActiveTab('movements'); }} style={{
-                                                background: '#fff',
-                                                color: 'var(--text-main)',
-                                                boxShadow: inactiveShadow,
-                                                border: '1px solid var(--border)',
-                                                width: 'auto',
-                                                padding: '6px 14px',
-                                                whiteSpace: 'nowrap',
-                                            }}>Tümünü Gör</button>
+                                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                                <button className="btn-filter-3d" onClick={() => { setMovementViewType('all'); setActiveTab('movements'); }} style={{
+                                                    background: '#fff',
+                                                    color: 'var(--text-main)',
+                                                    boxShadow: inactiveShadow,
+                                                    border: '1px solid var(--border)',
+                                                    width: 'auto',
+                                                    padding: '5px 12px',
+                                                    whiteSpace: 'nowrap',
+                                                }}>Tümünü Gör</button>
+                                                <button className="stat-mini-btn"
+                                                    onClick={() => setDashModal({ show: true, title: 'Tüm Malzemeler', data: items, type: 'stock' })}>
+                                                    <span className="stat-mini-val">{stats.totalItems}</span>
+                                                    <span className="stat-mini-lbl">Toplam</span>
+                                                </button>
+                                                <button className="stat-mini-btn stat-mini-danger"
+                                                    onClick={() => setDashModal({ show: true, title: 'Kritik Stoktaki Malzemeler', data: items.filter(i => i.quantity <= i.minStock), type: 'stock' })}>
+                                                    <span className="stat-mini-val">{stats.lowStock}</span>
+                                                    <span className="stat-mini-lbl">Kritik</span>
+                                                </button>
+                                                <button className="stat-mini-btn stat-mini-success"
+                                                    onClick={() => { const today = new Date().toLocaleDateString(); const todayIn = movements.filter(m => m.type === 'in' && String(m.date || '').includes(today)); setDashModal({ show: true, title: 'Bugünkü Giriş İşlemleri', data: todayIn, type: 'move', moveType: 'in' }); }}>
+                                                    <span className="stat-mini-val">{stats.todayIn}</span>
+                                                    <span className="stat-mini-lbl">Giriş</span>
+                                                </button>
+                                                <button className="stat-mini-btn stat-mini-warning"
+                                                    onClick={() => { const today = new Date().toLocaleDateString(); const todayOut = movements.filter(m => m.type === 'out' && String(m.date || '').includes(today)); setDashModal({ show: true, title: 'Bugünkü Çıkış İşlemleri', data: todayOut, type: 'move', moveType: 'out' }); }}>
+                                                    <span className="stat-mini-val">{stats.todayOut}</span>
+                                                    <span className="stat-mini-lbl">Çıkış</span>
+                                                </button>
+                                            </div>
                                             <div style={{ display: 'flex', gap: '8px' }}>
                                                 {[['in','Giriş'], ['out','Çıkış'], ['zimmet','Zimmet']].map(([val, label]) => {
                                                     const active = dashboardFilters.has(val);
@@ -2436,7 +2640,7 @@ const App = () => {
                                                         const detay = isIn ? (m.irsaliyeNo || '—') : isOut ? (m.kullanimAlani || m.note || '—') : (m.note || '—');
                                                         const tarih = String(m.date || '').split(',')[0].split(' ')[0];
                                                         return (
-                                                            <tr key={`${m.category}-${m.id}`} style={{ borderLeft: `20px solid ${tipColor}` }}>
+                                                            <tr key={`${m.category}-${m.id}`} style={{ borderLeft: `20px solid ${tipColor}` }} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, m, m.category === 'zimmet' ? 'zimmet' : 'movements') : undefined}>
                                                                 <td data-label="Tarih" style={{ whiteSpace: 'nowrap' }}>{tarih}</td>
                                                                 <td data-label="Malzeme" style={{ fontWeight: '600' }}>{m.itemName}</td>
                                                                 <td data-label="Miktar" style={{ color: tipColor, fontWeight: '700', textAlign: 'right' }}>{miktar}</td>
@@ -2505,7 +2709,7 @@ const App = () => {
                                         {stockSummary.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase())).map(row => {
                                             const depoCount = row.quantity - row.zimmetteCount;
                                             return (
-                                                <tr key={row.id}>
+                                                <tr key={row.id} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, row, 'items') : undefined}>
                                                     <td data-label="Malzeme" style={{ fontWeight: '600' }}>{row.name}</td>
                                                     <td style={{ textAlign: 'right', color: 'var(--success)', fontWeight: '600' }} data-label="Giriş">
                                                         <button onClick={() => setDetailModal({ show: true, item: row, type: 'in' })}>{formatNumber(row.totalReceived)}</button>
@@ -2605,7 +2809,7 @@ const App = () => {
                                             }
 
                                             return filtered.map(z => (
-                                                <tr key={z.id}>
+                                                <tr key={z.id} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, z, 'zimmet') : undefined}>
                                                     <td data-label="İşlem Tarihi">{z.date}</td>
                                                     <td data-label="Malzeme">{z.itemName}</td>
                                                     <td data-label="Kişi / Ekip">{z.person}</td>
@@ -2826,7 +3030,7 @@ const App = () => {
                                             const detay = isIn ? (m.irsaliyeNo || '—') : (m.kullanimAlani || m.note || '—');
                                             const tarih = String(m.date || '—').split(',')[0].split(' ')[0];
                                             return (
-                                                <tr key={m.id} style={{ borderLeft: `20px solid ${tipColor}` }}>
+                                                <tr key={m.id} style={{ borderLeft: `20px solid ${tipColor}` }} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, m, 'movements') : undefined}>
                                                     <td style={{ whiteSpace: 'nowrap' }}>{tarih}</td>
                                                     <td>{m.itemName || '—'}</td>
                                                     <td style={{ textAlign: 'right' }}>{miktar}</td>
@@ -2946,15 +3150,22 @@ const App = () => {
                                             </thead>
                                             <tbody>
                                                 {allUsers.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)).map(u => (
-                                                    <tr key={u.uid}>
+                                                    <tr key={u.uid} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, u, 'users') : undefined}>
                                                         <td data-label="Kayıt Tarihi">
                                                             {u.createdAt ? new Date(u.createdAt).toLocaleDateString('tr-TR') : '—'}
                                                         </td>
                                                         <td data-label="Ad Soyad">
-                                                            {u.name}
-                                                            {u.uid === authUser.uid && (
-                                                                <span style={{ fontSize: '11px', color: '#6d28d9', background: '#ede9fe', borderRadius: '10px', padding: '1px 7px', marginLeft: '6px' }}>Siz</span>
-                                                            )}
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                                                                <span style={{
+                                                                    width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
+                                                                    background: presence[u.uid]?.online ? '#22c55e' : '#d1d5db',
+                                                                    boxShadow: presence[u.uid]?.online ? '0 0 0 2px rgba(34,197,94,0.25)' : 'none',
+                                                                }} title={presence[u.uid]?.online ? 'Çevrimiçi' : (presence[u.uid]?.lastSeen ? `Son görülme: ${new Date(presence[u.uid].lastSeen).toLocaleString('tr-TR')}` : 'Çevrimdışı')} />
+                                                                {u.name}
+                                                                {u.uid === authUser.uid && (
+                                                                    <span style={{ fontSize: '11px', color: '#6d28d9', background: '#ede9fe', borderRadius: '10px', padding: '1px 7px' }}>Siz</span>
+                                                                )}
+                                                            </div>
                                                         </td>
                                                         <td data-label="E-posta">{u.email}</td>
                                                         <td data-label="Durum">
@@ -3068,7 +3279,7 @@ const App = () => {
                                                         {sevkiyat.map((s) => {
                                                             const durum = durumMap[s.satin_alim_durumu] || durumMap.BEKLEMEDE;
                                                             return (
-                                                                <tr key={s.id} onClick={() => setSevkiyatModal({ show: true, data: s })} style={{ cursor: 'pointer' }}>
+                                                                <tr key={s.id} onClick={() => setSevkiyatModal({ show: true, data: s })} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, s, 'sevkiyat') : undefined} style={{ cursor: 'pointer' }}>
                                                                     <td data-label="Tarih">{s.sevkiyata_gonderilme_tarihi_tr?.split(' ')[0] || '-'}</td>
                                                                     <td data-label="Form No">{s.satin_alim_form_no}</td>
                                                                     <td data-label="Malzeme" style={{ textAlign: 'center' }}>{(s.items || []).length} kalem</td>
@@ -3529,7 +3740,7 @@ const App = () => {
                                                 </tr>
                                             )}
                                             {personel.map(p => (
-                                                <tr key={p.id}>
+                                                <tr key={p.id} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, p, 'personel') : undefined}>
                                                     <td data-label="Giriş Tarihi">{p.girisTarihi}</td>
                                                     <td data-label="Çıkış Tarihi">{p.cikisTarihi || '—'}</td>
                                                     <td data-label="TC">{p.tc}</td>
@@ -3629,7 +3840,7 @@ const App = () => {
                                                     {requests.filter(r => r.status === 'pending').length === 0 ? (
                                                         <tr><td colSpan={canEdit ? 5 : 4} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Bekleyen talep yok.</td></tr>
                                                     ) : requests.filter(r => r.status === 'pending').map(req => (
-                                                        <tr key={req.id}>
+                                                        <tr key={req.id} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, req, 'requests') : undefined}>
                                                             <td data-label="Tarih">{String(req.date || '').split(',')[0].split(' ')[0]}</td>
                                                             <td data-label="Malzeme">{req.itemName}</td>
                                                             <td data-label="Miktar" style={{ textAlign: 'right' }}>{req.amount} {req.unit}</td>
@@ -4721,6 +4932,19 @@ const App = () => {
                     </div>
                 </div>
             )}
+
+            {/* Admin Right-Click Menu */}
+            <AdminContextMenu
+                ctx={ctxMenu}
+                onEdit={handleCtxEdit}
+                onDelete={handleCtxDelete}
+                onClose={() => setCtxMenu(null)}
+            />
+            <EditRowModal
+                ctx={editRow}
+                onSave={handleEditSave}
+                onClose={() => setEditRow(null)}
+            />
         </div>
     );
 };

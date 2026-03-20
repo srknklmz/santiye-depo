@@ -367,6 +367,69 @@ input[type="date"]::-webkit-date-and-time-value {
   margin: 6px 8px;
 }
 
+/* Sidebar quick action buttons */
+.sidebar-actions {
+  padding: 8px 12px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sidebar-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 9px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  border: none;
+  width: 100%;
+  transition: transform 0.12s, opacity 0.12s;
+}
+.sidebar-action-btn:hover  { opacity: 0.88; transform: translateX(2px); }
+.sidebar-action-btn:active { transform: scale(0.97); }
+.sidebar-action-success { background: linear-gradient(135deg, #34d399, #059669); }
+.sidebar-action-danger  { background: linear-gradient(135deg, #f87171, #dc2626); }
+.sidebar-action-purple  { background: linear-gradient(135deg, #a78bfa, #6d28d9); }
+
+/* Mini stat buttons (in toolbar) */
+.stat-mini-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  cursor: pointer;
+  gap: 1px;
+  transition: transform 0.08s, box-shadow 0.08s;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.12), 0 4px 5px rgba(0,0,0,0.07);
+  min-width: 52px;
+}
+.stat-mini-btn:hover  { transform: translateY(-1px); box-shadow: 0 5px 10px rgba(0,0,0,0.12); }
+.stat-mini-btn:active { transform: translateY(1px); box-shadow: none; }
+.stat-mini-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+.stat-mini-lbl {
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  line-height: 1;
+}
+.stat-mini-danger  .stat-mini-val { color: var(--danger); }
+.stat-mini-success .stat-mini-val { color: var(--success); }
+.stat-mini-warning .stat-mini-val { color: var(--warning); }
+
 .sidebar-user {
   display: flex;
   align-items: center;
@@ -486,38 +549,46 @@ input[type="date"]::-webkit-date-and-time-value {
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: 12px;
+  margin-bottom: 16px;
+  align-items: stretch;
 }
 .stats-grid-with-actions {
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(4, 1fr) 1px repeat(3, 1fr);
+}
+.stats-divider {
+  background: var(--border);
+  border-radius: 2px;
+  margin: 6px 4px;
 }
 
 /* Action cards (Giriş/Çıkış/Zimmet Ekle) */
 .action-card {
-  border-radius: var(--radius-lg);
-  padding: 8px 4px;
-  border: 1.5px solid;
+  border-radius: 16px;
+  padding: 0;
+  border: none;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  transition: opacity 0.15s, transform 0.1s;
-  font-weight: 800;
+  gap: 7px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  font-weight: 700;
   font-size: 13px;
+  letter-spacing: 0.01em;
   line-height: 1.2;
   text-align: center;
   user-select: none;
   width: 100%;
-  min-height: 68px;
+  min-height: 88px;
+  color: #fff;
 }
-.action-card:hover { opacity: 0.82; }
-.action-card:active { transform: scale(0.96); }
-.action-card-success { background: var(--success-soft); border-color: var(--success); color: var(--success); }
-.action-card-danger  { background: var(--danger-soft);  border-color: var(--danger);  color: var(--danger);  }
-.action-card-purple  { background: #ede9fe; border-color: #4f46e5; color: #4f46e5; }
+.action-card:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(0,0,0,0.18); }
+.action-card:active { transform: scale(0.96); box-shadow: none; }
+.action-card-success { background: linear-gradient(145deg, #34d399, #059669); }
+.action-card-danger  { background: linear-gradient(145deg, #f87171, #dc2626); }
+.action-card-purple  { background: linear-gradient(145deg, #a78bfa, #6d28d9); }
 
 /* 3D filtre butonları */
 .btn-filter-3d {
@@ -539,29 +610,34 @@ input[type="date"]::-webkit-date-and-time-value {
 
 .stat-card {
   background: var(--bg-card);
-  border-radius: var(--radius-lg);
-  padding: 10px 14px;
+  border-radius: 16px;
+  padding: 18px 20px 16px;
   border: 1px solid var(--border);
   cursor: pointer;
-  transition: border-color 0.15s;
+  transition: box-shadow 0.2s ease, transform 0.18s ease, border-color 0.2s;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
 }
 
 .stat-card:hover {
-  border-color: var(--text-muted);
-  opacity: 0.9;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.09);
+  transform: translateY(-2px);
+  border-color: transparent;
 }
 
 .stat-card-top {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 6px;
+  margin-bottom: 14px;
 }
 
 .stat-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 7px;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -589,17 +665,19 @@ input[type="date"]::-webkit-date-and-time-value {
 }
 
 .stat-value {
-  font-size: 20px;
+  font-size: 28px;
   font-weight: 700;
   color: var(--text-main);
   line-height: 1;
+  letter-spacing: -0.5px;
 }
 
 .stat-label {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
   font-weight: 500;
-  margin-top: 2px;
+  margin-top: 5px;
+  letter-spacing: 0.01em;
 }
 
 /* ═══════════════════════════════════════════
@@ -1785,6 +1863,10 @@ input[type="date"] {
     grid-template-columns: repeat(2, 1fr);
     gap: 8px;
   }
+  .stats-grid-with-actions {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .stats-divider { display: none; }
 
   .movements-grid {
     grid-template-columns: 1fr;
