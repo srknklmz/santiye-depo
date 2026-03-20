@@ -1284,6 +1284,7 @@ const App = () => {
                 }
                 const itemId = String(item.id);
 
+                const price = Number(formData.get('price')) || 0;
                 const moveBaseData = {
                     itemId: Number(item.id),
                     itemName: item.name,
@@ -1293,6 +1294,7 @@ const App = () => {
                     amount,
                     unit,
                     irsaliyeNo,
+                    price,
                     type: 'in',
                     date: displayDate,
                 };
@@ -2257,6 +2259,30 @@ const App = () => {
                     <span>{isConnected ? 'Bulut bağlı' : 'Bağlantı yok'}</span>
                 </div>
 
+                {/* Quick Actions — Panel'in üstünde */}
+                {canEdit && (pagePerm('movements') === 'edit' || pagePerm('zimmet') === 'edit') && (
+                    <div className="sidebar-actions">
+                        {pagePerm('movements') === 'edit' && (
+                            <button className="sidebar-action-btn sidebar-action-success"
+                                onClick={() => { setMovementType('in'); setSelectedItemForMove(null); setShowMoveModal(true); }}>
+                                <ArrowUpRight size={15} /> <span>Giriş Ekle</span>
+                            </button>
+                        )}
+                        {pagePerm('movements') === 'edit' && (
+                            <button className="sidebar-action-btn sidebar-action-danger"
+                                onClick={() => { setMovementType('out'); setSelectedItemForMove(null); setShowMoveModal(true); }}>
+                                <ArrowDownLeft size={15} /> <span>Çıkış Ekle</span>
+                            </button>
+                        )}
+                        {pagePerm('zimmet') === 'edit' && (
+                            <button className="sidebar-action-btn sidebar-action-purple"
+                                onClick={() => { setShowZimmetModal(true); setSelectedItemForZimmet(null); }}>
+                                <UserCheck size={15} /> <span>Zimmet Ekle</span>
+                            </button>
+                        )}
+                    </div>
+                )}
+
                 {/* Navigation */}
                 <nav className="sidebar-nav">
                     <button
@@ -2387,30 +2413,6 @@ const App = () => {
                         </button>
                     )}
                 </nav>
-
-                {/* Quick Actions */}
-                {canEdit && (pagePerm('movements') === 'edit' || pagePerm('zimmet') === 'edit') && (
-                    <div className="sidebar-actions">
-                        {pagePerm('movements') === 'edit' && (
-                            <button className="sidebar-action-btn sidebar-action-success"
-                                onClick={() => { setMovementType('in'); setSelectedItemForMove(null); setShowMoveModal(true); }}>
-                                <ArrowUpRight size={15} /> <span>Giriş Ekle</span>
-                            </button>
-                        )}
-                        {pagePerm('movements') === 'edit' && (
-                            <button className="sidebar-action-btn sidebar-action-danger"
-                                onClick={() => { setMovementType('out'); setSelectedItemForMove(null); setShowMoveModal(true); }}>
-                                <ArrowDownLeft size={15} /> <span>Çıkış Ekle</span>
-                            </button>
-                        )}
-                        {pagePerm('zimmet') === 'edit' && (
-                            <button className="sidebar-action-btn sidebar-action-purple"
-                                onClick={() => { setShowZimmetModal(true); setSelectedItemForZimmet(null); }}>
-                                <UserCheck size={15} /> <span>Zimmet Ekle</span>
-                            </button>
-                        )}
-                    </div>
-                )}
 
                 {/* User Section */}
                 <div className="sidebar-user">
@@ -3210,7 +3212,6 @@ const App = () => {
                                                     <th>KAYIT TARİHİ</th>
                                                     <th>AD SOYAD</th>
                                                     <th>E-POSTA</th>
-                                                    <th>DURUM</th>
                                                     <th>ROL</th>
                                                     <th>İŞLEMLER</th>
                                                 </tr>
@@ -3235,15 +3236,6 @@ const App = () => {
                                                             </div>
                                                         </td>
                                                         <td data-label="E-posta">{u.email}</td>
-                                                        <td data-label="Durum">
-                                                            <span style={{
-                                                                background: u.status === 'approved' ? '#dcfce7' : u.status === 'pending' ? '#fef3c7' : '#fee2e2',
-                                                                color: u.status === 'approved' ? '#166534' : u.status === 'pending' ? '#b45309' : '#991b1b',
-                                                                borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '600'
-                                                            }}>
-                                                                {u.status === 'approved' ? 'Aktif' : u.status === 'pending' ? 'Bekliyor' : 'Reddedildi'}
-                                                            </span>
-                                                        </td>
                                                         <td data-label="Rol">
                                                             <span style={{
                                                                 background: ROLE_COLORS[u.role]?.bg || '#f1f5f9',
@@ -4229,412 +4221,331 @@ const App = () => {
                     )}
 
                     {/* Move Stock Modal */}
-                    {showMoveModal && canEdit && (
+                    {showMoveModal && canEdit && (() => {
+                        const isIn = movementType === 'in';
+                        const accentGradient = isIn
+                            ? 'linear-gradient(160deg, #34d399 0%, #059669 100%)'
+                            : 'linear-gradient(160deg, #f87171 0%, #dc2626 100%)';
+                        const closeModal = () => {
+                            setShowMoveModal(false); setIsQuickAdd(false); setIsNewRecipient(false);
+                            setInIrsaliyeNo(''); setShowAddMalzemeAdi(false); setShowAddMalzemeTuru(false);
+                            setShowAddBirim(false); setShowAddFirma(false); setShowAddIrsaliye(false);
+                        };
+                        return (
                         <div className="modal-overlay">
-                            <div className="modal-card">
-                                <div className="modal-header">
-                                    <span className="modal-title" style={{ color: movementType === 'in' ? 'var(--success)' : 'var(--danger)' }}>
-                                        {movementType === 'in' ? '↑ Malzeme Girişi' : '↓ Malzeme Çıkışı'}
-                                    </span>
-                                    <button className="btn-icon" onClick={() => { setShowMoveModal(false); setIsQuickAdd(false); setIsNewRecipient(false); setInIrsaliyeNo(''); setShowAddMalzemeAdi(false); setShowAddMalzemeTuru(false); setShowAddBirim(false); setShowAddFirma(false); setShowAddIrsaliye(false); }}><X size={16} /></button>
+                            <div className="fm-modal">
+                                {/* Sol Panel */}
+                                <div className="fm-panel" style={{ background: accentGradient }}>
+                                    <div className="fm-panel-icon">
+                                        {isIn ? <ArrowUpRight size={30} /> : <ArrowDownLeft size={30} />}
+                                    </div>
+                                    <div className="fm-panel-title">
+                                        {isIn ? 'Malzeme\nGirişi' : 'Malzeme\nÇıkışı'}
+                                    </div>
+                                    <div className="fm-panel-desc">
+                                        {isIn
+                                            ? 'Depoya gelen malzemeleri kayıt altına alın'
+                                            : 'Depodan çıkan malzemeleri takip edin'}
+                                    </div>
                                 </div>
 
-                                <form onSubmit={handleMoveStock}>
-                                    {movementType === 'in' ? (
-                                        /* ── GİRİŞ FORMU ── */
-                                        <>
-                                            {/* 1. Malzeme Adı */}
-                                            <div className="mb-2">
-                                                <div className="flex align-center gap-2 mb-1">
-                                                    <label className="label" style={{ margin: 0 }}>Malzeme Adı</label>
-                                                    {canEdit && (
-                                                        <button type="button" className="btn-ghost" style={{ fontSize: '11px', padding: '2px 8px' }}
+                                {/* Sağ Gövde */}
+                                <div className="fm-body">
+                                    <div className="fm-close-row">
+                                        <button className="btn-icon" onClick={closeModal}><X size={16} /></button>
+                                    </div>
+
+                                    <form onSubmit={handleMoveStock} className="fm-form">
+                                        {isIn ? (
+                                            <>
+                                                {/* Malzeme Adı */}
+                                                <div className="fm-field">
+                                                    <div className="fm-label-row">
+                                                        <span className="fm-label">Malzeme Adı</span>
+                                                        <button type="button" className="fm-add-chip"
                                                             onClick={() => setShowAddMalzemeAdi(v => !v)}>
-                                                            + Malzeme Adı Ekle
+                                                            + Yeni Ekle
                                                         </button>
-                                                    )}
-                                                </div>
-                                                {showAddMalzemeAdi && canEdit && (
-                                                    <div className="flex gap-2 mb-1">
-                                                        <input
-                                                            value={newMalzemeAdiInput}
-                                                            onChange={e => setNewMalzemeAdiInput(e.target.value)}
-                                                            placeholder="Yeni malzeme adı..."
-                                                            style={{ flex: 1 }}
-                                                        />
-                                                        <button type="button" className="btn-primary" style={{ fontSize: '12px', padding: '4px 12px' }}
-                                                            onClick={async () => {
-                                                                if (!newMalzemeAdiInput.trim()) return;
-                                                                const id = String(Date.now());
-                                                                await set(ref(db, `items/${id}`), { id: Number(id), name: newMalzemeAdiInput.trim(), unit: 'Adet', category: 'Genel', quantity: 0, minStock: 0 });
-                                                                setNewMalzemeAdiInput('');
-                                                                setShowAddMalzemeAdi(false);
-                                                            }}>
-                                                            Kaydet
-                                                        </button>
-                                                        <button type="button" className="btn-ghost" onClick={() => setShowAddMalzemeAdi(false)}><X size={14} /></button>
                                                     </div>
-                                                )}
-                                                <input
-                                                    list="malzeme-datalist"
-                                                    value={inMalzemeAdi}
-                                                    onChange={e => setInMalzemeAdi(e.target.value)}
-                                                    placeholder="Malzeme adı yazın..."
-                                                    required
-                                                    autoComplete="off"
-                                                />
-                                                <datalist id="malzeme-datalist">
-                                                    {sortedItems.map(i => <option key={i.id} value={i.name} />)}
-                                                </datalist>
-                                            </div>
-                                            {/* 2. Malzeme Türü */}
-                                            <div className="mb-2">
-                                                <div className="flex align-center gap-2 mb-1">
-                                                    <label className="label" style={{ margin: 0 }}>Malzeme Türü</label>
-                                                    {canEdit && (
-                                                        <button type="button" className="btn-ghost" style={{ fontSize: '11px', padding: '2px 8px' }}
-                                                            onClick={() => setShowAddMalzemeTuru(v => !v)}>
-                                                            + Tür Ekle
-                                                        </button>
-                                                    )}
-                                                </div>
-                                                {showAddMalzemeTuru && canEdit && (
-                                                    <div className="flex gap-2 mb-1">
-                                                        <input
-                                                            value={newMalzemeTuruInput}
-                                                            onChange={e => setNewMalzemeTuruInput(e.target.value)}
-                                                            placeholder="Yeni malzeme türü..."
-                                                            style={{ flex: 1 }}
-                                                        />
-                                                        <button type="button" className="btn-primary" style={{ fontSize: '12px', padding: '4px 12px' }}
-                                                            onClick={async () => {
-                                                                if (!newMalzemeTuruInput.trim()) return;
-                                                                const id = String(Date.now());
-                                                                await set(ref(db, `malzemeTurleri/${id}`), { id, name: newMalzemeTuruInput.trim() });
-                                                                setNewMalzemeTuruInput('');
-                                                                setShowAddMalzemeTuru(false);
-                                                            }}>
-                                                            Kaydet
-                                                        </button>
-                                                        <button type="button" className="btn-ghost" onClick={() => setShowAddMalzemeTuru(false)}><X size={14} /></button>
-                                                    </div>
-                                                )}
-                                                <select name="malzemeTuru" required>
-                                                    <option value="">-- Seçin --</option>
-                                                    {malzemeTurleri.map(t => <option key={t} value={t}>{t}</option>)}
-                                                </select>
-                                            </div>
-                                            {/* 3. Tarih */}
-                                            <div className="mb-2">
-                                                <label className="label">Tarih</label>
-                                                <input name="actionDate" type="date" defaultValue={new Date().toISOString().split('T')[0]} required />
-                                            </div>
-                                            {/* 4+5. Miktar + Birim */}
-                                            <div className="flex gap-2 mb-2">
-                                                <div style={{ flex: 1 }}>
-                                                    <label className="label">Miktar</label>
-                                                    <input name="amount" type="number" required min="0.01" step="0.01" placeholder="0.00" />
-                                                </div>
-                                                <div style={{ flex: 1 }}>
-                                                    <div className="flex align-center gap-2 mb-1">
-                                                        <label className="label" style={{ margin: 0 }}>Birim</label>
-                                                        {canEdit && (
-                                                            <button type="button" className="btn-ghost" style={{ fontSize: '11px', padding: '2px 8px' }}
-                                                                onClick={() => setShowAddBirim(v => !v)}>
-                                                                + Birim Ekle
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                    {showAddBirim && canEdit && (
-                                                        <div className="flex gap-2 mb-1">
-                                                            <input
-                                                                value={newBirimInput}
-                                                                onChange={e => setNewBirimInput(e.target.value)}
-                                                                placeholder="Yeni birim..."
-                                                                style={{ flex: 1 }}
-                                                            />
-                                                            <button type="button" className="btn-primary" style={{ fontSize: '12px', padding: '4px 12px' }}
-                                                                onClick={async () => {
-                                                                    if (!newBirimInput.trim()) return;
-                                                                    const id = String(Date.now());
-                                                                    await set(ref(db, `birimler/${id}`), { id, name: newBirimInput.trim() });
-                                                                    setNewBirimInput('');
-                                                                    setShowAddBirim(false);
-                                                                }}>
+                                                    {showAddMalzemeAdi && (
+                                                        <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                            <input className="fm-input" value={newMalzemeAdiInput} onChange={e => setNewMalzemeAdiInput(e.target.value)} placeholder="Yeni malzeme adı..." style={{ flex: 1 }} />
+                                                            <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 14px', background: 'var(--success)', borderRadius: '8px', fontSize: '12px' }}
+                                                                onClick={async () => { if (!newMalzemeAdiInput.trim()) return; const id = String(Date.now()); await set(ref(db, `items/${id}`), { id: Number(id), name: newMalzemeAdiInput.trim(), unit: 'Adet', category: 'Genel', quantity: 0, minStock: 0 }); setNewMalzemeAdiInput(''); setShowAddMalzemeAdi(false); }}>
                                                                 Kaydet
                                                             </button>
-                                                            <button type="button" className="btn-ghost" onClick={() => setShowAddBirim(false)}><X size={14} /></button>
+                                                            <button type="button" className="btn-icon" onClick={() => setShowAddMalzemeAdi(false)}><X size={14} /></button>
                                                         </div>
                                                     )}
-                                                    <select name="unit">
-                                                        {birimlerList.map(b => <option key={b}>{b}</option>)}
+                                                    <input className="fm-input" list="malzeme-datalist" value={inMalzemeAdi} onChange={e => setInMalzemeAdi(e.target.value)} placeholder="Malzeme adı yazın veya seçin..." required autoComplete="off" />
+                                                    <datalist id="malzeme-datalist">{sortedItems.map(i => <option key={i.id} value={i.name} />)}</datalist>
+                                                </div>
+
+                                                {/* Malzeme Türü */}
+                                                <div className="fm-field">
+                                                    <div className="fm-label-row">
+                                                        <span className="fm-label">Malzeme Türü</span>
+                                                        <button type="button" className="fm-add-chip" onClick={() => setShowAddMalzemeTuru(v => !v)}>+ Tür Ekle</button>
+                                                    </div>
+                                                    {showAddMalzemeTuru && (
+                                                        <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                            <input className="fm-input" value={newMalzemeTuruInput} onChange={e => setNewMalzemeTuruInput(e.target.value)} placeholder="Yeni tür..." style={{ flex: 1 }} />
+                                                            <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 14px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
+                                                                onClick={async () => { if (!newMalzemeTuruInput.trim()) return; const id = String(Date.now()); await set(ref(db, `malzemeTurleri/${id}`), { id, name: newMalzemeTuruInput.trim() }); setNewMalzemeTuruInput(''); setShowAddMalzemeTuru(false); }}>
+                                                                Kaydet
+                                                            </button>
+                                                            <button type="button" className="btn-icon" onClick={() => setShowAddMalzemeTuru(false)}><X size={14} /></button>
+                                                        </div>
+                                                    )}
+                                                    <select name="malzemeTuru" required className="fm-input">
+                                                        <option value="">— Seçin —</option>
+                                                        {malzemeTurleri.map(t => <option key={t} value={t}>{t}</option>)}
                                                     </select>
                                                 </div>
-                                            </div>
-                                            {/* 6. İrsaliye No */}
-                                            <div className="mb-2">
-                                                <div className="flex align-center gap-2 mb-1">
-                                                    <label className="label" style={{ margin: 0 }}>İrsaliye No</label>
-                                                    {canEdit && (
-                                                        <button type="button" className="btn-ghost" style={{ fontSize: '11px', padding: '2px 8px' }}
-                                                            onClick={() => setShowAddIrsaliye(v => !v)}>
-                                                            + İrsaliye No Ekle
-                                                        </button>
-                                                    )}
-                                                </div>
-                                                {showAddIrsaliye && canEdit && (
-                                                    <div className="flex gap-2 mb-1">
-                                                        <input
-                                                            value={newIrsaliyeInput}
-                                                            onChange={e => setNewIrsaliyeInput(e.target.value)}
-                                                            placeholder="İrsaliye numarası..."
-                                                            style={{ flex: 1 }}
-                                                        />
-                                                        <button type="button" className="btn-primary" style={{ fontSize: '12px', padding: '4px 12px' }}
-                                                            onClick={async () => {
-                                                                if (!newIrsaliyeInput.trim()) return;
-                                                                const id = String(Date.now());
-                                                                await set(ref(db, `irsaliyeListesi/${id}`), { id: Number(id), no: newIrsaliyeInput.trim() });
-                                                                setInIrsaliyeNo(newIrsaliyeInput.trim());
-                                                                setNewIrsaliyeInput('');
-                                                                setShowAddIrsaliye(false);
-                                                            }}>
-                                                            Kaydet
-                                                        </button>
-                                                        <button type="button" className="btn-ghost" onClick={() => setShowAddIrsaliye(false)}><X size={14} /></button>
+
+                                                {/* Tarih + Birim Fiyat */}
+                                                <div className="fm-grid-2">
+                                                    <div>
+                                                        <div className="fm-label-row"><span className="fm-label">Tarih</span></div>
+                                                        <input className="fm-input" name="actionDate" type="date" defaultValue={new Date().toISOString().split('T')[0]} required />
                                                     </div>
-                                                )}
-                                                <input
-                                                    name="irsaliyeNo"
-                                                    list="irsaliye-datalist"
-                                                    value={inIrsaliyeNo}
-                                                    onChange={e => setInIrsaliyeNo(e.target.value)}
-                                                    placeholder="Örn: IRS-2026-001"
-                                                    autoComplete="off"
-                                                />
-                                                <datalist id="irsaliye-datalist">
-                                                    {irsaliyeListesi.map(i => <option key={i.id} value={i.no} />)}
-                                                </datalist>
-                                            </div>
-                                            {/* 7. Firma Adı */}
-                                            <div className="mb-2">
-                                                <div className="flex align-center gap-2 mb-1">
-                                                    <label className="label" style={{ margin: 0 }}>Firma Adı</label>
-                                                    {canEdit && (
-                                                        <button type="button" className="btn-ghost" style={{ fontSize: '11px', padding: '2px 8px' }}
-                                                            onClick={() => setShowAddFirma(v => !v)}>
-                                                            + Firma Ekle
-                                                        </button>
-                                                    )}
-                                                </div>
-                                                {showAddFirma && canEdit && (
-                                                    <div className="flex gap-2 mb-1">
-                                                        <input
-                                                            value={newFirmaInput}
-                                                            onChange={e => setNewFirmaInput(e.target.value)}
-                                                            placeholder="Yeni firma adı..."
-                                                            style={{ flex: 1 }}
-                                                        />
-                                                        <button type="button" className="btn-primary" style={{ fontSize: '12px', padding: '4px 12px' }}
-                                                            onClick={async () => {
-                                                                if (!newFirmaInput.trim()) return;
-                                                                const id = String(Date.now());
-                                                                await set(ref(db, `firmalar/${id}`), { id, name: newFirmaInput.trim() });
-                                                                setNewFirmaInput('');
-                                                                setShowAddFirma(false);
-                                                            }}>
-                                                            Kaydet
-                                                        </button>
-                                                        <button type="button" className="btn-ghost" onClick={() => setShowAddFirma(false)}><X size={14} /></button>
+                                                    <div>
+                                                        <div className="fm-label-row"><span className="fm-label">Birim Fiyat</span><span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>opsiyonel</span></div>
+                                                        <div style={{ position: 'relative' }}>
+                                                            <input className="fm-input" name="price" type="number" min="0" step="0.01" placeholder="0.00" style={{ paddingRight: '28px' }} />
+                                                            <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '12px', color: 'var(--text-muted)', pointerEvents: 'none' }}>₺</span>
+                                                        </div>
                                                     </div>
-                                                )}
-                                                <input
-                                                    list="firma-datalist"
-                                                    value={inFirmaAdi}
-                                                    onChange={e => setInFirmaAdi(e.target.value)}
-                                                    placeholder="Firma adı yazın..."
-                                                    autoComplete="off"
-                                                />
-                                                <datalist id="firma-datalist">
-                                                    {allFirmaAdlari.map(f => <option key={f} value={f} />)}
-                                                </datalist>
-                                            </div>
-                                            {/* 8. Teslim Alan Kişi */}
-                                            <div className="mb-2">
-                                                <div className="flex align-center gap-2 mb-1">
-                                                    <label className="label" style={{ margin: 0 }}>Teslim Alan Kişi</label>
-                                                    {canEdit && (
-                                                        <button type="button" className="btn-ghost" style={{ fontSize: '11px', padding: '2px 8px' }}
-                                                            onClick={() => setShowAddTeslimAlan(v => !v)}>
-                                                            + Kişi Ekle
-                                                        </button>
-                                                    )}
                                                 </div>
-                                                {showAddTeslimAlan && canEdit && (
-                                                    <div className="flex gap-2 mb-1">
-                                                        <input
-                                                            value={newTeslimAlanAdi}
-                                                            onChange={e => setNewTeslimAlanAdi(e.target.value)}
-                                                            placeholder="Yeni kişi adı..."
-                                                            style={{ flex: 1 }}
-                                                        />
-                                                        <button type="button" className="btn-primary" style={{ fontSize: '12px', padding: '4px 12px' }}
-                                                            onClick={async () => {
-                                                                if (!newTeslimAlanAdi.trim()) return;
-                                                                const id = String(Date.now());
-                                                                await set(ref(db, `teslimAlanlar/${id}`), { id, name: newTeslimAlanAdi.trim() });
-                                                                setNewTeslimAlanAdi('');
-                                                                setShowAddTeslimAlan(false);
-                                                            }}>
-                                                            Kaydet
-                                                        </button>
-                                                        <button type="button" className="btn-ghost" onClick={() => setShowAddTeslimAlan(false)}><X size={14} /></button>
+
+                                                {/* Miktar + Birim */}
+                                                <div className="fm-grid-2">
+                                                    <div>
+                                                        <div className="fm-label-row"><span className="fm-label">Miktar</span></div>
+                                                        <input className="fm-input" name="amount" type="number" required min="0.01" step="0.01" placeholder="0.00" />
                                                     </div>
-                                                )}
-                                                <select name="teslimAlan">
-                                                    <option value="">-- Seçin --</option>
-                                                    {teslimAlanlar.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
-                                                </select>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        /* ── ÇIKIŞ FORMU ── */
-                                        <>
-                                            <div className="mb-2">
-                                                <label className="label">İşlem Tarihi</label>
-                                                <input name="actionDate" type="date" defaultValue={new Date().toISOString().split('T')[0]} required />
-                                            </div>
-                                            <div className="mb-2">
-                                                <label className="label">Malzeme Seçin</label>
-                                                <select name="itemId" required value={selectedItemForMove?.id || ""}
-                                                    onChange={(e) => setSelectedItemForMove(items.find(i => i.id == e.target.value))}>
-                                                    <option value="" disabled>-- Seçin --</option>
-                                                    {sortedItems.map(i => (
-                                                        <option key={i.id} value={i.id}>{i.name} (Stok: {i.quantity})</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            <div className="flex gap-2 mb-2">
-                                                <div style={{ flex: 1 }}>
-                                                    <label className="label">Miktar</label>
-                                                    <input name="amount" type="number" required min="0.01" step="0.01" placeholder="0.00" />
+                                                    <div>
+                                                        <div className="fm-label-row">
+                                                            <span className="fm-label">Birim</span>
+                                                            <button type="button" className="fm-add-chip" onClick={() => setShowAddBirim(v => !v)}>+ Ekle</button>
+                                                        </div>
+                                                        {showAddBirim && (
+                                                            <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                                <input className="fm-input" value={newBirimInput} onChange={e => setNewBirimInput(e.target.value)} placeholder="Yeni birim..." style={{ flex: 1 }} />
+                                                                <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
+                                                                    onClick={async () => { if (!newBirimInput.trim()) return; const id = String(Date.now()); await set(ref(db, `birimler/${id}`), { id, name: newBirimInput.trim() }); setNewBirimInput(''); setShowAddBirim(false); }}>
+                                                                    Kaydet
+                                                                </button>
+                                                                <button type="button" className="btn-icon" onClick={() => setShowAddBirim(false)}><X size={14} /></button>
+                                                            </div>
+                                                        )}
+                                                        <select name="unit" className="fm-input">{birimlerList.map(b => <option key={b}>{b}</option>)}</select>
+                                                    </div>
                                                 </div>
-                                                <div style={{ flex: 1 }}>
-                                                    <label className="label">Birim</label>
-                                                    <select name="unit" defaultValue={selectedItemForMove?.unit || 'Adet'}>
-                                                        <option>Adet</option><option>Kg</option><option>M</option>
-                                                        <option>M2</option><option>M3</option><option>Ton</option>
-                                                        <option>Palet</option><option>Torba</option><option>Paket</option>
+
+                                                {/* İrsaliye No */}
+                                                <div className="fm-field">
+                                                    <div className="fm-label-row">
+                                                        <span className="fm-label">İrsaliye No</span>
+                                                        <button type="button" className="fm-add-chip" onClick={() => setShowAddIrsaliye(v => !v)}>+ Ekle</button>
+                                                    </div>
+                                                    {showAddIrsaliye && (
+                                                        <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                            <input className="fm-input" value={newIrsaliyeInput} onChange={e => setNewIrsaliyeInput(e.target.value)} placeholder="İrsaliye numarası..." style={{ flex: 1 }} />
+                                                            <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
+                                                                onClick={async () => { if (!newIrsaliyeInput.trim()) return; const id = String(Date.now()); await set(ref(db, `irsaliyeListesi/${id}`), { id: Number(id), no: newIrsaliyeInput.trim() }); setInIrsaliyeNo(newIrsaliyeInput.trim()); setNewIrsaliyeInput(''); setShowAddIrsaliye(false); }}>
+                                                                Kaydet
+                                                            </button>
+                                                            <button type="button" className="btn-icon" onClick={() => setShowAddIrsaliye(false)}><X size={14} /></button>
+                                                        </div>
+                                                    )}
+                                                    <input className="fm-input" name="irsaliyeNo" list="irsaliye-datalist" value={inIrsaliyeNo} onChange={e => setInIrsaliyeNo(e.target.value)} placeholder="Örn: IRS-2026-001" autoComplete="off" />
+                                                    <datalist id="irsaliye-datalist">{irsaliyeListesi.map(i => <option key={i.id} value={i.no} />)}</datalist>
+                                                </div>
+
+                                                {/* Firma + Teslim Alan */}
+                                                <div className="fm-grid-2">
+                                                    <div>
+                                                        <div className="fm-label-row">
+                                                            <span className="fm-label">Firma Adı</span>
+                                                            <button type="button" className="fm-add-chip" onClick={() => setShowAddFirma(v => !v)}>+ Ekle</button>
+                                                        </div>
+                                                        {showAddFirma && (
+                                                            <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                                <input className="fm-input" value={newFirmaInput} onChange={e => setNewFirmaInput(e.target.value)} placeholder="Firma adı..." style={{ flex: 1 }} />
+                                                                <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
+                                                                    onClick={async () => { if (!newFirmaInput.trim()) return; const id = String(Date.now()); await set(ref(db, `firmalar/${id}`), { id, name: newFirmaInput.trim() }); setNewFirmaInput(''); setShowAddFirma(false); }}>
+                                                                    Kaydet
+                                                                </button>
+                                                                <button type="button" className="btn-icon" onClick={() => setShowAddFirma(false)}><X size={14} /></button>
+                                                            </div>
+                                                        )}
+                                                        <input className="fm-input" list="firma-datalist" value={inFirmaAdi} onChange={e => setInFirmaAdi(e.target.value)} placeholder="Firma adı yazın..." autoComplete="off" />
+                                                        <datalist id="firma-datalist">{allFirmaAdlari.map(f => <option key={f} value={f} />)}</datalist>
+                                                    </div>
+                                                    <div>
+                                                        <div className="fm-label-row">
+                                                            <span className="fm-label">Teslim Alan</span>
+                                                            <button type="button" className="fm-add-chip" onClick={() => setShowAddTeslimAlan(v => !v)}>+ Ekle</button>
+                                                        </div>
+                                                        {showAddTeslimAlan && (
+                                                            <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                                <input className="fm-input" value={newTeslimAlanAdi} onChange={e => setNewTeslimAlanAdi(e.target.value)} placeholder="Kişi adı..." style={{ flex: 1 }} />
+                                                                <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
+                                                                    onClick={async () => { if (!newTeslimAlanAdi.trim()) return; const id = String(Date.now()); await set(ref(db, `teslimAlanlar/${id}`), { id, name: newTeslimAlanAdi.trim() }); setNewTeslimAlanAdi(''); setShowAddTeslimAlan(false); }}>
+                                                                    Kaydet
+                                                                </button>
+                                                                <button type="button" className="btn-icon" onClick={() => setShowAddTeslimAlan(false)}><X size={14} /></button>
+                                                            </div>
+                                                        )}
+                                                        <select name="teslimAlan" className="fm-input">
+                                                            <option value="">— Seçin —</option>
+                                                            {teslimAlanlar.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                {/* Tarih + Malzeme */}
+                                                <div className="fm-field">
+                                                    <div className="fm-label-row"><span className="fm-label">İşlem Tarihi</span></div>
+                                                    <input className="fm-input" name="actionDate" type="date" defaultValue={new Date().toISOString().split('T')[0]} required />
+                                                </div>
+                                                <div className="fm-field">
+                                                    <div className="fm-label-row"><span className="fm-label">Malzeme</span></div>
+                                                    <select className="fm-input" name="itemId" required value={selectedItemForMove?.id || ''} onChange={e => setSelectedItemForMove(items.find(i => i.id == e.target.value))}>
+                                                        <option value="" disabled>— Seçin —</option>
+                                                        {sortedItems.map(i => <option key={i.id} value={i.id}>{i.name} (Stok: {i.quantity})</option>)}
                                                     </select>
                                                 </div>
-                                            </div>
-                                            <div className="mb-2">
-                                                <label className="label">Verilen Birim</label>
-                                                <input name="verilenBirim" placeholder="Örn: A Ekibi, Elektrik Birimi..." />
-                                            </div>
-                                            <div className="mb-2">
-                                                <label className="label">Verilen Kişi</label>
-                                                {isNewRecipient ? (
-                                                    <div className="flex gap-2">
-                                                        <input autoFocus name="recipient" placeholder="Yeni kişi adı yazın..." />
-                                                        <button type="button" className="btn-ghost" onClick={() => setIsNewRecipient(false)}><X size={14} /></button>
+                                                {/* Miktar + Birim */}
+                                                <div className="fm-grid-2">
+                                                    <div>
+                                                        <div className="fm-label-row"><span className="fm-label">Miktar</span></div>
+                                                        <input className="fm-input" name="amount" type="number" required min="0.01" step="0.01" placeholder="0.00" />
                                                     </div>
-                                                ) : (
-                                                    <select name="recipient" defaultValue=""
-                                                        onChange={(e) => { if (e.target.value === '__NEW__') setIsNewRecipient(true); }}>
-                                                        <option value="">-- Seçin --</option>
-                                                        <option value="__NEW__">Yeni Ekle</option>
-                                                        {uniqueRecipients.map(r => <option key={r} value={r}>{r}</option>)}
-                                                    </select>
-                                                )}
-                                            </div>
-                                            <div className="mb-2">
-                                                <label className="label">Kullanım Alanı</label>
-                                                <input name="kullanimAlani" placeholder="Örn: A Blok 3. kat, Temel kazısı..." />
-                                            </div>
-                                        </>
-                                    )}
-                                    <button
-                                        type="submit"
-                                        className="btn-primary"
-                                        disabled={isSaving || (movementType === 'out' && !selectedItemForMove) || (movementType === 'in' && !inMalzemeAdi.trim())}
-                                        style={{ width: '100%', background: movementType === 'in' ? 'var(--success)' : 'var(--danger)', marginTop: '10px', opacity: isSaving ? 0.7 : 1 }}
-                                    >
-                                        {isSaving ? 'İşleniyor...' : (movementType === 'in' ? 'Girişi Tamamla' : 'Çıkışı Tamamla')}
-                                    </button>
-                                </form>
+                                                    <div>
+                                                        <div className="fm-label-row"><span className="fm-label">Birim</span></div>
+                                                        <select className="fm-input" name="unit" defaultValue={selectedItemForMove?.unit || 'Adet'}>
+                                                            <option>Adet</option><option>Kg</option><option>M</option><option>M2</option><option>M3</option><option>Ton</option><option>Palet</option><option>Torba</option><option>Paket</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                {/* Verilen Birim + Kişi */}
+                                                <div className="fm-field">
+                                                    <div className="fm-label-row"><span className="fm-label">Verilen Birim</span></div>
+                                                    <input className="fm-input" name="verilenBirim" placeholder="Örn: A Ekibi, Elektrik Birimi..." />
+                                                </div>
+                                                <div className="fm-field">
+                                                    <div className="fm-label-row"><span className="fm-label">Verilen Kişi</span></div>
+                                                    {isNewRecipient ? (
+                                                        <div className="fm-inline-add">
+                                                            <input autoFocus className="fm-input" name="recipient" placeholder="Yeni kişi adı yazın..." style={{ flex: 1 }} />
+                                                            <button type="button" className="btn-icon" onClick={() => setIsNewRecipient(false)}><X size={14} /></button>
+                                                        </div>
+                                                    ) : (
+                                                        <select className="fm-input" name="recipient" defaultValue="" onChange={e => { if (e.target.value === '__NEW__') setIsNewRecipient(true); }}>
+                                                            <option value="">— Seçin —</option>
+                                                            <option value="__NEW__">+ Yeni Ekle</option>
+                                                            {uniqueRecipients.map(r => <option key={r} value={r}>{r}</option>)}
+                                                        </select>
+                                                    )}
+                                                </div>
+                                                <div className="fm-field">
+                                                    <div className="fm-label-row"><span className="fm-label">Kullanım Alanı</span></div>
+                                                    <input className="fm-input" name="kullanimAlani" placeholder="Örn: A Blok 3. kat, Temel kazısı..." />
+                                                </div>
+                                            </>
+                                        )}
+
+                                        <div className="fm-footer">
+                                            <button type="button" className="fm-btn-cancel" onClick={closeModal}>İptal</button>
+                                            <button
+                                                type="submit"
+                                                className="fm-btn-submit"
+                                                disabled={isSaving || (movementType === 'out' && !selectedItemForMove) || (movementType === 'in' && !inMalzemeAdi.trim())}
+                                                style={{ background: isIn ? 'linear-gradient(135deg, #34d399, #059669)' : 'linear-gradient(135deg, #f87171, #dc2626)' }}
+                                            >
+                                                {isSaving ? 'İşleniyor...' : (isIn ? '↑ Girişi Tamamla' : '↓ Çıkışı Tamamla')}
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
                             </div>
                         </div>
-                    )}
+                        );
+                    })()}
 
                     {/* Zimmet Modal */}
                     {showZimmetModal && canEdit && (
                         <div className="modal-overlay">
-                            <div className="modal-card">
-                                <div className="modal-header">
-                                    <span className="modal-title">
-                                        <UserCheck size={16} /> Malzeme Zimmetle
-                                    </span>
-                                    <button className="btn-icon" onClick={() => setShowZimmetModal(false)}><X size={16} /></button>
+                            <div className="fm-modal">
+                                {/* Sol Panel */}
+                                <div className="fm-panel" style={{ background: 'linear-gradient(160deg, #a78bfa 0%, #6d28d9 100%)' }}>
+                                    <div className="fm-panel-icon">
+                                        <UserCheck size={30} />
+                                    </div>
+                                    <div className="fm-panel-title">Malzeme Zimmet</div>
+                                    <div className="fm-panel-desc">Malzemeyi kişi veya ekibe zimmetleyin</div>
                                 </div>
 
-                                <form onSubmit={handleZimmet}>
-                                    <div className="mb-3">
-                                        <label className="label">İşlem Tarihi</label>
-                                        <input name="actionDate" type="date" defaultValue={new Date().toISOString().split('T')[0]} required />
+                                {/* Sağ Gövde */}
+                                <div className="fm-body">
+                                    <div className="fm-close-row">
+                                        <button className="btn-icon" onClick={() => setShowZimmetModal(false)}><X size={16} /></button>
                                     </div>
-                                    <div className="mb-3">
-                                        <label className="label">Malzeme Seçin</label>
-                                        <select
-                                            name="itemId"
-                                            required
-                                            value={selectedItemForZimmet?.id || ""}
-                                            onChange={(e) => setSelectedItemForZimmet(items.find(i => String(i.id) === e.target.value))}
-                                        >
-                                            <option value="" disabled>-- Seçin --</option>
-                                            {sortedItems.map(i => (
-                                                <option key={i.id} value={i.id}>{i.name} (Stok: {i.quantity})</option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                    <form onSubmit={handleZimmet} className="fm-form">
 
-                                    <div className="mb-3">
-                                        <label className="label">Kişi / Ekip</label>
-                                        <input name="person" required placeholder="Örn: Ahmet Yılmaz / Tesisat Ekibi" />
-                                    </div>
-
-                                    <div className="flex gap-2 mb-3">
-                                        <div style={{ flex: 1 }}>
-                                            <label className="label">Miktar</label>
-                                            <input name="amount" type="number" defaultValue="1" min="1" required />
+                                        <div className="fm-field">
+                                            <div className="fm-label-row"><span className="fm-label">İşlem Tarihi</span></div>
+                                            <input className="fm-input" name="actionDate" type="date" defaultValue={new Date().toISOString().split('T')[0]} required />
                                         </div>
-                                        <div style={{ flex: 1 }}>
-                                            <label className="label">Birim</label>
-                                            <select name="unit" defaultValue={selectedItemForZimmet?.unit || 'Adet'}>
-                                                <option>Adet</option><option>Torba</option><option>Metre</option><option>Palet</option><option>M3</option><option>Ton</option><option>Kg</option><option>Lt</option>
+
+                                        <div className="fm-field">
+                                            <div className="fm-label-row"><span className="fm-label">Malzeme</span></div>
+                                            <select className="fm-input" name="itemId" required value={selectedItemForZimmet?.id || ''} onChange={e => setSelectedItemForZimmet(items.find(i => String(i.id) === e.target.value))}>
+                                                <option value="" disabled>— Seçin —</option>
+                                                {sortedItems.map(i => <option key={i.id} value={i.id}>{i.name} (Stok: {i.quantity})</option>)}
                                             </select>
                                         </div>
-                                    </div>
 
-                                    <div className="mb-3">
-                                        <label className="label">Not / Açıklama</label>
-                                        <input name="note" placeholder="Örn: Geçici kullanım için" />
-                                    </div>
+                                        <div className="fm-field">
+                                            <div className="fm-label-row"><span className="fm-label">Kişi / Ekip</span></div>
+                                            <input className="fm-input" name="person" required placeholder="Örn: Ahmet Yılmaz / Tesisat Ekibi" />
+                                        </div>
 
-                                    <button
-                                        type="submit"
-                                        className="btn-primary"
-                                        disabled={isSaving || !selectedItemForZimmet}
-                                        style={{
-                                            width: '100%',
-                                            background: '#4f46e5',
-                                            marginTop: '10px',
-                                            opacity: isSaving ? 0.7 : 1
-                                        }}
-                                    >
-                                        {isSaving ? 'İşleniyor...' : 'Zimmeti Kaydet'}
-                                    </button>
-                                </form>
+                                        <div className="fm-grid-2">
+                                            <div>
+                                                <div className="fm-label-row"><span className="fm-label">Miktar</span></div>
+                                                <input className="fm-input" name="amount" type="number" defaultValue="1" min="1" required />
+                                            </div>
+                                            <div>
+                                                <div className="fm-label-row"><span className="fm-label">Birim</span></div>
+                                                <select className="fm-input" name="unit" defaultValue={selectedItemForZimmet?.unit || 'Adet'}>
+                                                    <option>Adet</option><option>Torba</option><option>Metre</option><option>Palet</option><option>M3</option><option>Ton</option><option>Kg</option><option>Lt</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div className="fm-field">
+                                            <div className="fm-label-row"><span className="fm-label">Not / Açıklama</span><span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>opsiyonel</span></div>
+                                            <input className="fm-input" name="note" placeholder="Örn: Geçici kullanım için" />
+                                        </div>
+
+                                        <div className="fm-footer">
+                                            <button type="button" className="fm-btn-cancel" onClick={() => setShowZimmetModal(false)}>İptal</button>
+                                            <button
+                                                type="submit"
+                                                className="fm-btn-submit"
+                                                disabled={isSaving || !selectedItemForZimmet}
+                                                style={{ background: 'linear-gradient(135deg, #a78bfa, #6d28d9)' }}
+                                            >
+                                                {isSaving ? 'İşleniyor...' : '✓ Zimmeti Kaydet'}
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -4741,11 +4652,15 @@ const App = () => {
 
                                     <div className="mb-3">
                                         <label className="label">Rol</label>
-                                        <select name="role" defaultValue={editingUser?.role || 'izleyici'}>
-                                            <option value="admin">Admin</option>
-                                            <option value="yonetici">Yönetici</option>
-                                            <option value="izleyici">İzleyici</option>
-                                        </select>
+                                        <input
+                                            name="role"
+                                            type="text"
+                                            defaultValue={editingUser?.role || 'izleyici'}
+                                            placeholder="admin / yonetici / izleyici"
+                                        />
+                                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                            Geçerli değerler: <code>admin</code> · <code>yonetici</code> · <code>izleyici</code>
+                                        </div>
                                     </div>
 
                                     {editingUser && (
@@ -4813,11 +4728,6 @@ const App = () => {
                                                             </div>
                                                         );
                                                     })}
-                                                </div>
-                                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px', display: 'flex', gap: '12px' }}>
-                                                    <span>🔴 <strong>Gizli</strong> — Sayfayı göremez</span>
-                                                    <span>🔵 <strong>İzle</strong> — Sadece okuyabilir</span>
-                                                    <span>🟢 <strong>Düzenle</strong> — Tam erişim</span>
                                                 </div>
                                             </div>
                                         );
