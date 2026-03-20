@@ -2564,15 +2564,6 @@ const App = () => {
                                         {/* Filtre Butonları */}
                                         <div className="table-toolbar" style={{ justifyContent: 'space-between', gap: '8px' }}>
                                             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-                                                <button className="btn-filter-3d" onClick={() => { setMovementViewType('all'); setActiveTab('movements'); }} style={{
-                                                    background: '#fff',
-                                                    color: 'var(--text-main)',
-                                                    boxShadow: inactiveShadow,
-                                                    border: '1px solid var(--border)',
-                                                    width: 'auto',
-                                                    padding: '5px 12px',
-                                                    whiteSpace: 'nowrap',
-                                                }}>Tümünü Gör</button>
                                                 <button className="stat-mini-btn"
                                                     onClick={() => setDashModal({ show: true, title: 'Tüm Malzemeler', data: items, type: 'stock' })}>
                                                     <span className="stat-mini-val">{stats.totalItems}</span>
