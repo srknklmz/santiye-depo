@@ -783,9 +783,8 @@ const App = () => {
                     setAuthLoading(false);
                 });
             } else {
-                // Auth bypass: direkt erişim için misafir profili
-                setAuthUser({ uid: 'guest' });
-                setUserProfile({ role: 'admin', name: 'Misafir', status: 'approved', uid: 'guest', email: '' });
+                setAuthUser(null);
+                setUserProfile(null);
                 setAuthLoading(false);
             }
         });
@@ -2248,7 +2247,10 @@ const App = () => {
                 <div className="sidebar-brand">
                     <div className="sidebar-logo-icon">S</div>
                     <div>
-                        <div className="sidebar-logo-text">Shintea</div>
+                        <div style={{ position: 'relative', display: 'inline-block' }}>
+                            <div className="sidebar-logo-text">Shintea</div>
+                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.031</span>
+                        </div>
                         <div className="sidebar-logo-sub">Depo Yönetimi</div>
                     </div>
                 </div>
@@ -2487,13 +2489,6 @@ const App = () => {
                     {/* ── DASHBOARD TAB ── */}
                     {activeTab === 'dashboard' && (
                         <>
-                            {/* İzleyici için bilgi */}
-                            {!canEdit && (
-                                <div className="viewer-banner">
-                                    <Eye size={17} />
-                                    <span>İzleyici modundasınız. Malzeme talebinde bulunabilirsiniz.</span>
-                                </div>
-                            )}
 
             
                             {/* Pending Actions — Onay Bekleyen Geçmiş Tarihli İşlemler */}
@@ -4258,92 +4253,33 @@ const App = () => {
                                     <form onSubmit={handleMoveStock} className="fm-form">
                                         {isIn ? (
                                             <>
-                                                {/* Malzeme Adı */}
+                                                {/* 1. Tarih */}
+                                                <div className="fm-field">
+                                                    <div className="fm-label-row"><span className="fm-label">Tarih</span></div>
+                                                    <input className="fm-input" name="actionDate" type="date" defaultValue={new Date().toISOString().split('T')[0]} required />
+                                                </div>
+
+                                                {/* 2. Firma */}
                                                 <div className="fm-field">
                                                     <div className="fm-label-row">
-                                                        <span className="fm-label">Malzeme Adı</span>
-                                                        <button type="button" className="fm-add-chip"
-                                                            onClick={() => setShowAddMalzemeAdi(v => !v)}>
-                                                            + Yeni Ekle
-                                                        </button>
+                                                        <span className="fm-label">Firma</span>
+                                                        <button type="button" className="fm-add-chip" onClick={() => setShowAddFirma(v => !v)}>+ Ekle</button>
                                                     </div>
-                                                    {showAddMalzemeAdi && (
+                                                    {showAddFirma && (
                                                         <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
-                                                            <input className="fm-input" value={newMalzemeAdiInput} onChange={e => setNewMalzemeAdiInput(e.target.value)} placeholder="Yeni malzeme adı..." style={{ flex: 1 }} />
-                                                            <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 14px', background: 'var(--success)', borderRadius: '8px', fontSize: '12px' }}
-                                                                onClick={async () => { if (!newMalzemeAdiInput.trim()) return; const id = String(Date.now()); await set(ref(db, `items/${id}`), { id: Number(id), name: newMalzemeAdiInput.trim(), unit: 'Adet', category: 'Genel', quantity: 0, minStock: 0 }); setNewMalzemeAdiInput(''); setShowAddMalzemeAdi(false); }}>
+                                                            <input className="fm-input" value={newFirmaInput} onChange={e => setNewFirmaInput(e.target.value)} placeholder="Firma adı..." style={{ flex: 1 }} />
+                                                            <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
+                                                                onClick={async () => { if (!newFirmaInput.trim()) return; const id = String(Date.now()); await set(ref(db, `firmalar/${id}`), { id, name: newFirmaInput.trim() }); setNewFirmaInput(''); setShowAddFirma(false); }}>
                                                                 Kaydet
                                                             </button>
-                                                            <button type="button" className="btn-icon" onClick={() => setShowAddMalzemeAdi(false)}><X size={14} /></button>
+                                                            <button type="button" className="btn-icon" onClick={() => setShowAddFirma(false)}><X size={14} /></button>
                                                         </div>
                                                     )}
-                                                    <input className="fm-input" list="malzeme-datalist" value={inMalzemeAdi} onChange={e => setInMalzemeAdi(e.target.value)} placeholder="Malzeme adı yazın veya seçin..." required autoComplete="off" />
-                                                    <datalist id="malzeme-datalist">{sortedItems.map(i => <option key={i.id} value={i.name} />)}</datalist>
+                                                    <input className="fm-input" list="firma-datalist" value={inFirmaAdi} onChange={e => setInFirmaAdi(e.target.value)} placeholder="Firma adı yazın..." autoComplete="off" />
+                                                    <datalist id="firma-datalist">{allFirmaAdlari.map(f => <option key={f} value={f} />)}</datalist>
                                                 </div>
 
-                                                {/* Malzeme Türü */}
-                                                <div className="fm-field">
-                                                    <div className="fm-label-row">
-                                                        <span className="fm-label">Malzeme Türü</span>
-                                                        <button type="button" className="fm-add-chip" onClick={() => setShowAddMalzemeTuru(v => !v)}>+ Tür Ekle</button>
-                                                    </div>
-                                                    {showAddMalzemeTuru && (
-                                                        <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
-                                                            <input className="fm-input" value={newMalzemeTuruInput} onChange={e => setNewMalzemeTuruInput(e.target.value)} placeholder="Yeni tür..." style={{ flex: 1 }} />
-                                                            <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 14px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
-                                                                onClick={async () => { if (!newMalzemeTuruInput.trim()) return; const id = String(Date.now()); await set(ref(db, `malzemeTurleri/${id}`), { id, name: newMalzemeTuruInput.trim() }); setNewMalzemeTuruInput(''); setShowAddMalzemeTuru(false); }}>
-                                                                Kaydet
-                                                            </button>
-                                                            <button type="button" className="btn-icon" onClick={() => setShowAddMalzemeTuru(false)}><X size={14} /></button>
-                                                        </div>
-                                                    )}
-                                                    <select name="malzemeTuru" required className="fm-input">
-                                                        <option value="">— Seçin —</option>
-                                                        {malzemeTurleri.map(t => <option key={t} value={t}>{t}</option>)}
-                                                    </select>
-                                                </div>
-
-                                                {/* Tarih + Birim Fiyat */}
-                                                <div className="fm-grid-2">
-                                                    <div>
-                                                        <div className="fm-label-row"><span className="fm-label">Tarih</span></div>
-                                                        <input className="fm-input" name="actionDate" type="date" defaultValue={new Date().toISOString().split('T')[0]} required />
-                                                    </div>
-                                                    <div>
-                                                        <div className="fm-label-row"><span className="fm-label">Birim Fiyat</span><span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>opsiyonel</span></div>
-                                                        <div style={{ position: 'relative' }}>
-                                                            <input className="fm-input" name="price" type="number" min="0" step="0.01" placeholder="0.00" style={{ paddingRight: '28px' }} />
-                                                            <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '12px', color: 'var(--text-muted)', pointerEvents: 'none' }}>₺</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {/* Miktar + Birim */}
-                                                <div className="fm-grid-2">
-                                                    <div>
-                                                        <div className="fm-label-row"><span className="fm-label">Miktar</span></div>
-                                                        <input className="fm-input" name="amount" type="number" required min="0.01" step="0.01" placeholder="0.00" />
-                                                    </div>
-                                                    <div>
-                                                        <div className="fm-label-row">
-                                                            <span className="fm-label">Birim</span>
-                                                            <button type="button" className="fm-add-chip" onClick={() => setShowAddBirim(v => !v)}>+ Ekle</button>
-                                                        </div>
-                                                        {showAddBirim && (
-                                                            <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
-                                                                <input className="fm-input" value={newBirimInput} onChange={e => setNewBirimInput(e.target.value)} placeholder="Yeni birim..." style={{ flex: 1 }} />
-                                                                <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
-                                                                    onClick={async () => { if (!newBirimInput.trim()) return; const id = String(Date.now()); await set(ref(db, `birimler/${id}`), { id, name: newBirimInput.trim() }); setNewBirimInput(''); setShowAddBirim(false); }}>
-                                                                    Kaydet
-                                                                </button>
-                                                                <button type="button" className="btn-icon" onClick={() => setShowAddBirim(false)}><X size={14} /></button>
-                                                            </div>
-                                                        )}
-                                                        <select name="unit" className="fm-input">{birimlerList.map(b => <option key={b}>{b}</option>)}</select>
-                                                    </div>
-                                                </div>
-
-                                                {/* İrsaliye No */}
+                                                {/* 3. İrsaliye No */}
                                                 <div className="fm-field">
                                                     <div className="fm-label-row">
                                                         <span className="fm-label">İrsaliye No</span>
@@ -4363,55 +4299,99 @@ const App = () => {
                                                     <datalist id="irsaliye-datalist">{irsaliyeListesi.map(i => <option key={i.id} value={i.no} />)}</datalist>
                                                 </div>
 
-                                                {/* Firma + Teslim Alan */}
-                                                <div className="fm-grid-2">
-                                                    <div>
-                                                        <div className="fm-label-row">
-                                                            <span className="fm-label">Firma Adı</span>
-                                                            <button type="button" className="fm-add-chip" onClick={() => setShowAddFirma(v => !v)}>+ Ekle</button>
-                                                        </div>
-                                                        {showAddFirma && (
-                                                            <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
-                                                                <input className="fm-input" value={newFirmaInput} onChange={e => setNewFirmaInput(e.target.value)} placeholder="Firma adı..." style={{ flex: 1 }} />
-                                                                <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
-                                                                    onClick={async () => { if (!newFirmaInput.trim()) return; const id = String(Date.now()); await set(ref(db, `firmalar/${id}`), { id, name: newFirmaInput.trim() }); setNewFirmaInput(''); setShowAddFirma(false); }}>
-                                                                    Kaydet
-                                                                </button>
-                                                                <button type="button" className="btn-icon" onClick={() => setShowAddFirma(false)}><X size={14} /></button>
-                                                            </div>
-                                                        )}
-                                                        <input className="fm-input" list="firma-datalist" value={inFirmaAdi} onChange={e => setInFirmaAdi(e.target.value)} placeholder="Firma adı yazın..." autoComplete="off" />
-                                                        <datalist id="firma-datalist">{allFirmaAdlari.map(f => <option key={f} value={f} />)}</datalist>
+                                                {/* 4. Malzeme */}
+                                                <div className="fm-field">
+                                                    <div className="fm-label-row">
+                                                        <span className="fm-label">Malzeme</span>
+                                                        <button type="button" className="fm-add-chip" onClick={() => setShowAddMalzemeAdi(v => !v)}>+ Yeni Ekle</button>
                                                     </div>
-                                                    <div>
-                                                        <div className="fm-label-row">
-                                                            <span className="fm-label">Teslim Alan</span>
-                                                            <button type="button" className="fm-add-chip" onClick={() => setShowAddTeslimAlan(v => !v)}>+ Ekle</button>
+                                                    {showAddMalzemeAdi && (
+                                                        <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                            <input className="fm-input" value={newMalzemeAdiInput} onChange={e => setNewMalzemeAdiInput(e.target.value)} placeholder="Yeni malzeme adı..." style={{ flex: 1 }} />
+                                                            <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 14px', background: 'var(--success)', borderRadius: '8px', fontSize: '12px' }}
+                                                                onClick={async () => { if (!newMalzemeAdiInput.trim()) return; const id = String(Date.now()); await set(ref(db, `items/${id}`), { id: Number(id), name: newMalzemeAdiInput.trim(), unit: 'Adet', category: 'Genel', quantity: 0, minStock: 0 }); setNewMalzemeAdiInput(''); setShowAddMalzemeAdi(false); }}>
+                                                                Kaydet
+                                                            </button>
+                                                            <button type="button" className="btn-icon" onClick={() => setShowAddMalzemeAdi(false)}><X size={14} /></button>
                                                         </div>
-                                                        {showAddTeslimAlan && (
-                                                            <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
-                                                                <input className="fm-input" value={newTeslimAlanAdi} onChange={e => setNewTeslimAlanAdi(e.target.value)} placeholder="Kişi adı..." style={{ flex: 1 }} />
-                                                                <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
-                                                                    onClick={async () => { if (!newTeslimAlanAdi.trim()) return; const id = String(Date.now()); await set(ref(db, `teslimAlanlar/${id}`), { id, name: newTeslimAlanAdi.trim() }); setNewTeslimAlanAdi(''); setShowAddTeslimAlan(false); }}>
-                                                                    Kaydet
-                                                                </button>
-                                                                <button type="button" className="btn-icon" onClick={() => setShowAddTeslimAlan(false)}><X size={14} /></button>
-                                                            </div>
-                                                        )}
-                                                        <select name="teslimAlan" className="fm-input">
-                                                            <option value="">— Seçin —</option>
-                                                            {teslimAlanlar.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
-                                                        </select>
+                                                    )}
+                                                    <input className="fm-input" list="malzeme-datalist" value={inMalzemeAdi} onChange={e => setInMalzemeAdi(e.target.value)} placeholder="Malzeme adı yazın veya seçin..." required autoComplete="off" />
+                                                    <datalist id="malzeme-datalist">{sortedItems.map(i => <option key={i.id} value={i.name} />)}</datalist>
+                                                </div>
+
+                                                {/* 5. Miktar */}
+                                                <div className="fm-field">
+                                                    <div className="fm-label-row"><span className="fm-label">Miktar</span></div>
+                                                    <input className="fm-input" name="amount" type="number" required min="0.01" step="0.01" placeholder="0.00" />
+                                                </div>
+
+                                                {/* 6. Birim */}
+                                                <div className="fm-field">
+                                                    <div className="fm-label-row">
+                                                        <span className="fm-label">Birim</span>
+                                                        <button type="button" className="fm-add-chip" onClick={() => setShowAddBirim(v => !v)}>+ Ekle</button>
+                                                    </div>
+                                                    {showAddBirim && (
+                                                        <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                            <input className="fm-input" value={newBirimInput} onChange={e => setNewBirimInput(e.target.value)} placeholder="Yeni birim..." style={{ flex: 1 }} />
+                                                            <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
+                                                                onClick={async () => { if (!newBirimInput.trim()) return; const id = String(Date.now()); await set(ref(db, `birimler/${id}`), { id, name: newBirimInput.trim() }); setNewBirimInput(''); setShowAddBirim(false); }}>
+                                                                Kaydet
+                                                            </button>
+                                                            <button type="button" className="btn-icon" onClick={() => setShowAddBirim(false)}><X size={14} /></button>
+                                                        </div>
+                                                    )}
+                                                    <select name="unit" className="fm-input">{birimlerList.map(b => <option key={b}>{b}</option>)}</select>
+                                                </div>
+
+                                                {/* 7. Birim Fiyat */}
+                                                <div className="fm-field">
+                                                    <div className="fm-label-row">
+                                                        <span className="fm-label">Birim Fiyat</span>
+                                                        <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>opsiyonel</span>
+                                                    </div>
+                                                    <div style={{ position: 'relative' }}>
+                                                        <input className="fm-input" name="price" type="number" min="0" step="0.01" placeholder="0.00" style={{ paddingRight: '32px' }} />
+                                                        <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '12px', color: 'var(--text-muted)', pointerEvents: 'none' }}>₺</span>
                                                     </div>
                                                 </div>
+
+                                                {/* 8. Teslim Alan */}
+                                                <div className="fm-field">
+                                                    <div className="fm-label-row">
+                                                        <span className="fm-label">Teslim Alan</span>
+                                                        <button type="button" className="fm-add-chip" onClick={() => setShowAddTeslimAlan(v => !v)}>+ Ekle</button>
+                                                    </div>
+                                                    {showAddTeslimAlan && (
+                                                        <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                            <input className="fm-input" value={newTeslimAlanAdi} onChange={e => setNewTeslimAlanAdi(e.target.value)} placeholder="Kişi adı..." style={{ flex: 1 }} />
+                                                            <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
+                                                                onClick={async () => { if (!newTeslimAlanAdi.trim()) return; const id = String(Date.now()); await set(ref(db, `teslimAlanlar/${id}`), { id, name: newTeslimAlanAdi.trim() }); setNewTeslimAlanAdi(''); setShowAddTeslimAlan(false); }}>
+                                                                Kaydet
+                                                            </button>
+                                                            <button type="button" className="btn-icon" onClick={() => setShowAddTeslimAlan(false)}><X size={14} /></button>
+                                                        </div>
+                                                    )}
+                                                    <select name="teslimAlan" className="fm-input">
+                                                        <option value="">— Seçin —</option>
+                                                        {teslimAlanlar.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                                                    </select>
+                                                </div>
+
+                                                {/* Malzeme Türü (gizli, data için) */}
+                                                <select name="malzemeTuru" style={{ display: 'none' }}>
+                                                    <option value="">Genel</option>
+                                                    {malzemeTurleri.map(t => <option key={t} value={t}>{t}</option>)}
+                                                </select>
                                             </>
                                         ) : (
                                             <>
-                                                {/* Tarih + Malzeme */}
+                                                {/* Tarih */}
                                                 <div className="fm-field">
-                                                    <div className="fm-label-row"><span className="fm-label">İşlem Tarihi</span></div>
+                                                    <div className="fm-label-row"><span className="fm-label">Tarih</span></div>
                                                     <input className="fm-input" name="actionDate" type="date" defaultValue={new Date().toISOString().split('T')[0]} required />
                                                 </div>
+                                                {/* Malzeme */}
                                                 <div className="fm-field">
                                                     <div className="fm-label-row"><span className="fm-label">Malzeme</span></div>
                                                     <select className="fm-input" name="itemId" required value={selectedItemForMove?.id || ''} onChange={e => setSelectedItemForMove(items.find(i => i.id == e.target.value))}>
@@ -4419,24 +4399,24 @@ const App = () => {
                                                         {sortedItems.map(i => <option key={i.id} value={i.id}>{i.name} (Stok: {i.quantity})</option>)}
                                                     </select>
                                                 </div>
-                                                {/* Miktar + Birim */}
-                                                <div className="fm-grid-2">
-                                                    <div>
-                                                        <div className="fm-label-row"><span className="fm-label">Miktar</span></div>
-                                                        <input className="fm-input" name="amount" type="number" required min="0.01" step="0.01" placeholder="0.00" />
-                                                    </div>
-                                                    <div>
-                                                        <div className="fm-label-row"><span className="fm-label">Birim</span></div>
-                                                        <select className="fm-input" name="unit" defaultValue={selectedItemForMove?.unit || 'Adet'}>
-                                                            <option>Adet</option><option>Kg</option><option>M</option><option>M2</option><option>M3</option><option>Ton</option><option>Palet</option><option>Torba</option><option>Paket</option>
-                                                        </select>
-                                                    </div>
+                                                {/* Miktar */}
+                                                <div className="fm-field">
+                                                    <div className="fm-label-row"><span className="fm-label">Miktar</span></div>
+                                                    <input className="fm-input" name="amount" type="number" required min="0.01" step="0.01" placeholder="0.00" />
                                                 </div>
-                                                {/* Verilen Birim + Kişi */}
+                                                {/* Birim */}
+                                                <div className="fm-field">
+                                                    <div className="fm-label-row"><span className="fm-label">Birim</span></div>
+                                                    <select className="fm-input" name="unit" defaultValue={selectedItemForMove?.unit || 'Adet'}>
+                                                        <option>Adet</option><option>Kg</option><option>M</option><option>M2</option><option>M3</option><option>Ton</option><option>Palet</option><option>Torba</option><option>Paket</option>
+                                                    </select>
+                                                </div>
+                                                {/* Verilen Birim */}
                                                 <div className="fm-field">
                                                     <div className="fm-label-row"><span className="fm-label">Verilen Birim</span></div>
                                                     <input className="fm-input" name="verilenBirim" placeholder="Örn: A Ekibi, Elektrik Birimi..." />
                                                 </div>
+                                                {/* Verilen Kişi */}
                                                 <div className="fm-field">
                                                     <div className="fm-label-row"><span className="fm-label">Verilen Kişi</span></div>
                                                     {isNewRecipient ? (
@@ -4452,6 +4432,7 @@ const App = () => {
                                                         </select>
                                                     )}
                                                 </div>
+                                                {/* Kullanım Alanı */}
                                                 <div className="fm-field">
                                                     <div className="fm-label-row"><span className="fm-label">Kullanım Alanı</span></div>
                                                     <input className="fm-input" name="kullanimAlani" placeholder="Örn: A Blok 3. kat, Temel kazısı..." />
