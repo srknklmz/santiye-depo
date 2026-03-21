@@ -327,6 +327,9 @@ const App = () => {
     const canEdit = userProfile?.role === 'admin' || userProfile?.role === 'yonetici';
     const isAdmin = userProfile?.role === 'admin';
 
+    // ── Admin Context Menu ──
+    const [ctxMenu, setCtxMenu] = useState(null); // { x, y, record, collection }
+
     useEffect(() => {
         document.documentElement.setAttribute('data-theme', theme);
         localStorage.setItem('theme', theme);
@@ -335,6 +338,20 @@ const App = () => {
     useEffect(() => {
         localStorage.setItem('sidebarPinned', sidebarPinned);
     }, [sidebarPinned]);
+
+    useEffect(() => {
+        if (!ctxMenu) return;
+        const close = () => setCtxMenu(null);
+        const onKey = (e) => { if (e.key === 'Escape') setCtxMenu(null); };
+        window.addEventListener('click', close);
+        window.addEventListener('scroll', close, true);
+        window.addEventListener('keydown', onKey);
+        return () => {
+            window.removeEventListener('click', close);
+            window.removeEventListener('scroll', close, true);
+            window.removeEventListener('keydown', onKey);
+        };
+    }, [ctxMenu]);
 
     const formatNumber = (num) => Number(num || 0).toLocaleString('tr-TR');
 
@@ -961,6 +978,42 @@ const App = () => {
     const handleDeleteRequest = (req) => {
         if (confirm('Bu talebi silmek istiyor musunuz?')) {
             remove(ref(db, `requests/${req.id}`));
+        }
+    };
+
+    // ── Admin Right-Click Delete ──
+    const handleContextMenu = (e, record, collection) => {
+        if (!isAdmin) return;
+        e.preventDefault();
+        setCtxMenu({ x: e.clientX, y: e.clientY, record, collection });
+    };
+
+    const handleAdminDelete = async () => {
+        if (!ctxMenu) return;
+        const { record, collection } = ctxMenu;
+        const label = record.itemName || record.name || record.satin_alim_form_no || `#${record.id || record.uid}`;
+        if (!confirm(`"${label}" kaydını silmek istediğinize emin misiniz?\n\nBu işlem geri alınamaz.`)) return;
+        setCtxMenu(null);
+        try {
+            if (collection === 'movements') {
+                const item = items.find(i => Number(i.id) === Number(record.itemId));
+                if (item) {
+                    const newQty = record.type === 'in'
+                        ? Math.max(0, (item.quantity || 0) - (record.amount || 0))
+                        : (item.quantity || 0) + (record.amount || 0);
+                    await set(ref(db, `items/${record.itemId}/quantity`), newQty);
+                }
+                await remove(ref(db, `movements/${record.id}`));
+            } else if (collection === 'users') {
+                if (record.uid === authUser.uid) { alert('Kendinizi silemezsiniz.'); return; }
+                await remove(ref(db, `users/${record.uid}`));
+            } else {
+                const id = record.id || record.uid;
+                await remove(ref(db, `${collection}/${id}`));
+            }
+            showToast('Kayıt silindi.', 'error');
+        } catch (err) {
+            alert('Silme işlemi başarısız: ' + err.message);
         }
     };
 
@@ -1865,7 +1918,7 @@ const App = () => {
                                                     const pillClass = action.actionType === 'zimmet' ? 'out'
                                                         : action.movementType === 'in' ? 'in' : 'out';
                                                     return (
-                                                        <tr key={action.id}>
+                                                        <tr key={action.id} onContextMenu={e => handleContextMenu(e, action, 'pendingActions')}>
                                                             <td data-label="Tarih">{String(action.data?.date || '').split(',')[0].split(' ')[0]}</td>
                                                             <td data-label="Tür">
                                                                 <span className={`movement-type-pill ${pillClass}`}>{typeLabel}</span>
@@ -1933,7 +1986,7 @@ const App = () => {
                                             </thead>
                                             <tbody>
                                                 {movements.filter(m => m.type === 'in').slice(0, 5).map(m => (
-                                                    <tr key={m.id}>
+                                                    <tr key={m.id} onContextMenu={e => handleContextMenu(e, m, 'movements')}>
                                                         <td data-label="Tarih">{String(m.date || '').split(',')[0].split(' ')[0]}</td>
                                                         <td data-label="Firma">{m.firmaAdi || '—'}</td>
                                                         <td data-label="İrsaliye No">{m.irsaliyeNo || '—'}</td>
@@ -1979,7 +2032,7 @@ const App = () => {
                                             </thead>
                                             <tbody>
                                                 {movements.filter(m => m.type === 'out').slice(0, 5).map(m => (
-                                                    <tr key={m.id}>
+                                                    <tr key={m.id} onContextMenu={e => handleContextMenu(e, m, 'movements')}>
                                                         <td data-label="Tarih">{String(m.date || '').split(',')[0].split(' ')[0]}</td>
                                                         <td data-label="Malzeme" style={{ fontWeight: '600' }}>{m.itemName}</td>
                                                         <td className="num-cell" data-label="Miktar" style={{ color: 'var(--danger)', fontWeight: '700' }}>−{formatNumber(m.amount)}</td>
@@ -2024,7 +2077,7 @@ const App = () => {
                                             </thead>
                                             <tbody>
                                                 {zimmet.slice(0, 5).map(z => (
-                                                    <tr key={z.id}>
+                                                    <tr key={z.id} onContextMenu={e => handleContextMenu(e, z, 'zimmet')}>
                                                         <td data-label="Tarih">{(z.date || '').split(',')[0].split(' ')[0]}</td>
                                                         <td data-label="Malzeme" style={{ fontWeight: '600' }}>{z.itemName}</td>
                                                         <td data-label="Kişi / Ekip">{z.person || '—'}</td>
@@ -2090,7 +2143,7 @@ const App = () => {
                                         {stockSummary.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase())).map(row => {
                                             const depoCount = row.quantity - row.zimmetteCount;
                                             return (
-                                                <tr key={row.id}>
+                                                <tr key={row.id} onContextMenu={e => handleContextMenu(e, row, 'items')}>
                                                     <td data-label="Malzeme">
                                                         <div className="material-cell">
                                                             <Package size={14} className="material-icon-small" />
@@ -2195,7 +2248,7 @@ const App = () => {
                                             }
 
                                             return filtered.map(z => (
-                                                <tr key={z.id}>
+                                                <tr key={z.id} onContextMenu={e => handleContextMenu(e, z, 'zimmet')}>
                                                     <td data-label="Malzeme">
                                                         <div className="material-cell">
                                                             <Package size={14} className="material-icon-small" />
@@ -2306,6 +2359,7 @@ const App = () => {
                                             Malzeme: m.itemName || '',
                                             KaynakAlan: m.recipient || m.person || '-',
                                             Miktar: m.amount || 0,
+                                            Birim: m.unit || '-',
                                             Not: m.note || '-'
                                         }))}
                                         title={movementViewType === 'in' ? 'Tüm Girişler' : movementViewType === 'out' ? 'Tüm Çıkışlar' : 'Tüm Stok Hareketleri'}
@@ -2315,6 +2369,7 @@ const App = () => {
                                             { key: 'Malzeme', label: 'Malzeme' },
                                             { key: 'KaynakAlan', label: 'Kaynak / Alan' },
                                             { key: 'Miktar', label: 'Miktar' },
+                                            { key: 'Birim', label: 'Birim' },
                                             { key: 'Not', label: 'Not' }
                                         ]}
                                         filename="Hareket_Kayitlari"
@@ -2342,7 +2397,7 @@ const App = () => {
                                             {filteredMovementsForPage.length === 0 ? (
                                                 <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Giriş kaydı bulunamadı.</td></tr>
                                             ) : filteredMovementsForPage.map((m) => (
-                                                <tr key={m.id}>
+                                                <tr key={m.id} onContextMenu={e => handleContextMenu(e, m, 'movements')}>
                                                     <td>{String(m.date || '-').split(',')[0].split(' ')[0]}</td>
                                                     <td style={{ fontWeight: '600' }}>{m.itemName || '-'}</td>
                                                     <td>{m.malzemeTuru || '-'}</td>
@@ -2357,7 +2412,7 @@ const App = () => {
                                     </table>
                                 ) : (
                                     /* ── ÇIKIŞ / TÜM HAREKETLER TABLOSU ── */
-                                    <table className="responsive-table col-6">
+                                    <table className="responsive-table col-7">
                                         <thead>
                                             <tr>
                                                 <th>İŞLEM TARİHİ</th>
@@ -2365,14 +2420,15 @@ const App = () => {
                                                 <th>MALZEME</th>
                                                 <th>TEDARİKÇİ / ALAN KİŞİ / EKİP</th>
                                                 <th>MİKTAR</th>
+                                                <th>BİRİM</th>
                                                 <th>NOT / AÇIKLAMA</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {filteredMovementsForPage.length === 0 ? (
-                                                <tr><td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>{movementViewType === 'out' ? 'Çıkış kaydı bulunamadı.' : 'Hareket kaydı bulunamadı.'}</td></tr>
+                                                <tr><td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>{movementViewType === 'out' ? 'Çıkış kaydı bulunamadı.' : 'Hareket kaydı bulunamadı.'}</td></tr>
                                             ) : filteredMovementsForPage.map((m) => (
-                                                <tr key={m.id}>
+                                                <tr key={m.id} onContextMenu={e => handleContextMenu(e, m, 'movements')}>
                                                     <td>{String(m.date || '-').split(',')[0].split(' ')[0]}</td>
                                                     <td>
                                                         <span className={"movement-type-pill " + (m.normalizedType === 'in' ? 'in' : 'out')}>
@@ -2393,6 +2449,7 @@ const App = () => {
                                                             {m.normalizedType === 'in' ? '+' : '−'}{formatNumber(m.amount)}
                                                         </span>
                                                     </td>
+                                                    <td>{m.unit || '-'}</td>
                                                     <td>{m.note || '-'}</td>
                                                 </tr>
                                             ))}
@@ -2504,7 +2561,7 @@ const App = () => {
                                             </thead>
                                             <tbody>
                                                 {allUsers.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)).map(u => (
-                                                    <tr key={u.uid}>
+                                                    <tr key={u.uid} onContextMenu={e => handleContextMenu(e, u, 'users')}>
                                                         <td data-label="Ad Soyad" style={{ fontWeight: '600' }}>
                                                             {u.name}
                                                             {u.uid === authUser.uid && (
@@ -2626,7 +2683,7 @@ const App = () => {
                                                         {sevkiyat.map((s) => {
                                                             const durum = durumMap[s.satin_alim_durumu] || durumMap.BEKLEMEDE;
                                                             return (
-                                                                <tr key={s.id} onClick={() => setSevkiyatModal({ show: true, data: s })} style={{ cursor: 'pointer' }}>
+                                                                <tr key={s.id} onClick={() => setSevkiyatModal({ show: true, data: s })} onContextMenu={e => handleContextMenu(e, s, 'sevkiyat')} style={{ cursor: 'pointer' }}>
                                                                     <td data-label="Form No" style={{ fontWeight: '600' }}>{s.satin_alim_form_no}</td>
                                                                     <td data-label="Tarih">{s.sevkiyata_gonderilme_tarihi_tr?.split(' ')[0] || '-'}</td>
                                                                     <td data-label="Malzeme" style={{ textAlign: 'center' }}>{(s.items || []).length} kalem</td>
@@ -3080,7 +3137,7 @@ const App = () => {
                                                     {requests.filter(r => r.status === 'pending').length === 0 ? (
                                                         <tr><td colSpan={canEdit ? 5 : 4} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Bekleyen talep yok.</td></tr>
                                                     ) : requests.filter(r => r.status === 'pending').map(req => (
-                                                        <tr key={req.id}>
+                                                        <tr key={req.id} onContextMenu={e => handleContextMenu(e, req, 'requests')}>
                                                             <td data-label="Malzeme" style={{ fontWeight: '600' }}>{req.itemName}</td>
                                                             <td data-label="Miktar" style={{ textAlign: 'center' }}><strong>{req.amount}</strong> {req.unit}</td>
                                                             <td data-label="Talep Eden">{req.requestedBy}</td>
@@ -3179,7 +3236,7 @@ const App = () => {
                                                                     const stockItem = items.find(i => Number(i.id) === Number(req.itemId));
                                                                     const stockQty = stockItem ? stockItem.quantity : 0;
                                                                     return (
-                                                                        <tr key={req.id}>
+                                                                        <tr key={req.id} onContextMenu={e => handleContextMenu(e, req, 'requests')}>
                                                                             <td data-label="#">{idx + 1}</td>
                                                                             <td data-label="Malzeme" style={{ fontWeight: '600' }}>{req.itemName}</td>
                                                                             <td data-label="Stok" style={{ textAlign: 'center' }}>
@@ -3960,6 +4017,19 @@ const App = () => {
                         <CheckCircle2 size={48} color="#16a34a" />
                         <span>SATIN ALIM İÇİN GÖNDERİLDİ</span>
                     </div>
+                </div>
+            )}
+
+            {/* Admin Right-Click Context Menu */}
+            {isAdmin && ctxMenu && (
+                <div
+                    className="admin-ctx-menu"
+                    style={{ top: ctxMenu.y, left: ctxMenu.x }}
+                    onClick={e => e.stopPropagation()}
+                >
+                    <button className="admin-ctx-delete" onClick={handleAdminDelete}>
+                        <Trash2 size={13} /> Sil
+                    </button>
                 </div>
             )}
         </div>

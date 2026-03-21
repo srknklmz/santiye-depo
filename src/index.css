@@ -1041,8 +1041,8 @@ input[type="date"]::-webkit-date-and-time-value {
 }
 
 .num-cell,
-.responsive-table td.num-cell,
-.movements-grid .responsive-table td.num-cell {
+table.responsive-table tbody td.num-cell,
+.movements-grid table.responsive-table tbody td.num-cell {
   text-align: right !important;
   padding-right: 20px !important;
   font-variant-numeric: tabular-nums;
@@ -1194,13 +1194,8 @@ input[type="date"]::-webkit-date-and-time-value {
   width: 16%;
 }
 
-/* num-cell her zaman sağa yaslı — col-N center kurallarını override eder */
-.col-3 td.num-cell,
-.col-4 td.num-cell,
-.col-5 td.num-cell,
-.col-6 td.num-cell,
-.col-7 td.num-cell,
-.responsive-table td.num-cell {
+/* num-cell her zaman sağa yaslı — col-N center kurallarını override eder (yüksek specificity) */
+table.responsive-table tbody td.num-cell {
   text-align: right !important;
   padding-right: 20px !important;
 }
@@ -1945,4 +1940,48 @@ input[type="date"]::-webkit-date-and-time-value {
     transform: scale(1);
     opacity: 1;
   }
+}
+
+/* ── Admin Context Menu ───────────────────────────────── */
+.admin-ctx-menu {
+  position: fixed;
+  z-index: 9999;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  min-width: 130px;
+  animation: ctx-appear 0.1s ease;
+}
+
+@keyframes ctx-appear {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.admin-ctx-delete {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: transparent;
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+  text-align: left;
+  font-family: inherit;
+}
+
+.admin-ctx-delete:hover {
+  background: #fef2f2;
+}
+
+/* Satıra sağ tıklanabilir olduğunu gösteren cursor (admin için) */
+.admin-row-hint tr {
+  cursor: context-menu;
 }
