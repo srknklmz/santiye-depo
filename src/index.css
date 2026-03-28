@@ -1097,18 +1097,7 @@ input[type="date"] {
   background: var(--bg-card);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
-  overflow: visible;
-}
-
-.table-card .table-toolbar {
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   overflow: hidden;
-}
-
-.table-card .table-responsive-wrapper {
-  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-  overflow-x: auto;
-  overflow-y: auto;
 }
 
 .table-toolbar {
@@ -1141,25 +1130,26 @@ input[type="date"] {
 }
 
 .table-responsive-wrapper::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 .table-responsive-wrapper::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--bg-card);
+  border-left: 1px solid var(--border-light);
 }
 
 .table-responsive-wrapper::-webkit-scrollbar-thumb {
-  background: var(--border);
+  background: var(--text-muted);
   border-radius: 4px;
 }
 
 .table-responsive-wrapper::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
+  background: var(--text-main);
 }
 
 .table-responsive-wrapper::-webkit-scrollbar-corner {
-  background: transparent;
+  background: var(--bg-card);
 }
 
 /* ═══════════════════════════════════════════
