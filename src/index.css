@@ -1175,7 +1175,8 @@ input[type="date"] {
   border: 1px solid var(--border);
   position: sticky;
   top: 0;
-  z-index: 2;
+  z-index: 10;
+  box-shadow: 0 2px 0 var(--border);
 }
 
 /* Matches nav-item row rhythm */
