@@ -1,5 +1,6 @@
 {
     "hosting": {
+        "site": "shintea-dc091",
         "public": "dist",
         "ignore": [
             "firebase.json",
