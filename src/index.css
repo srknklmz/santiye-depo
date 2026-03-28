@@ -764,6 +764,8 @@ input[type="date"]::-webkit-date-and-time-value {
 /* Dashboard hareket kartları — başlık & tablo aynı genişlik, satırlar kompakt */
 .movements-grid .table-responsive-wrapper {
   overflow-x: hidden;
+  overflow-y: auto;
+  max-height: calc(100vh - 320px);
 }
 .movements-grid .responsive-table {
   width: 100%;
@@ -1122,7 +1124,31 @@ input[type="date"] {
 
 .table-responsive-wrapper {
   overflow-x: auto;
+  overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  max-height: calc(100vh - 260px);
+}
+
+.table-responsive-wrapper::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.table-responsive-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.table-responsive-wrapper::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.table-responsive-wrapper::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+.table-responsive-wrapper::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 /* ═══════════════════════════════════════════
@@ -1146,6 +1172,9 @@ input[type="date"] {
   letter-spacing: 0.04em;
   color: var(--text-table-header);
   border: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
 /* Matches nav-item row rhythm */
@@ -1828,6 +1857,18 @@ input[type="date"] {
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* ═══════════════════════════════════════════
+   TABLE SCROLL — RESPONSIVE MAX-HEIGHT
+═══════════════════════════════════════════ */
+@media (max-width: 600px) {
+  .table-responsive-wrapper {
+    max-height: calc(100vh - 200px);
+  }
+  .movements-grid .table-responsive-wrapper {
+    max-height: calc(100vh - 240px);
+  }
 }
 
 /* ═══════════════════════════════════════════
