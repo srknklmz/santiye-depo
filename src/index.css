@@ -810,7 +810,7 @@ input[type="date"] {
   background: var(--bg-card);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .movements-card-header {
@@ -1097,7 +1097,18 @@ input[type="date"] {
   background: var(--bg-card);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
+  overflow: visible;
+}
+
+.table-card .table-toolbar {
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   overflow: hidden;
+}
+
+.table-card .table-responsive-wrapper {
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  overflow-x: auto;
+  overflow-y: auto;
 }
 
 .table-toolbar {
