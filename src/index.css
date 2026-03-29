@@ -408,6 +408,21 @@ input[type="date"]::-webkit-date-and-time-value {
 .sidebar-action-success { background: linear-gradient(135deg, #34d399, #059669); }
 .sidebar-action-danger  { background: linear-gradient(135deg, #f87171, #dc2626); }
 .sidebar-action-purple  { background: linear-gradient(135deg, #a78bfa, #6d28d9); }
+.sidebar-action-badge {
+  margin-left: auto;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: rgba(0,0,0,0.18);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  letter-spacing: 0;
+}
 
 /* Mini stat buttons (in toolbar) */
 .stat-mini-btn {

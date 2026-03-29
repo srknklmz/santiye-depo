@@ -2622,7 +2622,7 @@ const App = () => {
                     <div>
                         <div style={{ position: 'relative', display: 'inline-block' }}>
                             <div className="sidebar-logo-text">Shintea</div>
-                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.045</span>
+                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.046</span>
                         </div>
                     </div>
                 </div>
@@ -2640,21 +2640,21 @@ const App = () => {
                             <button className="sidebar-action-btn sidebar-action-success"
                                 onClick={() => { setMovementType('in'); setSelectedItemForMove(null); setShowMoveModal(true); }}>
                                 <ArrowUpRight size={15} /> <span>Giriş Ekle</span>
-                                {stats.todayIn > 0 && <span style={{ marginLeft: 'auto', fontSize: '11px', fontWeight: '700', opacity: 0.85 }}>{stats.todayIn}</span>}
+                                <span className="sidebar-action-badge">{stats.todayIn}</span>
                             </button>
                         )}
                         {pagePerm('action_cikis') === 'edit' && (
                             <button className="sidebar-action-btn sidebar-action-danger"
                                 onClick={() => { setMovementType('out'); setSelectedItemForMove(null); setShowMoveModal(true); }}>
                                 <ArrowDownLeft size={15} /> <span>Çıkış Ekle</span>
-                                {stats.todayOut > 0 && <span style={{ marginLeft: 'auto', fontSize: '11px', fontWeight: '700', opacity: 0.85 }}>{stats.todayOut}</span>}
+                                <span className="sidebar-action-badge">{stats.todayOut}</span>
                             </button>
                         )}
                         {pagePerm('action_zimmet') === 'edit' && (
                             <button className="sidebar-action-btn sidebar-action-purple"
                                 onClick={() => { setShowZimmetModal(true); setSelectedItemForZimmet(null); }}>
                                 <UserCheck size={15} /> <span>Zimmet Ekle</span>
-                                {stats.todayZimmet > 0 && <span style={{ marginLeft: 'auto', fontSize: '11px', fontWeight: '700', opacity: 0.85 }}>{stats.todayZimmet}</span>}
+                                <span className="sidebar-action-badge">{stats.todayZimmet}</span>
                             </button>
                         )}
                     </div>
