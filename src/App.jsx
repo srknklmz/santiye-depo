@@ -495,16 +495,28 @@ const BulkDeleteModal = ({ data, onConfirm, onCancel }) => {
 // ─── MultiSelectDropdown ─────────────────────────────────────────────────────
 const MultiSelectDropdown = ({ label, options, selected, onChange }) => {
     const [open, setOpen] = React.useState(false);
-    const ref = React.useRef(null);
+    const [dropPos, setDropPos] = React.useState({ top: 0, left: 0, width: 0 });
+    const btnRef = React.useRef(null);
+    const dropRef = React.useRef(null);
     React.useEffect(() => {
         if (!open) return;
-        const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+        const handler = (e) => {
+            if (btnRef.current?.contains(e.target) || dropRef.current?.contains(e.target)) return;
+            setOpen(false);
+        };
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
     }, [open]);
+    const handleToggle = () => {
+        if (!open && btnRef.current) {
+            const r = btnRef.current.getBoundingClientRect();
+            setDropPos({ top: r.bottom + 4, left: r.left, width: r.width });
+        }
+        setOpen(o => !o);
+    };
     return (
-        <div ref={ref} style={{ position: 'relative', flex: 1 }}>
-            <button onClick={() => setOpen(o => !o)} style={{
+        <div style={{ flex: 1 }}>
+            <button ref={btnRef} onClick={handleToggle} style={{
                 width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '5px 8px', fontSize: '11px', fontWeight: 500, borderRadius: '7px',
                 border: '1px solid var(--border)', background: selected.size > 0 ? 'var(--accent)' : 'var(--bg-card)',
@@ -516,13 +528,14 @@ const MultiSelectDropdown = ({ label, options, selected, onChange }) => {
                 <ChevronDown size={11} style={{ flexShrink: 0 }} />
             </button>
             {open && (
-                <div style={{
-                    position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 200,
-                    background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px',
-                    boxShadow: '0 6px 20px rgba(0,0,0,0.12)', maxHeight: '200px', overflowY: 'auto', padding: '4px 0',
+                <div ref={dropRef} style={{
+                    position: 'fixed', top: dropPos.top, left: dropPos.left, width: dropPos.width,
+                    zIndex: 9999, background: 'var(--bg-card)', border: '1px solid var(--border)',
+                    borderRadius: '8px', boxShadow: '0 6px 20px rgba(0,0,0,0.14)',
+                    maxHeight: '220px', overflowY: 'auto', padding: '4px 0',
                 }}>
                     {selected.size > 0 && (
-                        <button onClick={() => onChange(new Set())} style={{
+                        <button onClick={() => { onChange(new Set()); setOpen(false); }} style={{
                             width: '100%', textAlign: 'left', padding: '5px 10px', fontSize: '11px',
                             color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer',
                             borderBottom: '1px solid var(--border)', fontWeight: 600,
@@ -531,7 +544,7 @@ const MultiSelectDropdown = ({ label, options, selected, onChange }) => {
                     {options.map(opt => (
                         <label key={opt} style={{
                             display: 'flex', alignItems: 'center', gap: '8px',
-                            padding: '5px 10px', cursor: 'pointer', fontSize: '12px',
+                            padding: '6px 10px', cursor: 'pointer', fontSize: '12px',
                             color: 'var(--text-main)',
                         }}>
                             <input type="checkbox" checked={selected.has(opt)} onChange={() => {
@@ -2670,7 +2683,7 @@ const App = () => {
                     <div>
                         <div style={{ position: 'relative', display: 'inline-block' }}>
                             <div className="sidebar-logo-text">Shintea</div>
-                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.048</span>
+                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.049</span>
                         </div>
                     </div>
                 </div>
@@ -3193,8 +3206,8 @@ const App = () => {
                                         {/* ── SOL: LİSTE ── */}
                                         <div style={{ width: '300px', flexShrink: 0, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                                             {/* Arama + Filtreler */}
-                                            <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
-                                                <div className="search-container" style={{ margin: 0, width: '100%' }}>
+                                            <div style={{ borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0', flexShrink: 0 }}>
+                                                <div className="search-container" style={{ margin: 0, width: '100%', borderRadius: '0', borderLeft: 'none', borderRight: 'none', borderTop: 'none', borderBottom: '1px solid var(--border)' }}>
                                                     <Search size={13} className="search-icon" />
                                                     <input
                                                         type="text"
@@ -3205,7 +3218,7 @@ const App = () => {
                                                         style={{ width: '100%', fontSize: '12px' }}
                                                     />
                                                 </div>
-                                                <div style={{ display: 'flex', gap: '6px' }}>
+                                                <div style={{ display: 'flex', gap: '6px', padding: '8px 10px' }}>
                                                     <MultiSelectDropdown
                                                         label="Malzeme"
                                                         options={allItemNames}
