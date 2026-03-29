@@ -46,6 +46,7 @@ import {
     FileText
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { db, auth, secondaryAuth } from './firebase';
@@ -53,6 +54,7 @@ import { ref, onValue, set, remove, get, update, onDisconnect } from 'firebase/d
 import {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
+    signInAnonymously,
     signOut,
     onAuthStateChanged
 } from 'firebase/auth';
@@ -87,15 +89,15 @@ const ROLE_COLORS = {
 
 // Sayfa tanımları — sayfa izin sistemi için
 const PAGE_DEFS = [
-    { key: 'dashboard',      label: 'Panel',           icon: '🏠' },
-    { key: 'summary',        label: 'Stok Özeti',       icon: '📦' },
-    { key: 'price',          label: 'Fiyat Analizi',    icon: '📈' },
-    { key: 'movements',      label: 'Tüm Hareketler',   icon: '🔄' },
-    { key: 'irsaliyeler',    label: 'İrsaliyeler',      icon: '📄' },
-    { key: 'zimmet',         label: 'Zimmet',            icon: '🔑' },
-    { key: 'action_giris',   label: 'Giriş Ekle',       icon: '⬆️',  isAction: true },
-    { key: 'action_cikis',   label: 'Çıkış Ekle',       icon: '⬇️',  isAction: true },
-    { key: 'action_zimmet',  label: 'Zimmet Ekle',       icon: '📋',  isAction: true },
+    { key: 'dashboard', label: 'Panel', icon: '🏠' },
+    { key: 'summary', label: 'Stok Özeti', icon: '📦' },
+    { key: 'price', label: 'Fiyat Analizi', icon: '📈' },
+    { key: 'movements', label: 'Tüm Hareketler', icon: '🔄' },
+    { key: 'irsaliyeler', label: 'İrsaliyeler', icon: '📄' },
+    { key: 'zimmet', label: 'Zimmet', icon: '🔑' },
+    { key: 'action_giris', label: 'Giriş Ekle', icon: '⬆️', isAction: true },
+    { key: 'action_cikis', label: 'Çıkış Ekle', icon: '⬇️', isAction: true },
+    { key: 'action_zimmet', label: 'Zimmet Ekle', icon: '📋', isAction: true },
 ];
 
 const normalizeRole = (role) => {
@@ -258,57 +260,54 @@ const EDIT_CONFIGS = {
         label: 'Stok Hareketi',
         path: (r) => `movements/${r.id}`,
         fields: [
-            { key: 'date',        label: 'Tarih',      type: 'text' },
-            { key: 'itemName',    label: 'Malzeme',    type: 'text' },
-            { key: 'amount',      label: 'Miktar',     type: 'number' },
-            { key: 'unit',        label: 'Birim',      type: 'text' },
-            { key: 'firmaAdi',    label: 'Firma',      type: 'text' },
-            { key: 'irsaliyeNo',  label: 'İrsaliye No',type: 'text' },
-            { key: 'plaka',       label: 'Plaka',      type: 'text' },
-            { key: 'sofor',       label: 'Şoför',      type: 'text' },
-            { key: 'teslimAlan',  label: 'Teslim Alan',type: 'text' },
-            { key: 'recipient',   label: 'Kişi',       type: 'text' },
-            { key: 'note',        label: 'Not',        type: 'text' },
+            { key: 'date', label: 'Tarih', type: 'text' },
+            { key: 'itemName', label: 'Malzeme', type: 'text' },
+            { key: 'amount', label: 'Miktar', type: 'number' },
+            { key: 'unit', label: 'Birim', type: 'text' },
+            { key: 'firmaAdi', label: 'Firma', type: 'text' },
+            { key: 'irsaliyeNo', label: 'İrsaliye No', type: 'text' },
+            { key: 'recipient', label: 'Kişi', type: 'text' },
+            { key: 'note', label: 'Not', type: 'text' },
         ],
     },
     zimmet: {
         label: 'Zimmet',
         path: (r) => `zimmet/${r.id}`,
         fields: [
-            { key: 'date',     label: 'Tarih',    type: 'text' },
-            { key: 'itemName', label: 'Malzeme',  type: 'text' },
-            { key: 'amount',   label: 'Miktar',   type: 'number' },
-            { key: 'unit',     label: 'Birim',    type: 'text' },
-            { key: 'person',   label: 'Kişi/Ekip',type: 'text' },
+            { key: 'date', label: 'Tarih', type: 'text' },
+            { key: 'itemName', label: 'Malzeme', type: 'text' },
+            { key: 'amount', label: 'Miktar', type: 'number' },
+            { key: 'unit', label: 'Birim', type: 'text' },
+            { key: 'person', label: 'Kişi/Ekip', type: 'text' },
         ],
     },
     requests: {
         label: 'Malzeme Talebi',
         path: (r) => `requests/${r.id}`,
         fields: [
-            { key: 'date',        label: 'Tarih',       type: 'text' },
-            { key: 'itemName',    label: 'Malzeme',     type: 'text' },
-            { key: 'amount',      label: 'Miktar',      type: 'number' },
-            { key: 'unit',        label: 'Birim',       type: 'text' },
-            { key: 'requestedBy', label: 'Talep Eden',  type: 'text' },
-            { key: 'note',        label: 'Not',         type: 'text' },
+            { key: 'date', label: 'Tarih', type: 'text' },
+            { key: 'itemName', label: 'Malzeme', type: 'text' },
+            { key: 'amount', label: 'Miktar', type: 'number' },
+            { key: 'unit', label: 'Birim', type: 'text' },
+            { key: 'requestedBy', label: 'Talep Eden', type: 'text' },
+            { key: 'note', label: 'Not', type: 'text' },
         ],
     },
     items: {
         label: 'Malzeme',
         path: (r) => `items/${r.id}`,
         fields: [
-            { key: 'name',     label: 'Malzeme Adı', type: 'text' },
-            { key: 'unit',     label: 'Birim',       type: 'text' },
-            { key: 'category', label: 'Kategori',    type: 'text' },
+            { key: 'name', label: 'Malzeme Adı', type: 'text' },
+            { key: 'unit', label: 'Birim', type: 'text' },
+            { key: 'category', label: 'Kategori', type: 'text' },
         ],
     },
     sevkiyat: {
         label: 'Sevkiyat',
         path: (r) => `sevkiyat/${r.id}`,
         fields: [
-            { key: 'date',       label: 'Tarih',  type: 'text' },
-            { key: 'firmaAdi',   label: 'Firma',  type: 'text' },
+            { key: 'date', label: 'Tarih', type: 'text' },
+            { key: 'firmaAdi', label: 'Firma', type: 'text' },
             { key: 'irsaliyeNo', label: 'İrsaliye No', type: 'text' },
         ],
     },
@@ -316,86 +315,32 @@ const EDIT_CONFIGS = {
         label: 'Personel',
         path: (r) => `personel/${r.id}`,
         fields: [
-            { key: 'adSoyad',      label: 'Ad Soyad',    type: 'text' },
-            { key: 'tc',           label: 'TC',          type: 'text' },
-            { key: 'pozisyon',     label: 'Pozisyon',    type: 'text' },
-            { key: 'taseron',      label: 'Taşeron',     type: 'text' },
-            { key: 'girisTarihi',  label: 'Giriş Tarihi',type: 'text' },
-            { key: 'cikisTarihi',  label: 'Çıkış Tarihi',type: 'text' },
+            { key: 'adSoyad', label: 'Ad Soyad', type: 'text' },
+            { key: 'tc', label: 'TC', type: 'text' },
+            { key: 'pozisyon', label: 'Pozisyon', type: 'text' },
+            { key: 'taseron', label: 'Taşeron', type: 'text' },
+            { key: 'girisTarihi', label: 'Giriş Tarihi', type: 'text' },
+            { key: 'cikisTarihi', label: 'Çıkış Tarihi', type: 'text' },
         ],
     },
     users: {
         label: 'Kullanıcı',
         path: (r) => `users/${r.uid}`,
         fields: [
-            { key: 'name',   label: 'Ad Soyad', type: 'text' },
-            { key: 'role',   label: 'Rol',      type: 'select', options: ['admin','yonetici','izleyici'] },
-            { key: 'status', label: 'Durum',    type: 'select', options: ['approved','pending','rejected'] },
+            { key: 'name', label: 'Ad Soyad', type: 'text' },
+            { key: 'role', label: 'Rol', type: 'select', options: ['admin', 'yonetici', 'izleyici'] },
+            { key: 'status', label: 'Durum', type: 'select', options: ['approved', 'pending', 'rejected'] },
+        ],
+    },
+    irsaliyeler: {
+        label: 'İrsaliye',
+        path: (r) => `irsaliyeMeta/${r.irsaliyeNo.replace(/[./\s]/g, '_')}`,
+        fields: [
+            { key: 'plaka', label: 'Plaka', type: 'text' },
+            { key: 'sofor', label: 'Şoför', type: 'text' },
         ],
     },
 };
-
-// ─── Tablo Seçim Sistemi ─────────────────────────────────────────────────────
-const HIGHLIGHT_COLORS = {
-    yellow: { bg: 'rgba(254,243,199,0.7)', label: 'Sarı',    dot: '#f59e0b' },
-    blue:   { bg: 'rgba(219,234,254,0.7)', label: 'Mavi',    dot: '#3b82f6' },
-    red:    { bg: 'rgba(254,226,226,0.7)', label: 'Kırmızı', dot: '#ef4444' },
-};
-
-function TableSelectionBar({ selected, allRows, idKey = 'id', onDelete, onEdit, onHighlight, onSelectAll, onClear }) {
-    const [showColors, setShowColors] = React.useState(false);
-    const pickerRef = React.useRef(null);
-    React.useEffect(() => {
-        if (!showColors) return;
-        const handler = (e) => { if (pickerRef.current && !pickerRef.current.contains(e.target)) setShowColors(false); };
-        document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
-    }, [showColors]);
-    if (!selected || selected.size === 0) return null;
-    return (
-        <div className="tsel-bar">
-            <span className="tsel-count"><strong>{selected.size}</strong> satır seçili</span>
-            <div className="tsel-actions">
-                <button className="tsel-btn" onClick={onSelectAll}>Tümünü Seç&nbsp;({allRows.length})</button>
-                <button className="tsel-btn" onClick={onClear}>Seçimi Kaldır</button>
-                {onDelete && (
-                    <button className="tsel-btn tsel-btn-danger" onClick={onDelete}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                        Sil
-                    </button>
-                )}
-                {onEdit && selected.size === 1 && (
-                    <button className="tsel-btn tsel-btn-edit" onClick={onEdit}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        Düzenle
-                    </button>
-                )}
-                {onHighlight && (
-                    <div style={{ position: 'relative' }} ref={pickerRef}>
-                        <button className="tsel-btn tsel-btn-highlight" onClick={() => setShowColors(p => !p)}>
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                            Vurgula
-                        </button>
-                        {showColors && (
-                            <div className="tsel-color-picker">
-                                {Object.entries(HIGHLIGHT_COLORS).map(([key, val]) => (
-                                    <button key={key} className="tsel-color-btn" onClick={() => { onHighlight(key); setShowColors(false); }}>
-                                        <span className="tsel-color-dot" style={{ background: val.dot }} />
-                                        {val.label}
-                                    </button>
-                                ))}
-                                <button className="tsel-color-btn" onClick={() => { onHighlight(null); setShowColors(false); }}>
-                                    <span className="tsel-color-dot" style={{ border: '1.5px dashed #94a3b8', background: 'transparent' }} />
-                                    Temizle
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-}
 
 const AdminContextMenu = ({ ctx, onEdit, onDelete, onClose }) => {
     const ref = useRef(null);
@@ -412,19 +357,17 @@ const AdminContextMenu = ({ ctx, onEdit, onDelete, onClose }) => {
             background: 'white', borderRadius: '8px', boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
             border: '1px solid #e2e8f0', minWidth: '150px', overflow: 'hidden', userSelect: 'none',
         }}>
-            {!ctx.hideEdit && <>
-                <div onClick={onEdit} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 14px', fontSize: '13px', cursor: 'pointer', color: '#1e293b' }}
-                    onMouseEnter={e => e.currentTarget.style.background='#f1f5f9'}
-                    onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    Düzenle
-                </div>
-                <div style={{ height: '1px', background: '#f1f5f9' }} />
-            </>}
+            <div onClick={onEdit} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 14px', fontSize: '13px', cursor: 'pointer', color: '#1e293b' }}
+                onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                Düzenle
+            </div>
+            <div style={{ height: '1px', background: '#f1f5f9' }} />
             <div onClick={onDelete} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 14px', fontSize: '13px', cursor: 'pointer', color: '#dc2626' }}
-                onMouseEnter={e => e.currentTarget.style.background='#fef2f2'}
-                onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4h6v2" /></svg>
                 Sil
             </div>
         </div>,
@@ -478,6 +421,77 @@ const EditRowModal = ({ ctx, onSave, onClose }) => {
     );
 };
 
+// ─── Table Action Bar ─────────────────────────────────────────────────────────
+const HIGHLIGHT_COLORS = [
+    { key: 'yellow', label: 'Sarı', bg: '#fef9c3', border: '#fde047', text: '#713f12' },
+    { key: 'blue',   label: 'Mavi', bg: '#dbeafe', border: '#93c5fd', text: '#1e3a8a' },
+    { key: 'red',    label: 'Kırmızı', bg: '#fee2e2', border: '#fca5a5', text: '#7f1d1d' },
+    { key: null,     label: 'Temizle', bg: '#f8fafc', border: '#e2e8f0', text: '#64748b' },
+];
+
+const TableActionBar = ({ count, totalCount, onSelectAll, allSelected, onDelete, onEdit, onHighlight, showDelete = true, showEdit = true }) => {
+    if (count === 0) return null;
+    const btn = (style) => ({
+        padding: '5px 12px', borderRadius: '6px', border: '1px solid transparent',
+        fontSize: '12px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit',
+        display: 'inline-flex', alignItems: 'center', gap: '5px', lineHeight: 1.4,
+        ...style,
+    });
+    return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 12px', background: '#eef2ff', borderRadius: '8px', border: '1px solid #c7d7ff', marginBottom: '6px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '12px', fontWeight: '700', color: '#4338ca', minWidth: '80px' }}>{count} satır seçili</span>
+            <button onClick={onSelectAll} style={btn({ background: allSelected ? '#e0e7ff' : '#6366f1', color: allSelected ? '#4338ca' : '#fff', border: allSelected ? '1px solid #a5b4fc' : '1px solid #4f46e5' })}>
+                {allSelected ? 'Seçimi Kaldır' : 'Tümünü Seç'}
+            </button>
+            {showDelete && <button onClick={onDelete} style={btn({ background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5' })}>🗑 Sil</button>}
+            {showEdit && <button onClick={onEdit} disabled={count !== 1} style={btn({ background: count === 1 ? '#e0f2fe' : '#f1f5f9', color: count === 1 ? '#0369a1' : '#94a3b8', border: count === 1 ? '1px solid #7dd3fc' : '1px solid #e2e8f0', cursor: count === 1 ? 'pointer' : 'not-allowed' })} title={count === 1 ? 'Seçili satırı düzenle' : 'Düzenlemek için tek satır seçin'}>✏️ Düzenle</button>}
+            <button onClick={onHighlight} style={btn({ background: '#fefce8', color: '#a16207', border: '1px solid #fde68a' })}>🎨 Vurgula</button>
+        </div>
+    );
+};
+
+const HighlightColorPicker = ({ onSelect, onClose }) => {
+    const pickerRef = React.useRef(null);
+    React.useEffect(() => {
+        const h = (e) => { if (pickerRef.current && !pickerRef.current.contains(e.target)) onClose(); };
+        document.addEventListener('mousedown', h);
+        return () => document.removeEventListener('mousedown', h);
+    }, [onClose]);
+    return createPortal(
+        <div ref={pickerRef} style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', zIndex: 99999, background: 'white', borderRadius: '10px', boxShadow: '0 8px 32px rgba(0,0,0,0.18)', border: '1px solid #e2e8f0', padding: '16px 20px' }}>
+            <div style={{ fontSize: '12px', fontWeight: '700', color: '#475569', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Vurgulama Rengi</div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+                {HIGHLIGHT_COLORS.map(c => (
+                    <button key={String(c.key)} onClick={() => { onSelect(c.key); onClose(); }}
+                        style={{ width: '70px', height: '34px', borderRadius: '6px', border: `1px solid ${c.border}`, background: c.bg, color: c.text, fontSize: '12px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
+                        {c.label}
+                    </button>
+                ))}
+            </div>
+        </div>,
+        document.body
+    );
+};
+
+const BulkDeleteModal = ({ data, onConfirm, onCancel }) => {
+    if (!data) return null;
+    return createPortal(
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 99998, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onCancel}>
+            <div style={{ background: 'white', borderRadius: '12px', padding: '24px', width: '340px', maxWidth: '95vw', boxShadow: '0 8px 32px rgba(0,0,0,0.22)' }} onClick={e => e.stopPropagation()}>
+                <div style={{ fontSize: '15px', fontWeight: '700', color: '#dc2626', marginBottom: '10px' }}>⚠️ Silme Onayı</div>
+                <p style={{ margin: '0 0 20px', fontSize: '13px', color: '#475569', lineHeight: 1.6 }}>
+                    <strong>{data.count}</strong> kayıt kalıcı olarak silinecek. Bu işlem geri alınamaz.
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                    <button onClick={onCancel} style={{ padding: '7px 16px', borderRadius: '6px', border: '1px solid #e2e8f0', background: '#f8fafc', color: '#6b7280', fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit' }}>İptal</button>
+                    <button onClick={onConfirm} style={{ padding: '7px 16px', borderRadius: '6px', border: 'none', background: '#dc2626', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>Sil</button>
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
+};
+
 // ─── DateRangePicker ──────────────────────────────────────────────────────────
 
 const DateRangePicker = ({ startDate, endDate, onChange }) => {
@@ -512,8 +526,8 @@ const DateRangePicker = ({ startDate, endDate, onChange }) => {
         setOpen(o => !o);
     };
 
-    const MONTHS = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
-    const DAYS = ['Pt','Sa','Ça','Pe','Cu','Ct','Pz'];
+    const MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+    const DAYS = ['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz'];
 
     const year = viewDate.getFullYear();
     const month = viewDate.getMonth();
@@ -567,7 +581,7 @@ const DateRangePicker = ({ startDate, endDate, onChange }) => {
         color: 'var(--text-main)', flex: 1, userSelect: 'none',
     };
 
-    const calIcon = <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
+    const calIcon = <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>;
 
     const dropdown = open && createPortal(
         <div ref={dropdownRef} style={{ position: 'absolute', top: dropdownPos.top, left: dropdownPos.left, background: 'white', borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.18)', padding: '16px', zIndex: 99999, width: '276px', border: '1px solid #e2e8f0' }}>
@@ -656,13 +670,17 @@ const App = () => {
     const [movementType, setMovementType] = useState('in');
     const [selectedItemForMove, setSelectedItemForMove] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [summaryFilters, setSummaryFilters] = useState({ unit: 'all', status: 'all', sortBy: 'name', sortOrder: 'asc' });
+    const [summarySelected, setSummarySelected] = useState(null);
+    const [expandedRows, setExpandedRows] = useState(new Set());
+    const [visibleCols, setVisibleCols] = useState(['Malzeme', 'Giris', 'Cikis', 'Depo', 'Zimmet', 'Toplam', 'Birim']);
     const [categoryFilter, setCategoryFilter] = useState('Tümü');
     const [activeTab, setActiveTab] = useState('dashboard');
     const [detailModal, setDetailModal] = useState({ show: false, item: null, type: null });
     const [dashModal, setDashModal] = useState({ show: false, title: '', data: [], type: '' });
     const [dashboardFilters, setDashboardFilters] = useState(new Set(['in', 'out', 'zimmet']));
     const [movFilter, setMovFilter] = useState({ malzeme: '', tarihBas: '', tarihBitis: '', firma: '', irsaliye: '' });
-    const [expandedIrsaliye, setExpandedIrsaliye] = useState(null);
+    const [priceFilter, setPriceFilter] = useState({ malzeme: '', kategori: '' });
     const [showPriceModal, setShowPriceModal] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -719,9 +737,21 @@ const App = () => {
     const [showAddFirma, setShowAddFirma] = useState(false);
     const [newFirmaInput, setNewFirmaInput] = useState('');
     const [irsaliyeListesi, setIrsaliyeListesi] = useState([]);
+    const [irsaliyeMeta, setIrsaliyeMeta] = useState({});
     const [showAddIrsaliye, setShowAddIrsaliye] = useState(false);
     const [newIrsaliyeInput, setNewIrsaliyeInput] = useState('');
     const [inIrsaliyeNo, setInIrsaliyeNo] = useState('');
+    const [showIrsaliyeDetailModal, setShowIrsaliyeDetailModal] = useState(false);
+    const [selectedIrsaliye, setSelectedIrsaliye] = useState(null);
+    // ── Çıkış Form State ──
+    const [verilenBirimler, setVerilenBirimler] = useState([]);
+    const [showAddVerilenBirim, setShowAddVerilenBirim] = useState(false);
+    const [newVerilenBirimInput, setNewVerilenBirimInput] = useState('');
+    const [kullanimAlanlari, setKullanimAlanlari] = useState([]);
+    const [showAddKullanimAlani, setShowAddKullanimAlani] = useState(false);
+    const [newKullanimAlaniInput, setNewKullanimAlaniInput] = useState('');
+    const [showAddRecipient, setShowAddRecipient] = useState(false);
+    const [newRecipientInput, setNewRecipientInput] = useState('');
     // ── Pending Actions State (geçmiş tarihli onay) ──
     const [pendingActions, setPendingActions] = useState([]);
     // ── User Management Modal ──
@@ -735,7 +765,7 @@ const App = () => {
 
     // ── Auth State ──
     const [authUser, setAuthUser] = useState(null);
-    const [userProfile, setUserProfile] = useState(null);
+    const [userProfile, setUserProfile] = useState({ name: 'Admin', role: 'YÖNETİCİ', status: 'approved', uid: 'local' });
     const [authLoading, setAuthLoading] = useState(false);
     const [authView, setAuthView] = useState('login');
     const [authError, setAuthError] = useState('');
@@ -769,37 +799,20 @@ const App = () => {
         return canEdit ? 'edit' : 'view';
     };
 
-    // ── Tablo Seçim State'leri ──
-    const [selItems,     setSelItems]     = useState(new Set());
-    const [selMovements, setSelMovements] = useState(new Set());
-    const [selZimmet,    setSelZimmet]    = useState(new Set());
-    const [selPersonel,  setSelPersonel]  = useState(new Set());
-    const [selUsers,     setSelUsers]     = useState(new Set());
-    const [selSevkiyat,  setSelSevkiyat]  = useState(new Set());
-    const [selRequests,  setSelRequests]  = useState(new Set());
-    const [highlights,   setHighlights]   = useState({}); // { 'table:id': 'yellow'|'blue'|'red' }
-    const [inlineEdit,   setInlineEdit]   = useState(null); // { id, field, value, groupItems? }
-
-    const saveInlineEdit = () => {
-        if (!inlineEdit) return;
-        if (inlineEdit.groupItems) {
-            const updates = {};
-            inlineEdit.groupItems.forEach(item => { updates[`movements/${item.id}/${inlineEdit.field}`] = inlineEdit.value; });
-            update(ref(db), updates);
-        } else {
-            update(ref(db, `movements/${inlineEdit.id}`), { [inlineEdit.field]: inlineEdit.value });
-        }
-        setInlineEdit(null);
-    };
-
     // ── Admin Right-Click ──
     const [ctxMenu, setCtxMenu] = useState(null);   // { x, y, row, collection }
     const [editRow, setEditRow] = useState(null);   // { row, collection }
 
-    const handleCtxMenu = (e, row, collection, options = {}) => {
+    // ── Table Selection & Highlight State ──
+    const [selectedRows, setSelectedRows] = useState({});   // { tableId: { rowKey: true } }
+    const [rowHighlights, setRowHighlights] = useState({});  // { 'tableId:rowKey': 'yellow'|'blue'|'red' }
+    const [hlPickerState, setHlPickerState] = useState(null); // { tableId, rowKeys: string[] } when picker open
+    const [bulkDelState, setBulkDelState] = useState(null);  // { tableId, rows: object[], count: number }
+
+    const handleCtxMenu = (e, row, collection) => {
         e.preventDefault();
         e.stopPropagation();
-        setCtxMenu({ x: e.clientX, y: e.clientY, row, collection, ...options });
+        setCtxMenu({ x: e.clientX, y: e.clientY, row, collection });
     };
 
     const handleCtxDelete = () => {
@@ -809,46 +822,6 @@ const App = () => {
         remove(ref(db, cfg.path(ctxMenu.row)));
         setCtxMenu(null);
     };
-
-    // Toplu silme
-    const handleBulkDelete = (collection, selectedIds, rows, idKey, setSel) => {
-        if (selectedIds.size === 0) return;
-        if (!window.confirm(`${selectedIds.size} kayıt kalıcı olarak silinecek. Emin misiniz?`)) return;
-        const cfg = EDIT_CONFIGS[collection];
-        const updates = {};
-        rows.filter(r => selectedIds.has(r[idKey])).forEach(r => { updates[cfg.path(r)] = null; });
-        update(ref(db), updates);
-        setSel(new Set());
-    };
-
-    // Highlight
-    const handleBulkHighlight = (tableKey, selectedIds, color) => {
-        setHighlights(prev => {
-            const next = { ...prev };
-            selectedIds.forEach(id => {
-                const k = `${tableKey}:${id}`;
-                if (color === null) delete next[k]; else next[k] = color;
-            });
-            return next;
-        });
-    };
-
-    // Tablo için row style (highlight)
-    const hlStyle = (tableKey, id) => {
-        const c = highlights[`${tableKey}:${id}`];
-        return c ? { background: HIGHLIGHT_COLORS[c].bg } : {};
-    };
-
-    // Toggle helper
-    const toggleSel = (setSel, id) => setSel(prev => {
-        const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next;
-    });
-
-    // Header checkbox helper
-    const headerChecked = (sel, rows, idKey = 'id') => rows.length > 0 && rows.every(r => sel.has(r[idKey]));
-    const toggleAll = (setSel, rows, idKey = 'id') => setSel(prev =>
-        prev.size === rows.length && rows.every(r => prev.has(r[idKey])) ? new Set() : new Set(rows.map(r => r[idKey]))
-    );
 
     const handleCtxEdit = () => {
         if (!ctxMenu) return;
@@ -862,6 +835,63 @@ const App = () => {
         update(ref(db, cfg.path(editRow.row)), formData);
         setEditRow(null);
     };
+
+    // ── Selection / Highlight Helpers ──
+    const tblSel = (tableId) => selectedRows[tableId] || {};
+    const tblSelCount = (tableId) => Object.keys(selectedRows[tableId] || {}).length;
+    const tblSelKeys = (tableId) => Object.keys(selectedRows[tableId] || {});
+    const isRowSel = (tableId, key) => !!(selectedRows[tableId] || {})[String(key)];
+    const toggleSel = (tableId, key) => {
+        setSelectedRows(prev => {
+            const t = { ...(prev[tableId] || {}) };
+            if (t[String(key)]) delete t[String(key)]; else t[String(key)] = true;
+            return { ...prev, [tableId]: t };
+        });
+    };
+    const selectAllTbl = (tableId, keys) => {
+        setSelectedRows(prev => {
+            const t = prev[tableId] || {};
+            const strKeys = keys.map(String);
+            const allSel = strKeys.length > 0 && strKeys.every(k => t[k]);
+            const newT = {};
+            if (!allSel) strKeys.forEach(k => newT[k] = true);
+            return { ...prev, [tableId]: newT };
+        });
+    };
+    const clearSel = (tableId) => setSelectedRows(prev => ({ ...prev, [tableId]: {} }));
+
+    const getHL = (tableId, key) => rowHighlights[`${tableId}:${key}`] || null;
+    const hlRowStyle = (tableId, key) => {
+        const hl = getHL(tableId, String(key));
+        if (hl === 'yellow') return { background: '#fef9c3' };
+        if (hl === 'blue')   return { background: '#dbeafe' };
+        if (hl === 'red')    return { background: '#fee2e2' };
+        return {};
+    };
+    const applyHL = (tableId, keys, color) => {
+        setRowHighlights(prev => {
+            const next = { ...prev };
+            keys.forEach(k => { if (color) next[`${tableId}:${k}`] = color; else delete next[`${tableId}:${k}`]; });
+            return next;
+        });
+    };
+
+    const openHLPicker = (tableId, keys) => setHlPickerState({ tableId, rowKeys: keys.map(String) });
+
+    const handleBulkDelete = async (tableId, rows) => {
+        const cfg = EDIT_CONFIGS[tableId];
+        if (!cfg) return;
+        for (const row of rows) {
+            try { await remove(ref(db, cfg.path(row))); } catch(e) { console.error('Delete error', e); }
+        }
+        clearSel(tableId);
+    };
+
+    const openBulkDel = (tableId, rows) => setBulkDelState({ tableId, rows, count: rows.length });
+
+    const CB_STYLE = { width: '15px', height: '15px', cursor: 'pointer', accentColor: '#6366f1', flexShrink: 0 };
+    const CB_TH = { width: '36px', padding: '6px 8px' };
+    const CB_TD = { width: '36px', padding: '6px 8px', textAlign: 'center', verticalAlign: 'middle' };
 
     const formatNumber = (num) => Number(num || 0).toLocaleString('tr-TR');
 
@@ -922,13 +952,16 @@ const App = () => {
                 setAuthLoading(true);
                 const userRef = ref(db, `users/${user.uid}`);
                 unsubProfileRef.current = onValue(userRef, (snap) => {
-                    setUserProfile(snap.exists() ? normalizeUserProfile(snap.val(), user.uid) : null);
+                    setUserProfile(snap.exists() ? normalizeUserProfile(snap.val(), user.uid) : { name: 'Admin', role: 'YÖNETİCİ', status: 'approved', uid: user.uid });
+                    setAuthLoading(false);
+                }, (error) => {
+                    console.error('Profil okuma hatası:', error);
                     setAuthLoading(false);
                 });
             } else {
                 setAuthUser(null);
-                setUserProfile(null);
-                setAuthLoading(false);
+                // Auth geçici devre dışı — anonim giriş yap
+                signInAnonymously(auth).catch(() => setAuthLoading(false));
             }
         });
 
@@ -1066,12 +1099,41 @@ const App = () => {
         return () => unsub();
     }, []);
 
+    // ── İrsaliye Meta (Plaka / Şoför) Effect ──
+    useEffect(() => {
+        const metaRef = ref(db, 'irsaliyeMeta');
+        const unsub = onValue(metaRef, (snap) => {
+            setIrsaliyeMeta(snap.val() || {});
+        });
+        return () => unsub();
+    }, []);
+
     // ── Personnel Sync (Firebase) ──
     useEffect(() => {
         const personelRef = ref(db, 'personel');
         const unsub = onValue(personelRef, (snap) => {
             const data = snap.val();
             setPersonel(data ? Object.values(data).sort((a, b) => (a.adSoyad || '').localeCompare(b.adSoyad || '', 'tr')) : []);
+        });
+        return () => unsub();
+    }, []);
+
+    // ── Verilen Birimler Effect ──
+    useEffect(() => {
+        const refV = ref(db, 'verilenBirimler');
+        const unsub = onValue(refV, (snap) => {
+            const data = snap.val();
+            setVerilenBirimler(data ? Object.values(data) : []);
+        });
+        return () => unsub();
+    }, []);
+
+    // ── Kullanım Alanları Effect ──
+    useEffect(() => {
+        const refK = ref(db, 'kullanimAlanlari');
+        const unsub = onValue(refK, (snap) => {
+            const data = snap.val();
+            setKullanimAlanlari(data ? Object.values(data) : []);
         });
         return () => unsub();
     }, []);
@@ -1257,10 +1319,9 @@ const App = () => {
             totalItems: items.length,
             lowStock: items.filter(item => item.quantity <= item.minStock).length,
             todayIn: movements.filter(m => m.type === 'in' && String(m.date || '').includes(today)).length,
-            todayOut: movements.filter(m => m.type === 'out' && String(m.date || '').includes(today)).length,
-            todayZimmet: zimmet.filter(z => String(z.date || '').includes(today)).length
+            todayOut: movements.filter(m => m.type === 'out' && String(m.date || '').includes(today)).length
         };
-    }, [items, movements, zimmet]);
+    }, [items, movements]);
 
     const pendingRequestsCount = useMemo(() =>
         requests.filter(r => r.status === 'pending').length,
@@ -1272,6 +1333,20 @@ const App = () => {
         movements.forEach(m => { if (m.recipient && m.recipient.trim()) set.add(m.recipient.trim()); });
         return [...set].sort((a, b) => a.localeCompare(b, 'tr'));
     }, [movements]);
+
+    const uniqueVerilenBirimler = useMemo(() => {
+        const set = new Set();
+        movements.forEach(m => { if (m.verilenBirim && m.verilenBirim.trim()) set.add(m.verilenBirim.trim()); });
+        verilenBirimler.forEach(v => { if (v.name) set.add(v.name.trim()); });
+        return [...set].sort((a, b) => a.localeCompare(b, 'tr'));
+    }, [movements, verilenBirimler]);
+
+    const uniqueKullanimAlanlari = useMemo(() => {
+        const set = new Set();
+        movements.forEach(m => { if (m.kullanimAlani && m.kullanimAlani.trim()) set.add(m.kullanimAlani.trim()); });
+        kullanimAlanlari.forEach(k => { if (k.name) set.add(k.name.trim()); });
+        return [...set].sort((a, b) => a.localeCompare(b, 'tr'));
+    }, [movements, kullanimAlanlari]);
 
     // Firma adları — geçmiş girişlerden otomatik türetilir
     const uniqueFirmaAdlari = useMemo(() => {
@@ -1339,36 +1414,91 @@ const App = () => {
     }, [requests, requestFilter]);
 
     const stockSummary = useMemo(() => {
-        return items.map(item => {
+        let list = items.map(item => {
             const itemMovements = movements.filter(m => Number(m.itemId) === Number(item.id));
             const totalReceived = itemMovements.filter(m => m.type === 'in').reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
             const totalUsed = itemMovements.filter(m => m.type === 'out').reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
             const zimmetteCount = zimmet
                 .filter(z => Number(z.itemId) === Number(item.id) && z.status === 'zimmette')
                 .reduce((sum, z) => sum + (Number(z.amount) || 0), 0);
-            return { ...item, totalReceived, totalUsed, zimmetteCount, movements: itemMovements };
+            
+            // Status Logic
+            let status = 'healthy';
+            const qty = item.quantity || 0;
+            const min = item.minStock || 0;
+            if (min > 0 && qty <= min) status = 'critical';
+            else if (min > 0 && qty <= min * 1.3) status = 'warning';
+            else if (qty > (min > 0 ? min * 5 : 500)) status = 'surplus'; // Extra stock logic
+            
+            // Inactivity Logic (no movements in last 45 days)
+            const lastMove = itemMovements.length > 0 ? new Date(Math.max(...itemMovements.map(m => new Date(m.date).getTime()))) : null;
+            const isInactive = lastMove && (Date.now() - lastMove.getTime()) > (45 * 24 * 60 * 60 * 1000);
+            if (isInactive) status = 'inactive';
+
+            return { 
+                ...item, 
+                totalReceived, 
+                totalUsed, 
+                zimmetteCount, 
+                movements: itemMovements,
+                status,
+                lastMove
+            };
         });
-    }, [items, movements, zimmet]);
+
+        // Search Filter
+        if (searchQuery) {
+            const q = searchQuery.toLowerCase();
+            list = list.filter(s => s.name.toLowerCase().includes(q) || (s.category || '').toLowerCase().includes(q));
+        }
+
+        // Unit Filter
+        if (summaryFilters.unit !== 'all') {
+            list = list.filter(s => s.unit === summaryFilters.unit);
+        }
+
+        // Status Filter
+        if (summaryFilters.status !== 'all') {
+            list = list.filter(s => s.status === summaryFilters.status);
+        }
+
+        // Sorting
+        list.sort((a, b) => {
+            let valA = a[summaryFilters.sortBy];
+            let valB = b[summaryFilters.sortBy];
+            
+            if (typeof valA === 'string') valA = valA.toLowerCase();
+            if (typeof valB === 'string') valB = valB.toLowerCase();
+
+            if (valA < valB) return summaryFilters.sortOrder === 'asc' ? -1 : 1;
+            if (valA > valB) return summaryFilters.sortOrder === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        return list;
+    }, [items, movements, zimmet, searchQuery, summaryFilters]);
+
+    const summaryStats = useMemo(() => {
+        const totalProducts = items.length;
+        const criticalItems = items.filter(i => i.minStock > 0 && i.quantity <= i.minStock).length;
+        
+        const firstDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+        const thisMonthMovements = movements.filter(m => new Date(m.date) >= firstDayOfMonth);
+        const monthlyIns = thisMonthMovements.filter(m => m.type === 'in').length;
+        const monthlyOuts = thisMonthMovements.filter(m => m.type === 'out').length;
+
+        return { totalProducts, criticalItems, monthlyIns, monthlyOuts };
+    }, [items, movements]);
 
     const priceAnalysis = useMemo(() => {
         return items.map(item => {
-            const itemInMovements = movements.filter(m => {
-                if (m.type !== 'in') return false;
-                if (m.itemId && Number(m.itemId) === Number(item.id)) return true;
-                if (m.itemName && m.itemName.toLowerCase() === item.name.toLowerCase()) return true;
-                return false;
-            });
+            const itemInMovements = movements.filter(m => Number(m.itemId) === Number(item.id) && m.type === 'in');
             const totalQtyReceived = itemInMovements.reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
-            // Sadece fiyat girilmiş hareketleri hesaplamaya dahil et
-            const pricedMovements = itemInMovements.filter(m => Number(m.price) > 0);
-            const totalSpent = pricedMovements.reduce((sum, m) => sum + (Number(m.amount) * Number(m.price)), 0);
-            const pricedQty = pricedMovements.reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
-            const avgPrice = pricedQty > 0 ? (totalSpent / pricedQty) : 0;
-            const lastPrice = pricedMovements.length > 0
-                ? Number(pricedMovements[pricedMovements.length - 1].price)
-                : 0;
-            return { ...item, totalQtyReceived, totalSpent, avgPrice, lastPrice, pricedQty };
-        }).filter(row => row.totalSpent > 0).sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+            const totalSpent = itemInMovements.reduce((sum, m) => sum + (Number(m.amount) * (Number(m.birimFiyat) || 0)), 0);
+            const avgPrice = totalQtyReceived > 0 ? (totalSpent / totalQtyReceived) : 0;
+            const kategori = itemInMovements.length > 0 ? (itemInMovements[0].malzemeTuru || item.category || '') : (item.category || '');
+            return { ...item, totalQtyReceived, totalSpent, avgPrice, kategori };
+        }).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'tr'));
     }, [items, movements]);
 
     // ── Data Handlers ──
@@ -1423,8 +1553,6 @@ const App = () => {
                 const malzemeTuru = formData.get('malzemeTuru') || 'Genel';
                 const firmaAdi = inFirmaAdi.trim();
                 const teslimAlan = formData.get('teslimAlan') || '';
-                const plaka = (formData.get('plaka') || '').trim();
-                const sofor = (formData.get('sofor') || '').trim();
                 const amount = parseFloat(formData.get('amount') || 0);
                 if (!malzemeAdi) { setIsSaving(false); return; }
 
@@ -1444,8 +1572,6 @@ const App = () => {
                     malzemeTuru,
                     firmaAdi,
                     teslimAlan,
-                    plaka,
-                    sofor,
                     amount,
                     unit,
                     irsaliyeNo,
@@ -2142,15 +2268,15 @@ const App = () => {
         if (!movements || movements.length === 0) { alert("Dışa aktarılacak veri bulunamadı."); return; }
         try {
             const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-            const trMap = { 'ç':'c','Ç':'C','ğ':'g','Ğ':'G','ı':'i','İ':'I','ö':'o','Ö':'O','ş':'s','Ş':'S','ü':'u','Ü':'U' };
+            const trMap = { 'ç': 'c', 'Ç': 'C', 'ğ': 'g', 'Ğ': 'G', 'ı': 'i', 'İ': 'I', 'ö': 'o', 'Ö': 'O', 'ş': 's', 'Ş': 'S', 'ü': 'u', 'Ü': 'U' };
             const fixTR = (t) => String(t ?? '').replace(/[çÇğĞıİöÖşŞüÜ]/g, m => trMap[m] || m);
             const now = new Date();
             const ciktTarihi = `${now.toLocaleDateString('tr-TR')} ${now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`;
 
             // Üst bilgi
-            doc.setFontSize(13); doc.setTextColor(30,30,30);
+            doc.setFontSize(13); doc.setTextColor(30, 30, 30);
             doc.text('TUM STOK HAREKETLERI', 14, 14);
-            doc.setFontSize(9); doc.setTextColor(60,60,60);
+            doc.setFontSize(9); doc.setTextColor(60, 60, 60);
             doc.text('FIRMA        : CIZEL INSAAT', 14, 22);
             doc.text('PROJE        : AFADEM', 14, 27);
             doc.text(`CIKTI TARIHI : ${ciktTarihi.toUpperCase()}`, 14, 32);
@@ -2178,10 +2304,10 @@ const App = () => {
                     4: { cellWidth: 30, halign: 'center', overflow: 'ellipsize' },
                     5: { cellWidth: 32, halign: 'center', overflow: 'ellipsize' }
                 },
-                styles: { fontSize: 9, cellPadding: { top: 1.8, bottom: 1.8, left: 3, right: 3 }, textColor: [30,30,30], lineColor: [210,210,210], lineWidth: 0.2, overflow: 'ellipsize' },
-                headStyles: { fillColor: [248,250,252], textColor: [80,80,80], fontStyle: 'bold', fontSize: 9, cellPadding: { top: 2, bottom: 2, left: 3, right: 3 }, lineWidth: 0.3, lineColor: [190,190,190] },
-                alternateRowStyles: { fillColor: [255,255,255] },
-                bodyStyles: { fillColor: [255,255,255] },
+                styles: { fontSize: 9, cellPadding: { top: 1.8, bottom: 1.8, left: 3, right: 3 }, textColor: [30, 30, 30], lineColor: [210, 210, 210], lineWidth: 0.2, overflow: 'ellipsize' },
+                headStyles: { fillColor: [248, 250, 252], textColor: [80, 80, 80], fontStyle: 'bold', fontSize: 9, cellPadding: { top: 2, bottom: 2, left: 3, right: 3 }, lineWidth: 0.3, lineColor: [190, 190, 190] },
+                alternateRowStyles: { fillColor: [255, 255, 255] },
+                bodyStyles: { fillColor: [255, 255, 255] },
                 margin: { left: 14, right: 14 }
             });
 
@@ -2194,7 +2320,6 @@ const App = () => {
                 }, 0);
                 const unit = fixTR(movements[0]?.unit || '');
                 const finalY = doc.lastAutoTable.finalY + 5;
-                // Miktar sütunu sağ kenarı: margin(14) + tarih(22) + malzeme(62) + miktar(20) = 118
                 const miktarRightX = 118;
                 doc.setPage(doc.getNumberOfPages());
                 doc.setFontSize(9);
@@ -2224,14 +2349,21 @@ const App = () => {
             return;
         }
         try {
-            const doc = new jsPDF();
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
             const trMap = { 'ç': 'c', 'Ç': 'C', 'ğ': 'g', 'Ğ': 'G', 'ı': 'i', 'İ': 'I', 'ö': 'o', 'Ö': 'O', 'ş': 's', 'Ş': 'S', 'ü': 'u', 'Ü': 'U' };
-            const fixTR = (text) => {
-                if (text === null || text === undefined) return "";
-                return String(text).replace(/[çÇğĞıİöÖşŞüÜ]/g, match => trMap[match]);
-            };
-            doc.setFontSize(16);
-            doc.text(fixTR(title || 'Rapor'), 14, 15);
+            const fixTR = (t) => String(t ?? '').replace(/[çÇğĞıİöÖşŞüÜ]/g, m => trMap[m] || m);
+            
+            const now = new Date();
+            const ciktTarihi = `${now.toLocaleDateString('tr-TR')} ${now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`;
+
+            // Üst bilgi (Matching exportMovementsToPDF)
+            doc.setFontSize(13); doc.setTextColor(30, 30, 30);
+            doc.text(fixTR(title || 'STOK RAPORU').toUpperCase(), 14, 14);
+            doc.setFontSize(9); doc.setTextColor(60, 60, 60);
+            doc.text('FIRMA        : CIZEL INSAAT', 14, 22);
+            doc.text('PROJE        : AFADEM', 14, 27);
+            doc.text(`CIKTI TARIHI : ${ciktTarihi.toUpperCase()}`, 14, 32);
+
             const tableHeaders = columns.map(col => fixTR(col.label));
             const tableRows = data.map(item =>
                 columns.map(col => {
@@ -2240,15 +2372,41 @@ const App = () => {
                     return fixTR(val);
                 })
             );
+
             autoTable(doc, {
                 head: [tableHeaders],
                 body: tableRows,
-                startY: 25,
-                styles: { fontSize: 9, font: 'courier', cellPadding: 3 },
-                headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255] },
-                alternateRowStyles: { fillColor: [245, 247, 250] },
-                margin: { top: 25 }
+                startY: 38,
+                styles: { 
+                    fontSize: 8, 
+                    cellPadding: { top: 1.8, bottom: 1.8, left: 3, right: 3 }, 
+                    textColor: [30, 30, 30], 
+                    lineColor: [210, 210, 210], 
+                    lineWidth: 0.2, 
+                    overflow: 'ellipsize' 
+                },
+                headStyles: { 
+                    fillColor: [248, 250, 252], 
+                    textColor: [80, 80, 80], 
+                    fontStyle: 'bold', 
+                    fontSize: 8, 
+                    cellPadding: { top: 2, bottom: 2, left: 3, right: 3 }, 
+                    lineWidth: 0.3, 
+                    lineColor: [190, 190, 190] 
+                },
+                alternateRowStyles: { fillColor: [255, 255, 255] },
+                margin: { left: 14, right: 14 }
             });
+
+            // Alt bilgi & Sayfa numaraları
+            const pageCount = doc.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(8);
+                doc.setTextColor(120, 120, 120);
+                doc.text(`${i}/${pageCount}`, 196, 290, { align: 'right' });
+            }
+
             doc.save(`${filename || 'rapor'}.pdf`);
         } catch (error) {
             console.error("PDF Generate Exception:", error);
@@ -2256,21 +2414,104 @@ const App = () => {
         }
     };
 
-    const exportToExcelGeneral = (data, columns, filename) => {
-        const formattedData = data.map(item => {
-            const obj = {};
-            columns.forEach(col => { obj[col.label] = item[col.key]; });
-            return obj;
-        });
-        const ws = XLSX.utils.json_to_sheet(formattedData);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Rapor");
-        XLSX.writeFile(wb, `${filename}.xlsx`);
+    const exportToExcelGeneral = async (data, columns, filename) => {
+        if (!data || !data.length) { alert('Veri bulunamadı.'); return; }
+        
+        try {
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Rapor');
+
+            const trMap = { 'ç': 'c', 'Ç': 'C', 'ğ': 'g', 'Ğ': 'G', 'ı': 'i', 'İ': 'I', 'ö': 'o', 'Ö': 'O', 'ş': 's', 'Ş': 'S', 'ü': 'u', 'Ü': 'U' };
+            const fixTR = (t) => String(t ?? '').replace(/[çÇğĞıİöÖşŞüÜ]/g, m => trMap[m] || m);
+            const now = new Date();
+            const ciktTarihi = `${now.toLocaleDateString('tr-TR')} ${now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`;
+
+            // ─── 1. HEADER AREA ───
+            worksheet.insertRow(1, [fixTR(filename.replace(/_/g, ' ')).toUpperCase()]);
+            worksheet.getRow(1).height = 25;
+            worksheet.getRow(1).getCell(1).font = { size: 13, bold: true, color: { argb: 'FF1E293B' } };
+            worksheet.mergeCells('A1:F1');
+
+            worksheet.addRow([`FIRMA        : CIZEL INSAAT`]);
+            worksheet.addRow([`PROJE        : AFADEM`]);
+            worksheet.addRow([`CIKTI TARIHI : ${ciktTarihi.toUpperCase()}`]);
+            
+            [2, 3, 4].forEach(r => {
+                const row = worksheet.getRow(r);
+                row.getCell(1).font = { size: 9, color: { argb: 'FF475569' } };
+            });
+            worksheet.addRow([]); 
+
+            // ─── 2. COLUMN DEFINITIONS ────────────
+            worksheet.columns = columns.map(c => {
+                let width = 15;
+                if (c.key === 'name') width = 45;
+                else if (c.key === 'category' || c.key.includes('firma')) width = 25;
+                else if (c.key === 'unit') width = 10;
+                return { header: c.label, key: c.key, width };
+            });
+
+            // ─── 3. TABLE HEADER ────
+            const tableStartRow = 6;
+            const headerRow = worksheet.getRow(tableStartRow);
+            headerRow.values = columns.map(c => c.label);
+            headerRow.height = 20;
+            headerRow.eachCell(cell => {
+                cell.font = { bold: true, size: 9, color: { argb: 'FF505050' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+                cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                cell.border = { 
+                    top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+                    bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+                    left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+                    right: { style: 'thin', color: { argb: 'FFD1D5DB' } }
+                };
+            });
+
+            // ─── 4. DATA ROWS ───────────────────
+            data.forEach((item, idx) => {
+                const rowData = columns.map(col => item[col.key]);
+                const row = worksheet.addRow(rowData);
+                row.height = 18;
+                row.eachCell((cell, i) => {
+                    const colKey = (columns[i-1]?.key || '').toLowerCase();
+                    const isNum = typeof cell.value === 'number';
+                    
+                    cell.font = { size: 9, color: { argb: 'FF1F1F1F' } };
+                    cell.alignment = { 
+                        horizontal: colKey.includes('unit') || colKey.includes('birim') ? 'center' : (isNum ? 'right' : 'left'),
+                        vertical: 'middle'
+                    };
+                    
+                    if (isNum) cell.numFmt = '#,##0.00';
+                    
+                    cell.border = { 
+                        bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+                        left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+                        right: { style: 'thin', color: { argb: 'FFE5E7EB' } }
+                    };
+                });
+            });
+
+            worksheet.autoFilter = { from: { row: tableStartRow, column: 1 }, to: { row: tableStartRow, column: columns.length } };
+            worksheet.views = [{ state: 'frozen', ySplit: tableStartRow, activePane: 'bottomLeft' }];
+
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/octet-stream' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url; link.download = `${filename}.xlsx`;
+            document.body.appendChild(link); link.click();
+            document.body.removeChild(link);
+        } catch (error) {
+            console.error(error);
+            alert("Excel Olusturma Hatasi.");
+        }
     };
 
-    const ExportButtons = ({ data, title, columns, filename }) => (
+    const ExportButtons = ({ data, title, columns, filename, options = {} }) => (
         <div className="export-container">
-            <button className="btn-export-sm" onClick={() => exportToExcelGeneral(data, columns, filename)}>
+            <button className="btn-export-sm" onClick={() => exportToExcelGeneral(data, columns, filename, options)}>
                 <FileSpreadsheet size={14} className="icon-excel" /> Excel
             </button>
             <button className="btn-export-sm" onClick={() => exportToPDF(data, title, columns, filename)}>
@@ -2361,32 +2602,7 @@ const App = () => {
 
     const isFirebaseConfigured = Boolean(db?.app?.options?.apiKey) && !String(db.app.options.apiKey).includes("YOUR_API_KEY");
 
-    // ── Auth Guard Renders ──
-    if (authLoading) return <LoadingScreen />;
-
-    if (!authUser || !userProfile) {
-        return authView === 'login'
-            ? <LoginScreen
-                onLogin={handleLogin}
-                onSwitchToRegister={() => { setAuthView('register'); setAuthError(''); }}
-                error={authError}
-                loading={authSubmitting}
-            />
-            : <RegisterScreen
-                onRegister={handleRegister}
-                onSwitchToLogin={() => { setAuthView('login'); setAuthError(''); }}
-                error={authError}
-                loading={authSubmitting}
-            />;
-    }
-
-    if (userProfile.status === 'pending' || userProfile.status === 'rejected') {
-        return <PendingScreen
-            userName={userProfile.name || userProfile.email || 'Kullanıcı'}
-            userStatus={userProfile.status}
-            onSignOut={handleSignOut}
-        />;
-    }
+    // ── Auth Guard Renders (geçici olarak devre dışı) ──
 
     // ── User Management Modal (Admin) ──
     const pendingUsers = allUsers.filter(u => u.status === 'pending');
@@ -2405,7 +2621,7 @@ const App = () => {
                     <div>
                         <div style={{ position: 'relative', display: 'inline-block' }}>
                             <div className="sidebar-logo-text">Shintea</div>
-                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.043</span>
+                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.044</span>
                         </div>
                     </div>
                 </div>
@@ -2422,22 +2638,19 @@ const App = () => {
                         {pagePerm('action_giris') === 'edit' && (
                             <button className="sidebar-action-btn sidebar-action-success"
                                 onClick={() => { setMovementType('in'); setSelectedItemForMove(null); setShowMoveModal(true); }}>
-                                <ArrowUpRight size={15} /> <span style={{ flex: 1 }}>Giriş Ekle</span>
-                                <span className="sidebar-action-badge sidebar-action-badge-green">{stats.todayIn}</span>
+                                <ArrowUpRight size={15} /> <span>Giriş Ekle</span>
                             </button>
                         )}
                         {pagePerm('action_cikis') === 'edit' && (
                             <button className="sidebar-action-btn sidebar-action-danger"
                                 onClick={() => { setMovementType('out'); setSelectedItemForMove(null); setShowMoveModal(true); }}>
-                                <ArrowDownLeft size={15} /> <span style={{ flex: 1 }}>Çıkış Ekle</span>
-                                <span className="sidebar-action-badge sidebar-action-badge-red">{stats.todayOut}</span>
+                                <ArrowDownLeft size={15} /> <span>Çıkış Ekle</span>
                             </button>
                         )}
                         {pagePerm('action_zimmet') === 'edit' && (
                             <button className="sidebar-action-btn sidebar-action-purple"
                                 onClick={() => { setShowZimmetModal(true); setSelectedItemForZimmet(null); }}>
-                                <UserCheck size={15} /> <span style={{ flex: 1 }}>Zimmet Ekle</span>
-                                <span className="sidebar-action-badge sidebar-action-badge-purple">{stats.todayZimmet}</span>
+                                <UserCheck size={15} /> <span>Zimmet Ekle</span>
                             </button>
                         )}
                     </div>
@@ -2657,7 +2870,7 @@ const App = () => {
                     {activeTab === 'dashboard' && (
                         <>
 
-            
+
                             {/* Pending Actions — Onay Bekleyen Geçmiş Tarihli İşlemler */}
                             {canEdit && pendingActions.filter(a => a.status === 'pending').length > 0 && (
                                 <div className="table-card animate-fade mb-4">
@@ -2686,15 +2899,23 @@ const App = () => {
                                         </div>
                                     </div>
                                     <div className="table-responsive-wrapper">
-                                        <table className="responsive-table col-6">
+                                        <table className="responsive-table" style={{ borderCollapse: 'collapse' }}>
+                                            <colgroup>
+                                                <col className="col-tarih" />
+                                                <col className="col-kategori" />
+                                                <col className="col-malzeme" />
+                                                <col className="col-miktar" />
+                                                <col className="col-firma" />
+                                                <col className="col-islem" />
+                                            </colgroup>
                                             <thead>
                                                 <tr>
-                                                    <th>TARİH</th>
-                                                    <th>TÜR</th>
-                                                    <th>MALZEME</th>
-                                                    <th style={{ textAlign: 'center' }}>MİKTAR</th>
-                                                    <th>TALEP EDEN</th>
-                                                    <th style={{ textAlign: 'center', width: '180px' }}>İŞLEMLER</th>
+                                                    <th style={{ border: '1px solid var(--border)' }}>TARİH</th>
+                                                    <th style={{ border: '1px solid var(--border)' }}>TÜR</th>
+                                                    <th style={{ border: '1px solid var(--border)' }}>MALZEME</th>
+                                                    <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>MİKTAR</th>
+                                                    <th style={{ border: '1px solid var(--border)' }}>TALEP EDEN</th>
+                                                    <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>İŞLEMLER</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -2705,16 +2926,16 @@ const App = () => {
                                                         : action.movementType === 'in' ? 'in' : 'out';
                                                     return (
                                                         <tr key={action.id}>
-                                                            <td data-label="Tarih">{String(action.data?.date || '').split(',')[0].split(' ')[0]}</td>
-                                                            <td data-label="Tür">
+                                                            <td data-label="Tarih" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{String(action.data?.date || '').split(',')[0].split(' ')[0]}</td>
+                                                            <td data-label="Tür" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>
                                                                 <span className={`movement-type-pill ${pillClass}`}>{typeLabel}</span>
                                                             </td>
-                                                            <td data-label="Malzeme" style={{ fontWeight: '600' }}>{action.data?.itemName}</td>
-                                                            <td data-label="Miktar" style={{ textAlign: 'center' }}>
+                                                            <td data-label="Malzeme" style={{ fontWeight: '600', border: '1px solid var(--border)' }}>{action.data?.itemName}</td>
+                                                            <td data-label="Miktar" style={{ textAlign: 'center', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>
                                                                 <strong>{action.data?.amount}</strong>
                                                             </td>
-                                                            <td data-label="Talep Eden">{action.requestedBy}</td>
-                                                            <td data-label="İşlemler" style={{ textAlign: 'center' }}>
+                                                            <td data-label="Talep Eden" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{action.requestedBy}</td>
+                                                            <td data-label="İşlemler" style={{ textAlign: 'center', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>
                                                                 <div className="flex gap-2 justify-center">
                                                                     <button
                                                                         className="btn-primary"
@@ -2744,7 +2965,7 @@ const App = () => {
 
                             {/* Birleşik Hareketler Listesi */}
                             {(() => {
-                                const filterBg   = { all: 'var(--accent)', in: 'var(--success)', out: 'var(--danger)', zimmet: '#4f46e5' };
+                                const filterBg = { all: 'var(--accent)', in: 'var(--success)', out: 'var(--danger)', zimmet: '#4f46e5' };
                                 const filterShadow = { all: '0 4px 0 #1d4ed8,0 5px 8px rgba(0,0,0,0.15)', in: '0 4px 0 #0f7634,0 5px 8px rgba(0,0,0,0.15)', out: '0 4px 0 #991b1b,0 5px 8px rgba(0,0,0,0.15)', zimmet: '0 4px 0 #3730a3,0 5px 8px rgba(0,0,0,0.15)' };
                                 const inactiveShadow = '0 3px 0 rgba(0,0,0,0.12),0 4px 5px rgba(0,0,0,0.07)';
                                 const allActive = dashboardFilters.has('in') && dashboardFilters.has('out') && dashboardFilters.has('zimmet');
@@ -2768,46 +2989,116 @@ const App = () => {
                                 return (
                                     <div className="table-card">
                                         {/* Filtre Butonları */}
+                                        <div className="table-toolbar" style={{ justifyContent: 'space-between', gap: '8px' }}>
+                                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                                <button className="stat-mini-btn"
+                                                    onClick={() => setDashModal({ show: true, title: 'Tüm Malzemeler', data: items, type: 'stock' })}>
+                                                    <span className="stat-mini-val">{stats.totalItems}</span>
+                                                    <span className="stat-mini-lbl">Toplam</span>
+                                                </button>
+                                                <button className="stat-mini-btn stat-mini-danger"
+                                                    onClick={() => setDashModal({ show: true, title: 'Kritik Stoktaki Malzemeler', data: items.filter(i => i.quantity <= i.minStock), type: 'stock' })}>
+                                                    <span className="stat-mini-val">{stats.lowStock}</span>
+                                                    <span className="stat-mini-lbl">Kritik</span>
+                                                </button>
+                                                <button className="stat-mini-btn stat-mini-success"
+                                                    onClick={() => { const today = new Date().toLocaleDateString(); const todayIn = movements.filter(m => m.type === 'in' && String(m.date || '').includes(today)); setDashModal({ show: true, title: 'Bugünkü Giriş İşlemleri', data: todayIn, type: 'move', moveType: 'in' }); }}>
+                                                    <span className="stat-mini-val">{stats.todayIn}</span>
+                                                    <span className="stat-mini-lbl">Giriş</span>
+                                                </button>
+                                                <button className="stat-mini-btn stat-mini-warning"
+                                                    onClick={() => { const today = new Date().toLocaleDateString(); const todayOut = movements.filter(m => m.type === 'out' && String(m.date || '').includes(today)); setDashModal({ show: true, title: 'Bugünkü Çıkış İşlemleri', data: todayOut, type: 'move', moveType: 'out' }); }}>
+                                                    <span className="stat-mini-val">{stats.todayOut}</span>
+                                                    <span className="stat-mini-lbl">Çıkış</span>
+                                                </button>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                {[['in', 'Giriş'], ['out', 'Çıkış'], ['zimmet', 'Zimmet']].map(([val, label]) => {
+                                                    const active = dashboardFilters.has(val);
+                                                    return (
+                                                        <button key={val} className="btn-filter-3d" onClick={() => toggleFilter(val)} style={{
+                                                            background: active ? filterBg[val] : 'var(--bg-hover)',
+                                                            color: active ? '#fff' : 'var(--text-muted)',
+                                                            boxShadow: active ? filterShadow[val] : inactiveShadow,
+                                                        }}>{label}</button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                        {/* SON HAREKETLER Başlık */}
+                                        <div style={{ padding: '10px 16px 6px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <span style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.08em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Son Hareketler</span>
+                                        </div>
+                                        {/* Dashboard Action Bar */}
+                                        {(() => {
+                                            const dashSelKeys = tblSelKeys('dash');
+                                            const dashSelRows = combined.filter(m => dashSelKeys.includes(`${m.category}-${m.id}`));
+                                            const dashAllSelected = combined.length > 0 && combined.every(m => isRowSel('dash', `${m.category}-${m.id}`));
+                                            return isAdmin && tblSelCount('dash') > 0 ? (
+                                                <div style={{ padding: '0 12px 6px' }}>
+                                                    <TableActionBar
+                                                        count={tblSelCount('dash')}
+                                                        totalCount={combined.length}
+                                                        allSelected={dashAllSelected}
+                                                        onSelectAll={() => selectAllTbl('dash', combined.map(m => `${m.category}-${m.id}`))}
+                                                        onDelete={() => openBulkDel('dash_mixed', dashSelRows)}
+                                                        onEdit={() => { if (dashSelRows.length === 1) { const m = dashSelRows[0]; setEditRow({ row: m, collection: m.category === 'zimmet' ? 'zimmet' : 'movements' }); } }}
+                                                        onHighlight={() => openHLPicker('dash', dashSelKeys)}
+                                                    />
+                                                </div>
+                                            ) : null;
+                                        })()}
                                         {/* Tablo */}
                                         <div className="table-responsive-wrapper dash-unified-wrap">
-                                            <table className="responsive-table col-6">
+                                            <table className="responsive-table" style={{ borderCollapse: 'collapse' }}>
                                                 <colgroup>
-                                                    <col style={{ width: '11%' }} />
-                                                    <col style={{ width: '36%' }} />
-                                                    <col style={{ width: '9%' }} />
-                                                    <col style={{ width: '8%' }} />
-                                                    <col style={{ width: '22%' }} />
-                                                    <col style={{ width: '14%' }} />
+                                                    <col style={{ width: '36px' }} />
+                                                    <col className="col-tarih" />
+                                                    <col className="col-firma" />
+                                                    <col className="col-detay" />
+                                                    <col className="col-malzeme" />
+                                                    <col className="col-miktar" />
+                                                    <col className="col-birim" />
+                                                    <col style={{ width: '110px' }} />
                                                 </colgroup>
                                                 <thead>
                                                     <tr>
-                                                        <th>TARİH</th>
-                                                        <th>MALZEME</th>
-                                                        <th style={{ textAlign: 'right' }}>MİKTAR</th>
-                                                        <th>BİRİM</th>
-                                                        <th>KİŞİ / FİRMA</th>
-                                                        <th>İRSALİYE NO</th>
+                                                        <th style={{ ...CB_TH, border: '1px solid var(--border)' }}></th>
+                                                        <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>TARİH</th>
+                                                        <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>FİRMA ADI</th>
+                                                        <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>İRSALİYE NO</th>
+                                                        <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>MALZEME</th>
+                                                        <th style={{ textAlign: 'right',  border: '1px solid var(--border)' }}>MİKTAR</th>
+                                                        <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>BİRİM</th>
+                                                        <th style={{ textAlign: 'right',  border: '1px solid var(--border)' }}>BİRİM FİYAT</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     {combined.length === 0 ? (
-                                                        <tr><td colSpan="6" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>Kayıt bulunamadı.</td></tr>
+                                                        <tr><td colSpan="8" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Kayıt bulunamadı.</td></tr>
                                                     ) : combined.map(m => {
                                                         const isIn = m.category === 'movement' && m.normalizedType === 'in';
                                                         const isOut = m.category === 'movement' && m.normalizedType === 'out';
                                                         const tipColor = isIn ? 'var(--success)' : isOut ? 'var(--danger)' : (m.type === 'geri_alindi' ? 'var(--success)' : '#4f46e5');
                                                         const miktar = isIn ? `+${formatNumber(m.amount)}` : isOut ? `−${formatNumber(m.amount)}` : (m.type === 'geri_alindi' ? `+${formatNumber(m.amount)}` : `−${formatNumber(m.amount)}`);
-                                                        const kisi = isIn ? (m.firmaAdi || '—') : isOut ? (m.recipient || '—') : (m.person || '—');
-                                                        const detay = isIn ? (m.irsaliyeNo || '—') : isOut ? (m.kullanimAlani || m.note || '—') : (m.note || '—');
+                                                        const firmaAdi = isIn ? (m.firmaAdi || '—') : isOut ? (m.recipient || '—') : (m.person || '—');
+                                                        const irsaliyeNo = isIn ? (m.irsaliyeNo || '—') : (m.kullanimAlani || m.note || '—');
+                                                        const birimFiyat = (isIn && m.birimFiyat) ? `${formatNumber(m.birimFiyat)} ₺` : '—';
                                                         const tarih = String(m.date || '').split(',')[0].split(' ')[0];
+                                                        const cellStyle = { textAlign: 'center', verticalAlign: 'middle', border: '1px solid var(--border)' };
+                                                        const rowKey = `${m.category}-${m.id}`;
                                                         return (
-                                                            <tr key={`${m.category}-${m.id}`} style={{ borderLeft: `20px solid ${tipColor}` }} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, m, m.category === 'zimmet' ? 'zimmet' : 'movements') : undefined}>
-                                                                <td data-label="Tarih" style={{ whiteSpace: 'nowrap' }}>{tarih}</td>
-                                                                <td data-label="Malzeme" style={{ fontWeight: '600' }}>{m.itemName}</td>
-                                                                <td data-label="Miktar" style={{ color: tipColor, fontWeight: '700', textAlign: 'right' }}>{miktar}</td>
-                                                                <td data-label="Birim">{m.unit || '—'}</td>
-                                                                <td data-label="Kişi / Firma">{kisi}</td>
-                                                                <td data-label="Detay" style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{detay}</td>
+                                                            <tr key={rowKey} style={{ borderLeft: `4px solid ${tipColor}`, ...hlRowStyle('dash', rowKey) }} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, m, m.category === 'zimmet' ? 'zimmet' : 'movements') : undefined}>
+                                                                <td style={{ ...CB_TD, border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
+                                                                    <input type="checkbox" style={CB_STYLE} checked={isRowSel('dash', rowKey)} onChange={() => toggleSel('dash', rowKey)} />
+                                                                </td>
+                                                                <td data-label="Tarih" style={{ ...cellStyle, whiteSpace: 'nowrap' }}>{tarih}</td>
+                                                                <td data-label="Firma Adı" style={{ ...cellStyle, whiteSpace: 'nowrap' }}>{firmaAdi}</td>
+                                                                <td data-label="İrsaliye No" style={{ ...cellStyle, fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{irsaliyeNo}</td>
+                                                                <td data-label="Malzeme" style={{ ...cellStyle, fontWeight: '600' }}>{m.itemName}</td>
+                                                                <td data-label="Miktar" style={{ color: tipColor, fontWeight: '700', textAlign: 'right', verticalAlign: 'middle', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{miktar}</td>
+                                                                <td data-label="Birim" style={{ ...cellStyle, whiteSpace: 'nowrap' }}>{m.unit || '—'}</td>
+                                                                <td data-label="Birim Fiyat" style={{ ...cellStyle, textAlign: 'right', whiteSpace: 'nowrap', fontSize: '12px' }}>{birimFiyat}</td>
                                                             </tr>
                                                         );
                                                     })}
@@ -2829,87 +3120,254 @@ const App = () => {
                         </div>
                     )}
                     {activeTab === 'summary' && pagePerm('summary') !== 'none' && (
-                        <div className="table-card animate-fade">
-                            <div className="table-toolbar">
-                                <span className="section-title"><BarChart2 size={17} /> Stok Listesi</span>
-                                <div className="table-toolbar-right">
+                        <div className="animate-fade">
+                            {/* ── HEADER AREA ── */}
+                            <div className="summary-header">
+                                <div className="summary-title-area">
+                                    <h1 className="summary-title">Stok Özeti</h1>
+                                    <span className="summary-subtitle">Depodaki güncel malzeme giriş, çıkış ve bakiye durumu analizi</span>
+                                </div>
+                                <div className="summary-actions">
                                     <ExportButtons
-                                        data={stockSummary.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()))}
-                                        title="Tam Stok Listesi"
+                                        data={stockSummary}
+                                        title="Stok Özeti Raporu"
                                         columns={[
                                             { key: 'name', label: 'MALZEME' },
-                                            { key: 'totalReceived', label: 'GIRIS' },
-                                            { key: 'totalUsed', label: 'CIKIS' },
-                                            { key: 'quantity', label: 'KALAN' },
-                                            { key: 'unit', label: 'BIRIM' }
+                                            { key: 'category', label: 'KATEGORİ' },
+                                            { key: 'totalReceived', label: 'TOPLAM GİRİŞ' },
+                                            { key: 'totalUsed', label: 'TOPLAM ÇIKIŞ' },
+                                            { key: 'quantity', label: 'BAKİYE' },
+                                            { key: 'unit', label: 'BİRİM' }
                                         ]}
-                                        filename="Stok_Listesi"
+                                        filename={`Stok_Ozeti_${new Date().toLocaleDateString('tr-TR')}`}
+                                        options={{ showKpis: true }}
                                     />
-                                    <div className="search-container">
-                                        <Search size={15} className="search-icon" />
-                                        <input type="text" placeholder="Malzeme ara..." className="search-input" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                                    <button className="btn-primary" style={{ background: 'var(--bg-card)', color: 'var(--text-main)', border: '1px solid var(--border)' }} onClick={() => { /* logic to refresh */ }}>
+                                        <RotateCcw size={15} /> <span style={{ marginLeft: '4px' }}>Yenile</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* ── KPI CARDS ── */}
+                            <div className="kpi-grid">
+                                <div className="kpi-card">
+                                    <div className="kpi-icon-wrapper icon-primary"><Package size={22} /></div>
+                                    <div className="kpi-info">
+                                        <span className="kpi-label">Toplam Ürün</span>
+                                        <span className="kpi-value">{summaryStats.totalProducts}</span>
+                                    </div>
+                                </div>
+                                <div className="kpi-card">
+                                    <div className="kpi-icon-wrapper icon-danger"><AlertTriangle size={22} /></div>
+                                    <div className="kpi-info">
+                                        <span className="kpi-label">Kritik Stok</span>
+                                        <span className="kpi-value">{summaryStats.criticalItems}</span>
+                                    </div>
+                                </div>
+                                <div className="kpi-card">
+                                    <div className="kpi-icon-wrapper icon-success"><ArrowDownLeft size={22} /></div>
+                                    <div className="kpi-info">
+                                        <span className="kpi-label">Bu Ay Giriş</span>
+                                        <span className="kpi-value">{summaryStats.monthlyIns} <small style={{ fontSize: '11px', fontWeight: 500, opacity: 0.6 }}>işlem</small></span>
+                                    </div>
+                                </div>
+                                <div className="kpi-card">
+                                    <div className="kpi-icon-wrapper icon-warning"><ArrowUpRight size={22} /></div>
+                                    <div className="kpi-info">
+                                        <span className="kpi-label">Bu Ay Çıkış</span>
+                                        <span className="kpi-value">{summaryStats.monthlyOuts} <small style={{ fontSize: '11px', fontWeight: 500, opacity: 0.6 }}>işlem</small></span>
                                     </div>
                                 </div>
                             </div>
+
+                            {/* ── MASTER / DETAIL ── */}
                             {(() => {
-                                const filteredItems = stockSummary.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
-                                return (<>
-                                <TableSelectionBar
-                                    selected={selItems} allRows={filteredItems}
-                                    onSelectAll={() => toggleAll(setSelItems, filteredItems)}
-                                    onClear={() => setSelItems(new Set())}
-                                    onDelete={canEdit ? () => handleBulkDelete('items', selItems, filteredItems, 'id', setSelItems) : undefined}
-                                    onEdit={canEdit ? () => { const row = filteredItems.find(r => selItems.has(r.id)); if (row) setEditRow({ row, collection: 'items' }); } : undefined}
-                                    onHighlight={(color) => handleBulkHighlight('items', selItems, color)}
-                                />
-                                <div className="table-responsive-wrapper dash-unified-wrap">
-                                <table className="responsive-table col-7">
-                                    <colgroup>
-                                        <col style={{ width: '36px' }} />
-                                        <col style={{ width: '28%' }} />
-                                        <col style={{ width: '11%' }} />
-                                        <col style={{ width: '11%' }} />
-                                        <col style={{ width: '11%' }} />
-                                        <col style={{ width: '11%' }} />
-                                        <col style={{ width: '11%' }} />
-                                        <col style={{ width: '13%' }} />
-                                    </colgroup>
-                                    <thead>
-                                        <tr>
-                                            <th className="tsel-th"><input type="checkbox" className="tsel-checkbox" checked={headerChecked(selItems, filteredItems)} onChange={() => toggleAll(setSelItems, filteredItems)} /></th>
-                                            <th>MALZEME</th>
-                                            <th style={{ textAlign: 'right' }}>GİRİŞ</th>
-                                            <th style={{ textAlign: 'right' }}>ÇIKIŞ</th>
-                                            <th style={{ textAlign: 'right' }}>DEPO</th>
-                                            <th style={{ textAlign: 'right' }}>ZİMMET</th>
-                                            <th style={{ textAlign: 'right' }}>TOPLAM</th>
-                                            <th style={{ textAlign: 'center' }}>BİRİM</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {filteredItems.map(row => {
-                                            const depoCount = row.quantity - row.zimmetteCount;
-                                            return (
-                                                <tr key={row.id} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, row, 'items') : undefined} style={hlStyle('items', row.id)} className={selItems.has(row.id) ? 'tsel-selected' : ''}>
-                                                    <td className="tsel-td"><input type="checkbox" className="tsel-checkbox" checked={selItems.has(row.id)} onChange={() => toggleSel(setSelItems, row.id)} onClick={e => e.stopPropagation()} /></td>
-                                                    <td data-label="Malzeme" style={{ fontWeight: '600' }}>{row.name}</td>
-                                                    <td style={{ textAlign: 'right', color: 'var(--success)', fontWeight: '600' }} data-label="Giriş">
-                                                        <button onClick={() => setDetailModal({ show: true, item: row, type: 'in' })}>{formatNumber(row.totalReceived)}</button>
-                                                    </td>
-                                                    <td style={{ textAlign: 'right', color: 'var(--danger)', fontWeight: '600' }} data-label="Çıkış">
-                                                        <button onClick={() => setDetailModal({ show: true, item: row, type: 'out' })}>{formatNumber(row.totalUsed)}</button>
-                                                    </td>
-                                                    <td style={{ textAlign: 'right' }} data-label="Depo">{formatNumber(depoCount)}</td>
-                                                    <td style={{ textAlign: 'right', color: '#4f46e5' }} data-label="Zimmet">{formatNumber(row.zimmetteCount)}</td>
-                                                    <td style={{ textAlign: 'right', fontWeight: '700' }} data-label="Toplam">{formatNumber(row.quantity)}</td>
-                                                    <td style={{ textAlign: 'center' }} data-label="Birim">{row.unit}</td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                                </div>
-                                </>);
+                                const selRow = summarySelected && stockSummary.find(r => r.id === summarySelected.id)
+                                    ? stockSummary.find(r => r.id === summarySelected.id)
+                                    : stockSummary[0] || null;
+
+                                const statusMeta = (status) => ({
+                                    critical: { label: 'KRİTİK',  color: '#ef4444', bg: '#fef2f2', barColor: '#ef4444' },
+                                    warning:  { label: 'AZALIYOR', color: '#f59e0b', bg: '#fffbeb', barColor: '#f59e0b' },
+                                    healthy:  { label: 'NORMAL',   color: '#10b981', bg: '#ecfdf5', barColor: '#10b981' },
+                                    surplus:  { label: 'FAZLA',    color: '#10b981', bg: '#ecfdf5', barColor: '#10b981' },
+                                    inactive: { label: 'ATIL',     color: '#94a3b8', bg: '#f8fafc', barColor: '#94a3b8' },
+                                }[status] || { label: 'BELİRSİZ', color: '#94a3b8', bg: '#f8fafc', barColor: '#94a3b8' });
+
+                                return (
+                                    <div style={{ display: 'flex', gap: '14px', minHeight: '580px' }}>
+                                        {/* ── SOL: LİSTE ── */}
+                                        <div style={{ width: '300px', flexShrink: 0, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                                            {/* Arama + Filtreler */}
+                                            <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                <div className="search-container" style={{ margin: 0, width: '100%' }}>
+                                                    <Search size={13} className="search-icon" />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Malzeme ara..."
+                                                        className="search-input"
+                                                        value={searchQuery}
+                                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                                        style={{ width: '100%', fontSize: '12px' }}
+                                                    />
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '6px' }}>
+                                                    <select className="filter-select" style={{ flex: 1, fontSize: '11px', padding: '4px 6px' }} value={summaryFilters.status} onChange={(e) => setSummaryFilters(prev => ({ ...prev, status: e.target.value }))}>
+                                                        <option value="all">Tüm Durumlar</option>
+                                                        <option value="critical">🔴 Kritik</option>
+                                                        <option value="warning">🟡 Azalan</option>
+                                                        <option value="healthy">🟢 Normal</option>
+                                                        <option value="inactive">⚪ Atıl</option>
+                                                    </select>
+                                                    <select className="filter-select" style={{ flex: 1, fontSize: '11px', padding: '4px 6px' }} value={summaryFilters.sortBy} onChange={(e) => setSummaryFilters(prev => ({ ...prev, sortBy: e.target.value }))}>
+                                                        <option value="name">A–Z</option>
+                                                        <option value="quantity">Bakiye</option>
+                                                        <option value="totalReceived">Giriş</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            {/* Mini KPI Şerit */}
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '1px solid var(--border)' }}>
+                                                <div style={{ padding: '8px 12px', borderRight: '1px solid var(--border)', textAlign: 'center' }}>
+                                                    <div style={{ fontSize: '18px', fontWeight: 900, color: 'var(--text-main)' }}>{stockSummary.length}</div>
+                                                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>MALZEME</div>
+                                                </div>
+                                                <div style={{ padding: '8px 12px', textAlign: 'center' }}>
+                                                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#ef4444' }}>{summaryStats.criticalItems}</div>
+                                                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>KRİTİK</div>
+                                                </div>
+                                            </div>
+
+                                            {/* Liste */}
+                                            <div style={{ overflowY: 'auto', flex: 1 }}>
+                                                {stockSummary.length === 0 ? (
+                                                    <div style={{ textAlign: 'center', padding: '40px 16px', color: 'var(--text-muted)', fontSize: '13px' }}>Sonuç bulunamadı</div>
+                                                ) : stockSummary.map(row => {
+                                                    const sm = statusMeta(row.status);
+                                                    const isSel = selRow?.id === row.id;
+                                                    return (
+                                                        <button
+                                                            key={row.id}
+                                                            onClick={() => setSummarySelected(row)}
+                                                            onContextMenu={isAdmin ? (e) => handleCtxMenu(e, row, 'items') : undefined}
+                                                            style={{
+                                                                width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center',
+                                                                gap: '10px', padding: '9px 12px', borderBottom: '1px solid var(--border)',
+                                                                background: isSel ? 'var(--accent)' : 'transparent',
+                                                                cursor: 'pointer', border: 'none', borderBottom: '1px solid var(--border)',
+                                                                transition: 'background 0.12s',
+                                                            }}
+                                                            onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                                                            onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = 'transparent'; }}
+                                                        >
+                                                            <div style={{ width: '3px', alignSelf: 'stretch', borderRadius: '2px', background: sm.barColor, flexShrink: 0 }} />
+                                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                                <div style={{ fontSize: '12px', fontWeight: 600, color: isSel ? '#fff' : 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.name}</div>
+                                                                <div style={{ fontSize: '10px', color: isSel ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)', marginTop: '1px' }}>{row.category || '—'}</div>
+                                                            </div>
+                                                            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                                                <div style={{ fontSize: '13px', fontWeight: 800, color: isSel ? '#fff' : sm.color }}>{formatNumber(row.quantity)}</div>
+                                                                <div style={{ fontSize: '10px', color: isSel ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)' }}>{row.unit}</div>
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        {/* ── SAĞ: DETAY PANELİ ── */}
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            {selRow ? (() => {
+                                                const sm = statusMeta(selRow.status);
+                                                const occupancy = selRow.minStock > 0 ? Math.min(100, Math.round((selRow.quantity / (selRow.minStock * 3)) * 100)) : Math.min(100, Math.round((selRow.quantity / Math.max(selRow.totalReceived, 1)) * 100));
+                                                const depoMiktar = selRow.quantity - selRow.zimmetteCount;
+                                                return (
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                                        {/* Başlık Kartı */}
+                                                        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', padding: '20px 24px' }}>
+                                                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
+                                                                <div>
+                                                                    {selRow.category && (
+                                                                        <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', padding: '3px 8px', borderRadius: '20px', background: 'var(--bg-hover)', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'inline-block', marginBottom: '8px' }}>{selRow.category}</span>
+                                                                    )}
+                                                                    <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 900, color: 'var(--text-main)', lineHeight: 1.3 }}>{selRow.name}</h2>
+                                                                </div>
+                                                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
+                                                                    <span style={{ fontSize: '12px', fontWeight: 700, padding: '4px 12px', borderRadius: '20px', background: sm.bg, color: sm.color }}>{sm.label}</span>
+                                                                    <button className="btn-icon" title="Düzenle" onClick={() => { setEditingItem(selRow); setShowModal(true); }}><Edit3 size={14} /></button>
+                                                                    {isAdmin && <button className="btn-icon" title="Sil" style={{ color: 'var(--danger)' }} onClick={() => handleDeleteItem(selRow.id)}><Trash2 size={14} /></button>}
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Büyük Stok Göstergesi */}
+                                                            <div style={{ marginTop: '20px' }}>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '8px' }}>
+                                                                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Stok Seviyesi</span>
+                                                                    <span style={{ fontSize: '28px', fontWeight: 900, color: 'var(--text-main)', lineHeight: 1 }}>{formatNumber(selRow.quantity)} <span style={{ fontSize: '14px', fontWeight: 400, color: 'var(--text-muted)' }}>{selRow.unit}</span></span>
+                                                                </div>
+                                                                <div style={{ width: '100%', height: '10px', background: 'var(--bg-hover)', borderRadius: '5px', overflow: 'hidden' }}>
+                                                                    <div style={{ height: '100%', width: `${occupancy}%`, background: sm.barColor, borderRadius: '5px', transition: 'width 0.6s ease' }} />
+                                                                </div>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px', fontSize: '11px', color: 'var(--text-muted)' }}>
+                                                                    <span>Min. eşik: {formatNumber(selRow.minStock || 0)} {selRow.unit}</span>
+                                                                    <span>{occupancy}% dolu</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* İstatistik Kartları */}
+                                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+                                                            {[
+                                                                { label: 'Toplam Giriş', val: formatNumber(selRow.totalReceived), sub: selRow.unit, color: '#10b981', bg: '#ecfdf5', onClick: () => setDetailModal({ show: true, item: selRow, type: 'in' }) },
+                                                                { label: 'Toplam Çıkış', val: formatNumber(selRow.totalUsed),    sub: selRow.unit, color: '#ef4444', bg: '#fef2f2', onClick: () => setDetailModal({ show: true, item: selRow, type: 'out' }) },
+                                                                { label: 'Depoda Net',   val: formatNumber(depoMiktar),          sub: selRow.unit, color: '#3b82f6', bg: '#eff6ff', onClick: null },
+                                                                { label: 'Zimmette',     val: formatNumber(selRow.zimmetteCount), sub: selRow.unit, color: '#8b5cf6', bg: '#f5f3ff', onClick: null },
+                                                            ].map(s => (
+                                                                <div
+                                                                    key={s.label}
+                                                                    onClick={s.onClick || undefined}
+                                                                    style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', padding: '16px', cursor: s.onClick ? 'pointer' : 'default', transition: 'box-shadow 0.15s' }}
+                                                                    onMouseEnter={e => { if (s.onClick) e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.1)'; }}
+                                                                    onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; }}
+                                                                >
+                                                                    <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>{s.label}</div>
+                                                                    <div style={{ fontSize: '22px', fontWeight: 900, color: s.color }}>{s.val}</div>
+                                                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{s.sub}</div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+
+                                                        {/* Alt Detay Satırı */}
+                                                        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', padding: '14px 20px', display: 'flex', gap: '32px', flexWrap: 'wrap' }}>
+                                                            <div>
+                                                                <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Son Hareket</div>
+                                                                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-main)', marginTop: '4px' }}>{selRow.lastMove ? selRow.lastMove.toLocaleDateString('tr-TR') : '—'}</div>
+                                                            </div>
+                                                            <div>
+                                                                <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Min. Stok</div>
+                                                                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-main)', marginTop: '4px' }}>{formatNumber(selRow.minStock || 0)} {selRow.unit}</div>
+                                                            </div>
+                                                            <div>
+                                                                <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Hareket Sayısı</div>
+                                                                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-main)', marginTop: '4px' }}>{selRow.movements?.length || 0} kayıt</div>
+                                                            </div>
+                                                            <div>
+                                                                <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Stok Durumu</div>
+                                                                <div style={{ fontSize: '13px', fontWeight: 600, color: sm.color, marginTop: '4px' }}>{sm.label}</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })() : (
+                                                <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', gap: '10px' }}>
+                                                    <Package size={40} style={{ opacity: 0.15 }} />
+                                                    <span style={{ fontSize: '13px', fontWeight: 500 }}>Detay görmek için bir malzeme seçin</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
                             })()}
                         </div>
                     )}
@@ -2977,63 +3435,100 @@ const App = () => {
                                     </div>
                                 </div>
                             </div>
-                            <div className="table-responsive-wrapper" style={{ overflowX: 'auto' }}>
-                                {(() => {
-                                    const filteredZ = zimmet.filter(z =>
-                                        (zimmetView === 'active' ? z.status === 'zimmette' : true) &&
-                                        (z.itemName.toLowerCase().includes(searchQuery.toLowerCase()) || z.person.toLowerCase().includes(searchQuery.toLowerCase()))
-                                    ).sort((a, b) => (b.updated_at || b.created_at || b.id || 0) - (a.updated_at || a.created_at || a.id || 0));
-                                    return (<>
-                                    <TableSelectionBar
-                                        selected={selZimmet} allRows={filteredZ}
-                                        onSelectAll={() => toggleAll(setSelZimmet, filteredZ)}
-                                        onClear={() => setSelZimmet(new Set())}
-                                        onDelete={canEdit ? () => handleBulkDelete('zimmet', selZimmet, filteredZ, 'id', setSelZimmet) : undefined}
-                                        onEdit={canEdit ? () => { const row = filteredZ.find(r => selZimmet.has(r.id)); if (row) setEditRow({ row, collection: 'zimmet' }); } : undefined}
-                                        onHighlight={(color) => handleBulkHighlight('zimmet', selZimmet, color)}
+                            {(() => {
+                                const zimFiltered = zimmet.filter(z =>
+                                    (zimmetView === 'active' ? z.status === 'zimmette' : true) &&
+                                    (z.itemName.toLowerCase().includes(searchQuery.toLowerCase()) || z.person.toLowerCase().includes(searchQuery.toLowerCase()))
+                                ).sort((a, b) => (b.updated_at || b.created_at || b.id || 0) - (a.updated_at || a.created_at || a.id || 0));
+                                const zimSelKeys = tblSelKeys('zimmet');
+                                const zimSelRows = zimFiltered.filter(z => zimSelKeys.includes(String(z.id)));
+                                const zimAllSel = zimFiltered.length > 0 && zimFiltered.every(z => isRowSel('zimmet', z.id));
+                                return isAdmin && tblSelCount('zimmet') > 0 ? (
+                                    <TableActionBar
+                                        count={tblSelCount('zimmet')}
+                                        totalCount={zimFiltered.length}
+                                        allSelected={zimAllSel}
+                                        onSelectAll={() => selectAllTbl('zimmet', zimFiltered.map(z => String(z.id)))}
+                                        onDelete={() => openBulkDel('zimmet', zimSelRows)}
+                                        onEdit={() => { if (zimSelRows.length === 1) setEditRow({ row: zimSelRows[0], collection: 'zimmet' }); }}
+                                        onHighlight={() => openHLPicker('zimmet', zimSelKeys)}
                                     />
-                                    <table className="responsive-table col-5">
+                                ) : null;
+                            })()}
+                            <div className="table-responsive-wrapper" style={{ overflowX: 'auto' }}>
+                                <table className="responsive-table" style={{ borderCollapse: 'collapse' }}>
+                                    <colgroup>
+                                        <col style={{ width: '36px' }} />
+                                        <col className="col-tarih" />
+                                        <col className="col-malzeme" />
+                                        <col className="col-firma" />
+                                        <col className="col-miktar" />
+                                        <col className="col-islem" />
+                                    </colgroup>
                                     <thead>
                                         <tr>
-                                            <th className="tsel-th"><input type="checkbox" className="tsel-checkbox" checked={headerChecked(selZimmet, filteredZ)} onChange={() => toggleAll(setSelZimmet, filteredZ)} /></th>
-                                            <th>İŞLEM TARİHİ</th>
-                                            <th>MALZEME</th>
-                                            <th>KİŞİ / EKİP</th>
-                                            <th style={{ textAlign: 'right' }}>MİKTAR</th>
-                                            <th>{zimmetView === 'active' ? 'İŞLEM' : 'TÜR'}</th>
+                                            <th style={{ ...CB_TH, border: '1px solid var(--border)' }}></th>
+                                            <th style={{ border: '1px solid var(--border)' }}>İŞLEM TARİHİ</th>
+                                            <th style={{ border: '1px solid var(--border)' }}>MALZEME</th>
+                                            <th style={{ border: '1px solid var(--border)' }}>KİŞİ / EKİP</th>
+                                            <th style={{ textAlign: 'right', border: '1px solid var(--border)' }}>MİKTAR</th>
+                                            <th style={{ border: '1px solid var(--border)' }}>{zimmetView === 'active' ? 'İŞLEM' : 'TÜR'}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {filteredZ.length === 0 ? (
-                                            <tr><td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>{zimmetView === 'active' ? 'Aktif zimmet kaydı bulunamadı.' : 'Henüz bir hareket kaydı yok.'}</td></tr>
-                                        ) : filteredZ.map(z => (
-                                            <tr key={z.id} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, z, 'zimmet') : undefined} style={hlStyle('zimmet', z.id)} className={selZimmet.has(z.id) ? 'tsel-selected' : ''}>
-                                                <td className="tsel-td"><input type="checkbox" className="tsel-checkbox" checked={selZimmet.has(z.id)} onChange={() => toggleSel(setSelZimmet, z.id)} onClick={e => e.stopPropagation()} /></td>
-                                                <td data-label="İşlem Tarihi">{z.date}</td>
-                                                <td data-label="Malzeme">{z.itemName}</td>
-                                                <td data-label="Kişi / Ekip">{z.person}</td>
-                                                <td data-label="Miktar" style={{ textAlign: 'right' }}>{z.amount}</td>
-                                                <td data-label={zimmetView === 'active' ? "İşlem" : "Tür"}>
-                                                    {zimmetView === 'active' ? (
-                                                        pagePerm('zimmet') === 'edit' ? (
-                                                            <button className="btn-ghost" style={{ color: '#4f46e5', fontWeight: '600', padding: '6px 12px', borderRadius: '6px', background: '#f5f3ff', display: 'inline-flex', alignItems: 'center', gap: '5px' }} onClick={() => handleReturnZimmet(z)}>
-                                                                <RotateCcw size={14} /> Geri Alındı
-                                                            </button>
+                                        {(() => {
+                                            const filtered = zimmet.filter(z =>
+                                                (zimmetView === 'active' ? z.status === 'zimmette' : true) &&
+                                                (z.itemName.toLowerCase().includes(searchQuery.toLowerCase()) || z.person.toLowerCase().includes(searchQuery.toLowerCase()))
+                                            ).sort((a, b) => (b.updated_at || b.created_at || b.id || 0) - (a.updated_at || a.created_at || a.id || 0));
+
+                                            if (filtered.length === 0) {
+                                                return <tr><td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>{zimmetView === 'active' ? 'Aktif zimmet kaydı bulunamadı.' : 'Henüz bir hareket kaydı yok.'}</td></tr>;
+                                            }
+
+                                            return filtered.map(z => (
+                                                <tr key={z.id} style={{ ...hlRowStyle('zimmet', z.id) }} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, z, 'zimmet') : undefined}>
+                                                    <td style={{ ...CB_TD, border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
+                                                        <input type="checkbox" style={CB_STYLE} checked={isRowSel('zimmet', z.id)} onChange={() => toggleSel('zimmet', String(z.id))} />
+                                                    </td>
+                                                    <td data-label="İşlem Tarihi" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{z.date}</td>
+                                                    <td data-label="Malzeme" style={{ fontWeight: '600', border: '1px solid var(--border)' }}>{z.itemName}</td>
+                                                    <td data-label="Kişi / Ekip" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{z.person}</td>
+                                                    <td data-label="Miktar" style={{ textAlign: 'right', whiteSpace: 'nowrap', fontWeight: '600', border: '1px solid var(--border)' }}>{z.amount}</td>
+                                                    <td data-label={zimmetView === 'active' ? "İşlem" : "Tür"} style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>
+                                                        {zimmetView === 'active' ? (
+                                                            pagePerm('zimmet') === 'edit' ? (
+                                                                <button
+                                                                    className="btn-ghost"
+                                                                    style={{ color: '#4f46e5', fontWeight: '600', padding: '6px 12px', borderRadius: '6px', background: '#f5f3ff', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                                                                    onClick={() => handleReturnZimmet(z)}
+                                                                >
+                                                                    <RotateCcw size={14} /> Geri Alındı
+                                                                </button>
+                                                            ) : (
+                                                                <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                                                    <Eye size={13} /> Zimmette
+                                                                </span>
+                                                            )
                                                         ) : (
-                                                            <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Eye size={13} /> Zimmette</span>
-                                                        )
-                                                    ) : (
-                                                        <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700', background: z.type === 'verildi' ? '#eff6ff' : '#f0fdf4', color: z.type === 'verildi' ? '#2563eb' : '#16a34a', border: `1px solid ${z.type === 'verildi' ? '#dbeafe' : '#dcfce7'}` }}>
-                                                            {z.type === 'verildi' ? 'ZİMMET VERİLDİ' : 'GERİ ALINDI'}
-                                                        </span>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
+                                                            <span style={{
+                                                                padding: '4px 10px',
+                                                                borderRadius: '20px',
+                                                                fontSize: '11px',
+                                                                fontWeight: '700',
+                                                                background: z.type === 'verildi' ? '#eff6ff' : '#f0fdf4',
+                                                                color: z.type === 'verildi' ? '#2563eb' : '#16a34a',
+                                                                border: `1px solid ${z.type === 'verildi' ? '#dbeafe' : '#dcfce7'}`
+                                                            }}>
+                                                                {z.type === 'verildi' ? 'ZİMMET VERİLDİ' : 'GERİ ALINDI'}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ));
+                                        })()}
                                     </tbody>
-                                    </table>
-                                    </>);
-                                })()}
+                                </table>
                             </div>
                         </div>
                     )}
@@ -3046,77 +3541,120 @@ const App = () => {
                             <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '6px' }}>Bu sayfayı görüntüleme yetkiniz bulunmuyor. Yöneticinizle iletişime geçin.</div>
                         </div>
                     )}
-                    {activeTab === 'price' && pagePerm('price') !== 'none' && (
-                        <div className="table-card animate-fade">
-                            <div className="table-toolbar">
-                                <div>
-                                    <span className="section-title"><TrendingUp size={17} /> Fiyat Analizi</span>
-                                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                                        * Giriş işlemlerindeki fiyatlar baz alınarak hesaplanmaktadır.
+                    {activeTab === 'price' && pagePerm('price') !== 'none' && (() => {
+                        const priceFiltered = priceAnalysis.filter(row => {
+                            if (priceFilter.malzeme && !(row.name || '').toLowerCase().includes(priceFilter.malzeme.toLowerCase())) return false;
+                            if (priceFilter.kategori && !(row.kategori || '').toLowerCase().includes(priceFilter.kategori.toLowerCase())) return false;
+                            return true;
+                        });
+                        const hasFilter = priceFilter.malzeme || priceFilter.kategori;
+                        const filterInputStyle = { fontSize: '12px', padding: '5px 10px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', outline: 'none', width: '160px' };
+                        return (
+                            <div className="table-card animate-fade">
+                                <div className="table-toolbar">
+                                    <div>
+                                        <span className="section-title"><TrendingUp size={17} /> Fiyat Analizi</span>
+                                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                            * Giriş işlemlerindeki fiyatlar baz alınarak hesaplanmaktadır.
+                                        </div>
                                     </div>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                    {priceAnalysis.length > 0 && (
-                                        <>
-                                            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{priceAnalysis.length} malzeme</span>
-                                            <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-main)' }}>
-                                                Genel Toplam: <span style={{ color: 'var(--primary)' }}>{formatNumber(priceAnalysis.reduce((s, r) => s + r.totalSpent, 0))} ₺</span>
-                                            </span>
-                                        </>
-                                    )}
                                     <ExportButtons
-                                        data={priceAnalysis}
+                                        data={priceFiltered}
                                         title="Malzeme Fiyat Analizi"
                                         columns={[
-                                            { key: 'name',       label: 'MALZEME' },
-                                            { key: 'category',   label: 'KATEGORİ' },
-                                            { key: 'totalQtyReceived', label: 'MİKTAR' },
-                                            { key: 'unit',       label: 'BİRİM' },
-                                            { key: 'avgPrice',   label: 'ORT. BİRİM FİYAT' },
+                                            { key: 'name', label: 'MALZEME' },
+                                            { key: 'kategori', label: 'KATEGORİ' },
+                                            { key: 'totalQtyReceived', label: 'TOPLAM' },
+                                            { key: 'unit', label: 'BİRİM' },
+                                            { key: 'avgPrice', label: 'ORT. BİRİM FİYAT' },
                                             { key: 'totalSpent', label: 'TOPLAM TUTAR' }
                                         ]}
                                         filename="Fiyat_Analizi"
                                     />
                                 </div>
-                            </div>
-                            <div className="table-responsive-wrapper dash-unified-wrap">
-                                <table className="responsive-table price-analysis-table">
-                                    <colgroup>
-                                        <col style={{ width: '28%' }} />
-                                        <col style={{ width: '14%' }} />
-                                        <col style={{ width: '12%' }} />
-                                        <col style={{ width: '8%' }} />
-                                        <col style={{ width: '18%' }} />
-                                        <col style={{ width: '20%' }} />
-                                    </colgroup>
-                                    <thead>
-                                        <tr>
-                                            <th>MALZEME</th>
-                                            <th>KATEGORİ</th>
-                                            <th>MİKTAR</th>
-                                            <th>BİRİM</th>
-                                            <th>ORT. BİRİM FİYAT</th>
-                                            <th>TOPLAM TUTAR</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {priceAnalysis.length === 0 ? (
-                                            <tr><td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Fiyatlı giriş kaydı bulunamadı.</td></tr>
-                                        ) : priceAnalysis.map((row, idx) => (
-                                            <tr key={idx}>
-                                                <td style={{ fontWeight: '600' }}>{row.name}</td>
-                                                <td style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{row.category || '—'}</td>
-                                                <td>{formatNumber(row.totalQtyReceived)}</td>
-                                                <td>{row.unit}</td>
-                                                <td style={{ color: 'var(--primary)', fontWeight: '600' }}>{formatNumber(row.avgPrice)} ₺</td>
-                                                <td style={{ fontWeight: '700' }}>{formatNumber(row.totalSpent)} ₺</td>
+                                {/* Filtreler */}
+                                <div style={{ display: 'flex', gap: '8px', padding: '8px 16px 12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                    <input
+                                        type="text"
+                                        placeholder="Malzeme ara..."
+                                        value={priceFilter.malzeme}
+                                        onChange={e => setPriceFilter(f => ({ ...f, malzeme: e.target.value }))}
+                                        style={filterInputStyle}
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Kategori ara..."
+                                        value={priceFilter.kategori}
+                                        onChange={e => setPriceFilter(f => ({ ...f, kategori: e.target.value }))}
+                                        style={filterInputStyle}
+                                    />
+                                    {hasFilter && (
+                                        <button onClick={() => setPriceFilter({ malzeme: '', kategori: '' })} style={{ fontSize: '11px', padding: '5px 10px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-hover)', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                                            Temizle
+                                        </button>
+                                    )}
+                                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: 'auto' }}>{priceFiltered.length} malzeme</span>
+                                </div>
+                                {(() => {
+                                    const prSelKeys = tblSelKeys('price');
+                                    const prSelRows = priceFiltered.filter(r => prSelKeys.includes(String(r.id)));
+                                    const prAllSel = priceFiltered.length > 0 && priceFiltered.every(r => isRowSel('price', r.id));
+                                    return isAdmin && tblSelCount('price') > 0 ? (
+                                        <TableActionBar
+                                            count={tblSelCount('price')}
+                                            totalCount={priceFiltered.length}
+                                            allSelected={prAllSel}
+                                            onSelectAll={() => selectAllTbl('price', priceFiltered.map(r => String(r.id)))}
+                                            onDelete={() => openBulkDel('items', prSelRows)}
+                                            onEdit={() => { if (prSelRows.length === 1) setEditRow({ row: prSelRows[0], collection: 'items' }); }}
+                                            onHighlight={() => openHLPicker('price', prSelKeys)}
+                                        />
+                                    ) : null;
+                                })()}
+                                <div className="table-responsive-wrapper dash-unified-wrap">
+                                    <table className="responsive-table" style={{ tableLayout: 'auto', width: '100%', borderCollapse: 'collapse' }}>
+                                        <colgroup>
+                                            <col style={{ width: '36px' }} />
+                                            <col />
+                                            <col />
+                                            <col style={{ width: '100px' }} />
+                                            <col style={{ width: '64px' }} />
+                                            <col style={{ width: '160px' }} />
+                                            <col style={{ width: '160px' }} />
+                                        </colgroup>
+                                        <thead>
+                                            <tr>
+                                                <th style={{ ...CB_TH, border: '1px solid var(--border)' }}></th>
+                                                <th style={{ textAlign: 'left', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>MALZEME</th>
+                                                <th style={{ textAlign: 'left', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>KATEGORİ</th>
+                                                <th style={{ textAlign: 'right', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>TOPLAM</th>
+                                                <th style={{ textAlign: 'center', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>BİRİM</th>
+                                                <th style={{ textAlign: 'right', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>ORT. BİRİM FİYAT</th>
+                                                <th style={{ textAlign: 'right', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>TOPLAM TUTAR</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody>
+                                            {priceFiltered.length === 0 ? (
+                                                <tr><td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Kayıt bulunamadı.</td></tr>
+                                            ) : priceFiltered.map((row, idx) => (
+                                                <tr key={idx} style={{ ...hlRowStyle('price', row.id) }}>
+                                                    <td style={{ ...CB_TD, border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
+                                                        <input type="checkbox" style={CB_STYLE} checked={isRowSel('price', row.id)} onChange={() => toggleSel('price', String(row.id))} />
+                                                    </td>
+                                                    <td style={{ fontWeight: '600', textAlign: 'left', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{row.name}</td>
+                                                    <td style={{ textAlign: 'left', fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{row.kategori || '—'}</td>
+                                                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{formatNumber(row.totalQtyReceived)}</td>
+                                                    <td style={{ textAlign: 'center', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{row.unit}</td>
+                                                    <td style={{ textAlign: 'right', color: 'var(--primary)', fontWeight: '600', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{row.avgPrice > 0 ? `${formatNumber(row.avgPrice)} ₺` : '—'}</td>
+                                                    <td style={{ textAlign: 'right', fontWeight: '700', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{row.totalSpent > 0 ? `${formatNumber(row.totalSpent)} ₺` : '—'}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        );
+                    })()}
 
                     {/* ── MOVEMENTS TAB ── */}
                     {activeTab === 'movements' && pagePerm('movements') === 'none' && (
@@ -3130,7 +3668,7 @@ const App = () => {
                         const toISODate2 = (dateStr) => {
                             const s = String(dateStr || '').split(',')[0].trim();
                             const parts = s.split('.');
-                            if (parts.length === 3) return `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+                            if (parts.length === 3) return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
                             return s.slice(0, 10);
                         };
                         const movementsFiltered = filteredMovementsForPage.filter(m => {
@@ -3145,147 +3683,155 @@ const App = () => {
                             return true;
                         });
                         return (
-                        <div className="table-card animate-fade">
-                            <div className="table-toolbar">
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span className="section-title"><History size={17} /> {movementViewType === 'in' ? 'Tüm Girişler' : movementViewType === 'out' ? 'Tüm Çıkışlar' : 'Tüm Stok Hareketleri'}</span>
-                                    {[['all','Tümü','var(--accent)'], ['in','Giriş','var(--success)'], ['out','Çıkış','var(--danger)']].map(([val, lbl, clr]) => (
-                                        <button key={val} onClick={() => setMovementViewType(val)} style={{
-                                            padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit',
-                                            border: movementViewType === val ? `2px solid ${clr}` : '2px solid var(--border)',
-                                            background: movementViewType === val ? clr : 'transparent',
-                                            color: movementViewType === val ? '#fff' : 'var(--text-muted)',
-                                            transition: 'all 0.15s',
-                                        }}>{lbl}</button>
-                                    ))}
-                                </div>
-                                <div className="flex align-center gap-2">
-                                    <div className="export-container">
-                                        <button className="btn-export-sm" onClick={() => exportToExcelGeneral(
-                                            movementsFiltered.map(m => ({
-                                                Tarih: String(m.date || '-').split(',')[0].split(' ')[0],
-                                                Tur: m.normalizedType === 'in' ? 'Giriş' : 'Çıkış',
-                                                Malzeme: m.itemName || '',
-                                                Firma: m.firmaAdi || m.recipient || '-',
-                                                Miktar: m.amount || 0,
-                                                IrsaliyeNo: m.irsaliyeNo || '-'
-                                            })),
-                                            [{ key: 'Tarih', label: 'Tarih' }, { key: 'Tur', label: 'Tür' }, { key: 'Malzeme', label: 'Malzeme' }, { key: 'Firma', label: 'Firma' }, { key: 'Miktar', label: 'Miktar' }, { key: 'IrsaliyeNo', label: 'İrsaliye No' }],
-                                            'Hareket_Kayitlari'
-                                        )}>
-                                            <FileSpreadsheet size={14} className="icon-excel" /> Excel
-                                        </button>
-                                        <button className="btn-export-sm" onClick={() => exportMovementsToPDF(movementsFiltered, 'Hareket_Kayitlari')}>
-                                            <Download size={14} className="icon-pdf" /> PDF
-                                        </button>
+                            <div className="table-card animate-fade">
+                                <div className="table-toolbar">
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span className="section-title"><History size={17} /> Tüm Stok Hareketleri</span>
                                     </div>
-                                    <button className="btn-ghost" onClick={() => setActiveTab('dashboard')}>Panele Dön</button>
+                                    <div className="flex align-center gap-2">
+                                        <div className="export-container">
+                                            <button className="btn-export-sm" onClick={() => exportToExcelGeneral(
+                                                movementsFiltered.map(m => ({
+                                                    Tarih: String(m.date || '-').split(',')[0].split(' ')[0],
+                                                    Tur: m.normalizedType === 'in' ? 'Giriş' : 'Çıkış',
+                                                    Malzeme: m.itemName || '',
+                                                    Firma: m.firmaAdi || m.recipient || '-',
+                                                    Miktar: m.amount || 0,
+                                                    IrsaliyeNo: m.irsaliyeNo || '-'
+                                                })),
+                                                [{ key: 'Tarih', label: 'Tarih' }, { key: 'Tur', label: 'Tür' }, { key: 'Malzeme', label: 'Malzeme' }, { key: 'Firma', label: 'Firma' }, { key: 'Miktar', label: 'Miktar' }, { key: 'IrsaliyeNo', label: 'İrsaliye No' }],
+                                                'Hareket_Kayitlari'
+                                            )}>
+                                                <FileSpreadsheet size={14} className="icon-excel" /> Excel
+                                            </button>
+                                            <button className="btn-export-sm" onClick={() => exportMovementsToPDF(movementsFiltered, 'Hareket_Kayitlari')}>
+                                                <Download size={14} className="icon-pdf" /> PDF
+                                            </button>
+                                        </div>
+                                        <button className="btn-ghost" onClick={() => setActiveTab('dashboard')}>Panele Dön</button>
+                                    </div>
                                 </div>
-                            </div>
 
-                            {/* Filtre Satırı */}
-                            {(() => {
-                                const hasFilter = movFilter.malzeme || movFilter.tarihBas || movFilter.tarihBitis || movFilter.firma || movFilter.irsaliye;
-                                const inputStyle = { fontSize: '12px', fontFamily: 'inherit', padding: '0 10px', height: '32px', lineHeight: '32px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-main)', color: 'var(--text-main)', outline: 'none', width: '100%', boxSizing: 'border-box', display: 'block' };
-                                const selectStyle = { ...inputStyle, cursor: 'pointer' };
-                                const labelStyle = { fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' };
-                                const colStyle = { display: 'flex', flexDirection: 'column', gap: '4px', overflow: 'hidden' };
-                                const uniqueMalzemeler = [...new Set(filteredMovementsForPage.map(m => m.itemName).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'tr'));
-                                const uniqueFirmalar = [...new Set(filteredMovementsForPage.map(m => m.firmaAdi || m.recipient).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'tr'));
-                                return (
-                                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '10px', padding: '12px 16px', borderBottom: '1px solid var(--border)', alignItems: 'end' }}>
-                                        <div style={colStyle}>
-                                            <label style={labelStyle}>Tarih Aralığı</label>
-                                            <DateRangePicker
-                                                startDate={movFilter.tarihBas}
-                                                endDate={movFilter.tarihBitis}
-                                                onChange={(s, e) => setMovFilter(f => ({ ...f, tarihBas: s, tarihBitis: e }))}
-                                            />
-                                        </div>
-                                        <div style={colStyle}>
-                                            <label style={labelStyle}>Firma</label>
-                                            <select value={movFilter.firma} onChange={e => setMovFilter(f => ({ ...f, firma: e.target.value }))} style={selectStyle}>
-                                                <option value="">Tümü</option>
-                                                {uniqueFirmalar.map(f => <option key={f} value={f}>{f}</option>)}
-                                            </select>
-                                        </div>
-                                        <div style={colStyle}>
-                                            <label style={labelStyle}>İrsaliye No</label>
-                                            <input type="text" placeholder="İrsaliye ara..." value={movFilter.irsaliye} onChange={e => setMovFilter(f => ({ ...f, irsaliye: e.target.value }))} style={inputStyle} />
-                                        </div>
-                                        <div style={colStyle}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <label style={labelStyle}>Malzeme</label>
-                                                <button onClick={() => setMovFilter({ malzeme: '', tarihBas: '', tarihBitis: '', firma: '', irsaliye: '' })} style={{ fontSize: '11px', padding: '1px 8px', borderRadius: '5px', border: '1px solid var(--border)', background: 'var(--bg-hover)', color: 'var(--text-muted)', cursor: 'pointer', lineHeight: '1.6', visibility: hasFilter ? 'visible' : 'hidden' }}>
-                                                    Temizle
-                                                </button>
+                                {/* Filtre Satırı */}
+                                {(() => {
+                                    const hasFilter = movFilter.malzeme || movFilter.tarihBas || movFilter.tarihBitis || movFilter.firma || movFilter.irsaliye;
+                                    const inputStyle = { fontSize: '12px', fontFamily: 'inherit', padding: '0 10px', height: '32px', lineHeight: '32px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-main)', color: 'var(--text-main)', outline: 'none', width: '100%', boxSizing: 'border-box', display: 'block' };
+                                    const selectStyle = { ...inputStyle, cursor: 'pointer' };
+                                    const labelStyle = { fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' };
+                                    const colStyle = { display: 'flex', flexDirection: 'column', gap: '4px', overflow: 'hidden' };
+                                    const uniqueMalzemeler = [...new Set(filteredMovementsForPage.map(m => m.itemName).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'));
+                                    const uniqueFirmalar = [...new Set(filteredMovementsForPage.map(m => m.firmaAdi || m.recipient).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'));
+                                    return (
+                                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '10px', padding: '12px 16px', borderBottom: '1px solid var(--border)', alignItems: 'end' }}>
+                                            <div style={colStyle}>
+                                                <label style={labelStyle}>Tarih Aralığı</label>
+                                                <DateRangePicker
+                                                    startDate={movFilter.tarihBas}
+                                                    endDate={movFilter.tarihBitis}
+                                                    onChange={(s, e) => setMovFilter(f => ({ ...f, tarihBas: s, tarihBitis: e }))}
+                                                />
                                             </div>
-                                            <select value={movFilter.malzeme} onChange={e => setMovFilter(f => ({ ...f, malzeme: e.target.value }))} style={selectStyle}>
-                                                <option value="">Tümü</option>
-                                                {uniqueMalzemeler.map(m => <option key={m} value={m}>{m}</option>)}
-                                            </select>
+                                            <div style={colStyle}>
+                                                <label style={labelStyle}>Firma</label>
+                                                <select value={movFilter.firma} onChange={e => setMovFilter(f => ({ ...f, firma: e.target.value }))} style={selectStyle}>
+                                                    <option value="">Tümü</option>
+                                                    {uniqueFirmalar.map(f => <option key={f} value={f}>{f}</option>)}
+                                                </select>
+                                            </div>
+                                            <div style={colStyle}>
+                                                <label style={labelStyle}>İrsaliye No</label>
+                                                <input type="text" placeholder="İrsaliye ara..." value={movFilter.irsaliye} onChange={e => setMovFilter(f => ({ ...f, irsaliye: e.target.value }))} style={inputStyle} />
+                                            </div>
+                                            <div style={colStyle}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <label style={labelStyle}>Malzeme</label>
+                                                    <button onClick={() => setMovFilter({ malzeme: '', tarihBas: '', tarihBitis: '', firma: '', irsaliye: '' })} style={{ fontSize: '11px', padding: '1px 8px', borderRadius: '5px', border: '1px solid var(--border)', background: 'var(--bg-hover)', color: 'var(--text-muted)', cursor: 'pointer', lineHeight: '1.6', visibility: hasFilter ? 'visible' : 'hidden' }}>
+                                                        Temizle
+                                                    </button>
+                                                </div>
+                                                <select value={movFilter.malzeme} onChange={e => setMovFilter(f => ({ ...f, malzeme: e.target.value }))} style={selectStyle}>
+                                                    <option value="">Tümü</option>
+                                                    {uniqueMalzemeler.map(m => <option key={m} value={m}>{m}</option>)}
+                                                </select>
+                                            </div>
                                         </div>
-                                    </div>
-                                );
-                            })()}
+                                    );
+                                })()}
 
-                            <TableSelectionBar
-                                selected={selMovements} allRows={movementsFiltered}
-                                onSelectAll={() => toggleAll(setSelMovements, movementsFiltered)}
-                                onClear={() => setSelMovements(new Set())}
-                                onDelete={canEdit ? () => handleBulkDelete('movements', selMovements, movementsFiltered, 'id', setSelMovements) : undefined}
-                                onEdit={canEdit ? () => { const row = movementsFiltered.find(r => selMovements.has(r.id)); if (row) setEditRow({ row, collection: 'movements' }); } : undefined}
-                                onHighlight={(color) => handleBulkHighlight('movements', selMovements, color)}
-                            />
-                            <div className="table-responsive-wrapper dash-unified-wrap">
-                                <table className="responsive-table col-6">
-                                    <colgroup>
-                                        <col style={{ width: '36px' }} />
-                                        <col style={{ width: '10%' }} />
-                                        <col style={{ width: '33%' }} />
-                                        <col style={{ width: '9%' }} />
-                                        <col style={{ width: '8%' }} />
-                                        <col style={{ width: '20%' }} />
-                                        <col style={{ width: '14%' }} />
-                                    </colgroup>
-                                    <thead>
-                                        <tr>
-                                            <th className="tsel-th"><input type="checkbox" className="tsel-checkbox" checked={headerChecked(selMovements, movementsFiltered)} onChange={() => toggleAll(setSelMovements, movementsFiltered)} /></th>
-                                            <th>TARİH</th>
-                                            <th>MALZEME</th>
-                                            <th style={{ textAlign: 'right' }}>MİKTAR</th>
-                                            <th>BİRİM</th>
-                                            <th>KİŞİ / FİRMA</th>
-                                            <th>İRSALİYE NO</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {movementsFiltered.length === 0 ? (
-                                            <tr><td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Kayıt bulunamadı.</td></tr>
-                                        ) : movementsFiltered.map((m) => {
-                                            const isIn = m.normalizedType === 'in';
-                                            const tipColor = isIn ? 'var(--success)' : 'var(--danger)';
-                                            const miktar = isIn ? `+${formatNumber(m.amount)}` : `−${formatNumber(m.amount)}`;
-                                            const kisi = isIn ? (m.firmaAdi || m.recipient || '—') : (m.recipient || m.firmaAdi || '—');
-                                            const detay = isIn ? (m.irsaliyeNo || '—') : (m.kullanimAlani || m.note || '—');
-                                            const tarih = String(m.date || '—').split(',')[0].split(' ')[0];
-                                            const hlBg = highlights[`movements:${m.id}`] ? HIGHLIGHT_COLORS[highlights[`movements:${m.id}`]].bg : undefined;
-                                            return (
-                                                <tr key={m.id} style={{ borderLeft: `20px solid ${tipColor}`, ...(hlBg ? { background: hlBg } : {}) }} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, m, 'movements') : undefined} className={selMovements.has(m.id) ? 'tsel-selected' : ''}>
-                                                    <td className="tsel-td"><input type="checkbox" className="tsel-checkbox" checked={selMovements.has(m.id)} onChange={() => toggleSel(setSelMovements, m.id)} onClick={e => e.stopPropagation()} /></td>
-                                                    <td style={{ whiteSpace: 'nowrap' }}>{tarih}</td>
-                                                    <td>{m.itemName || '—'}</td>
-                                                    <td style={{ textAlign: 'right' }}>{miktar}</td>
-                                                    <td>{m.unit || '—'}</td>
-                                                    <td>{kisi}</td>
-                                                    <td>{detay}</td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
+                                {(() => {
+                                    const movSelKeys = tblSelKeys('movements');
+                                    const movSelRows = movementsFiltered.filter(m => movSelKeys.includes(`${m.category}-${m.id}`));
+                                    const movAllSel = movementsFiltered.length > 0 && movementsFiltered.every(m => isRowSel('movements', `${m.category}-${m.id}`));
+                                    return isAdmin && tblSelCount('movements') > 0 ? (
+                                        <TableActionBar
+                                            count={tblSelCount('movements')}
+                                            totalCount={movementsFiltered.length}
+                                            allSelected={movAllSel}
+                                            onSelectAll={() => selectAllTbl('movements', movementsFiltered.map(m => `${m.category}-${m.id}`))}
+                                            onDelete={() => openBulkDel('movements_mixed', movSelRows)}
+                                            onEdit={() => { if (movSelRows.length === 1) { const m = movSelRows[0]; setEditRow({ row: m, collection: m.category === 'zimmet' ? 'zimmet' : 'movements' }); } }}
+                                            onHighlight={() => openHLPicker('movements', movSelKeys)}
+                                        />
+                                    ) : null;
+                                })()}
+                                <div className="table-responsive-wrapper dash-unified-wrap">
+                                    {(() => {
+                                        return (
+                                            <table className="responsive-table" style={{ borderCollapse: 'collapse' }}>
+                                                <colgroup>
+                                                    <col style={{ width: '36px' }} />
+                                                    <col className="col-tarih" />
+                                                    <col className="col-malzeme" />
+                                                    <col className="col-kategori" />
+                                                    <col className="col-miktar" />
+                                                    <col className="col-birim" />
+                                                    <col className="col-firma" />
+                                                    <col className="col-detay" />
+                                                </colgroup>
+                                                <thead>
+                                                    <tr>
+                                                        <th style={{ ...CB_TH, border: '1px solid var(--border)' }}></th>
+                                                        <th style={{ border: '1px solid var(--border)' }}>TARİH</th>
+                                                        <th style={{ border: '1px solid var(--border)' }}>MALZEME</th>
+                                                        <th style={{ border: '1px solid var(--border)' }}>KATEGORİ</th>
+                                                        <th style={{ textAlign: 'right', border: '1px solid var(--border)' }}>MİKTAR</th>
+                                                        <th style={{ border: '1px solid var(--border)' }}>BİRİM</th>
+                                                        <th style={{ border: '1px solid var(--border)' }}>KİŞİ / FİRMA</th>
+                                                        <th style={{ border: '1px solid var(--border)' }}>DETAY</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {movementsFiltered.length === 0 ? (
+                                                        <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Kayıt bulunamadı.</td></tr>
+                                                    ) : movementsFiltered.map((m) => {
+                                                        const isIn = m.normalizedType === 'in';
+                                                        const tipColor = isIn ? 'var(--success)' : 'var(--danger)';
+                                                        const miktar = isIn ? `+${formatNumber(m.amount)}` : `−${formatNumber(m.amount)}`;
+                                                        const kisi = isIn ? (m.firmaAdi || m.recipient || '—') : (m.recipient || m.firmaAdi || '—');
+                                                        const detay = isIn ? (m.irsaliyeNo || '—') : (m.kullanimAlani || m.note || '—');
+                                                        const tarih = String(m.date || '—').split(',')[0].split(' ')[0];
+                                                        const rowKey = `${m.category}-${m.id}`;
+                                                        return (
+                                                            <tr key={m.id} style={{ borderLeft: `4px solid ${tipColor}`, ...hlRowStyle('movements', rowKey) }} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, m, 'movements') : undefined}>
+                                                                <td style={{ ...CB_TD, border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
+                                                                    <input type="checkbox" style={CB_STYLE} checked={isRowSel('movements', rowKey)} onChange={() => toggleSel('movements', rowKey)} />
+                                                                </td>
+                                                                <td style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{tarih}</td>
+                                                                <td style={{ border: '1px solid var(--border)' }}>{m.itemName || '—'}</td>
+                                                                <td style={{ whiteSpace: 'nowrap', fontSize: '11px', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>{m.malzemeTuru || 'Genel'}</td>
+                                                                <td style={{ textAlign: 'right', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{miktar}</td>
+                                                                <td style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{m.unit || '—'}</td>
+                                                                <td style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', border: '1px solid var(--border)' }}>{kisi}</td>
+                                                                <td style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', border: '1px solid var(--border)' }}>{detay}</td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        );
+                                    })()}
+                                </div>
                             </div>
-                        </div>
                         );
                     })()}
 
@@ -3296,14 +3842,19 @@ const App = () => {
                         inMovements.forEach(m => {
                             const key = m.irsaliyeNo.trim();
                             if (!grouped[key]) {
-                                grouped[key] = { irsaliyeNo: key, items: [], date: m.date, firma: m.firmaAdi || m.recipient || '—', plaka: m.plaka || '—', sofor: m.sofor || '—', teslimAlan: m.teslimAlan || m.recipient || '—' };
+                                grouped[key] = { irsaliyeNo: key, items: [], date: m.date, firma: m.firmaAdi || m.recipient || '—', teslimAlan: m.teslimAlan || m.recipient || '—' };
                             }
                             grouped[key].items.push(m);
                         });
-                        const irsaliyeList = Object.values(grouped).sort((a, b) => String(b.date || '') > String(a.date || '') ? 1 : -1);
-                        // col widths: tarih | irsaliyeNo/malzeme | firma | adet | plaka | sofor | teslimAlan
-                        const cw = ['10%', '18%', '20%', '7%', '13%', '13%', '19%'];
-                        const subCell = { padding: '8px 14px', fontSize: '13px', verticalAlign: 'middle', overflow: 'hidden' };
+                        const irsaliyeList = Object.values(grouped)
+                            .sort((a, b) => String(b.date || '') > String(a.date || '') ? 1 : -1)
+                            .map(irsaliye => {
+                                const metaKey = irsaliye.irsaliyeNo.replace(/[./\s]/g, '_');
+                                const meta = irsaliyeMeta[metaKey] || {};
+                                return { ...irsaliye, plaka: meta.plaka || '', sofor: meta.sofor || '' };
+                            });
+                        const rowStyle = { height: '36px' };
+                        const cellStyle = { padding: '4px 10px', verticalAlign: 'middle', whiteSpace: 'nowrap' };
                         return (
                             <div className="table-card animate-fade">
                                 <div className="table-toolbar">
@@ -3316,95 +3867,69 @@ const App = () => {
                                     </div>
                                 ) : (
                                     <>
-                                    <TableSelectionBar
-                                        selected={selMovements} allRows={irsaliyeList} idKey="irsaliyeNo"
-                                        onSelectAll={() => toggleAll(setSelMovements, irsaliyeList, 'irsaliyeNo')}
-                                        onClear={() => setSelMovements(new Set())}
-                                        onHighlight={(color) => handleBulkHighlight('irsaliye', selMovements, color)}
-                                    />
-                                    <div className="table-responsive-wrapper dash-unified-wrap">
-                                        <table className="responsive-table col-7">
+                                        {(() => {
+                                            const irsSelKeys = tblSelKeys('irsaliyeler');
+                                            const irsSelRows = irsaliyeList.filter(ir => irsSelKeys.includes(String(ir.irsaliyeNo)));
+                                            const irsAllSel = irsaliyeList.length > 0 && irsaliyeList.every(ir => isRowSel('irsaliyeler', ir.irsaliyeNo));
+                                            return canEdit && tblSelCount('irsaliyeler') > 0 ? (
+                                                <TableActionBar
+                                                    count={tblSelCount('irsaliyeler')}
+                                                    totalCount={irsaliyeList.length}
+                                                    allSelected={irsAllSel}
+                                                    onSelectAll={() => selectAllTbl('irsaliyeler', irsaliyeList.map(ir => String(ir.irsaliyeNo)))}
+                                                    onDelete={() => openBulkDel('irsaliyeler_batch', irsSelRows)}
+                                                    onEdit={() => { if (irsSelRows.length === 1) setEditRow({ row: irsSelRows[0], collection: 'irsaliyeler' }); }}
+                                                    onHighlight={() => openHLPicker('irsaliyeler', irsSelKeys)}
+                                                />
+                                            ) : null;
+                                        })()}
+                                    <div className="table-responsive-wrapper">
+                                        <table className="responsive-table" style={{ borderCollapse: 'collapse' }}>
                                             <colgroup>
                                                 <col style={{ width: '36px' }} />
-                                                {cw.map((w, i) => <col key={i} style={{ width: w }} />)}
+                                                <col className="col-tarih" />
+                                                <col className="col-kategori" />
+                                                <col className="col-firma" />
+                                                <col className="col-birim" />
+                                                <col className="col-firma" />
+                                                <col style={{ width: '110px' }} />
+                                                <col style={{ width: '120px' }} />
                                             </colgroup>
                                             <thead>
                                                 <tr>
-                                                    <th className="tsel-th"><input type="checkbox" className="tsel-checkbox" checked={headerChecked(selMovements, irsaliyeList, 'irsaliyeNo')} onChange={() => toggleAll(setSelMovements, irsaliyeList, 'irsaliyeNo')} /></th>
-                                                    <th>TARİH</th>
-                                                    <th>İRSALİYE NO</th>
-                                                    <th>FİRMA</th>
-                                                    <th style={{ textAlign: 'center' }}>ÜRÜN</th>
-                                                    <th>PLAKA</th>
-                                                    <th>ŞOFÖR</th>
-                                                    <th>TESLİM ALAN</th>
+                                                    <th style={{ ...CB_TH, border: '1px solid var(--border)' }}></th>
+                                                    <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>TARİH</th>
+                                                    <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>İRSALİYE NO</th>
+                                                    <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>FİRMA</th>
+                                                    <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>ADET</th>
+                                                    <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>TESLİM ALAN</th>
+                                                    <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>PLAKA</th>
+                                                    <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>ŞOFÖR</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {irsaliyeList.map(irsaliye => {
-                                                    const expanded = expandedIrsaliye === irsaliye.irsaliyeNo;
                                                     const tarih = String(irsaliye.date || '—').split(',')[0].split(' ')[0];
-                                                    const hlBg = highlights[`irsaliye:${irsaliye.irsaliyeNo}`] ? HIGHLIGHT_COLORS[highlights[`irsaliye:${irsaliye.irsaliyeNo}`]].bg : undefined;
                                                     return (
-                                                        <React.Fragment key={irsaliye.irsaliyeNo}>
-                                                            <tr
-                                                                onClick={() => setExpandedIrsaliye(expanded ? null : irsaliye.irsaliyeNo)}
-                                                                onContextMenu={isAdmin && irsaliye.items.length > 0 ? (e) => { e.stopPropagation(); handleCtxMenu(e, irsaliye.items[0], 'movements', { hideEdit: true }); } : undefined}
-                                                                style={{ cursor: 'pointer', background: hlBg || (expanded ? 'var(--bg-hover)' : undefined) }}
-                                                                className={selMovements.has(irsaliye.irsaliyeNo) ? 'tsel-selected' : ''}
-                                                            >
-                                                                <td className="tsel-td" onClick={e => e.stopPropagation()}><input type="checkbox" className="tsel-checkbox" checked={selMovements.has(irsaliye.irsaliyeNo)} onChange={() => toggleSel(setSelMovements, irsaliye.irsaliyeNo)} /></td>
-                                                                <td>{tarih}</td>
-                                                                <td style={{ fontWeight: '600' }}>{irsaliye.irsaliyeNo}</td>
-                                                                <td>{irsaliye.firma}</td>
-                                                                <td style={{ textAlign: 'center', fontWeight: '700', color: 'var(--text-main)' }}>{irsaliye.items.length}</td>
-                                                                <td onClick={e => e.stopPropagation()}>
-                                                                    {isAdmin && inlineEdit?.id === `group-${irsaliye.irsaliyeNo}` && inlineEdit?.field === 'plaka' ? (
-                                                                        <input autoFocus className="inline-edit-input" value={inlineEdit.value} onChange={e => setInlineEdit(p => ({ ...p, value: e.target.value }))} onKeyDown={e => { if (e.key === 'Enter') saveInlineEdit(); if (e.key === 'Escape') setInlineEdit(null); }} onBlur={saveInlineEdit} onClick={e => e.stopPropagation()} />
-                                                                    ) : (
-                                                                        <span className={isAdmin ? 'inline-edit-cell' : ''} onClick={isAdmin ? () => setInlineEdit({ id: `group-${irsaliye.irsaliyeNo}`, field: 'plaka', value: irsaliye.plaka === '—' ? '' : (irsaliye.plaka || ''), groupItems: irsaliye.items }) : undefined}>{irsaliye.plaka}</span>
-                                                                    )}
-                                                                </td>
-                                                                <td onClick={e => e.stopPropagation()}>
-                                                                    {isAdmin && inlineEdit?.id === `group-${irsaliye.irsaliyeNo}` && inlineEdit?.field === 'sofor' ? (
-                                                                        <input autoFocus className="inline-edit-input" value={inlineEdit.value} onChange={e => setInlineEdit(p => ({ ...p, value: e.target.value }))} onKeyDown={e => { if (e.key === 'Enter') saveInlineEdit(); if (e.key === 'Escape') setInlineEdit(null); }} onBlur={saveInlineEdit} onClick={e => e.stopPropagation()} />
-                                                                    ) : (
-                                                                        <span className={isAdmin ? 'inline-edit-cell' : ''} onClick={isAdmin ? () => setInlineEdit({ id: `group-${irsaliye.irsaliyeNo}`, field: 'sofor', value: irsaliye.sofor === '—' ? '' : (irsaliye.sofor || ''), groupItems: irsaliye.items }) : undefined}>{irsaliye.sofor}</span>
-                                                                    )}
-                                                                </td>
-                                                                <td>{irsaliye.teslimAlan}</td>
-                                                            </tr>
-                                                            <tr style={{ padding: 0 }}>
-                                                                <td colSpan={8} style={{ padding: 0, border: 'none' }}>
-                                                                    <div style={{ overflow: 'hidden', maxHeight: expanded ? `${irsaliye.items.length * 37}px` : '0', transition: 'max-height 0.35s cubic-bezier(0.4,0,0.2,1)', borderLeft: '3px solid var(--success)' }}>
-                                                                        {irsaliye.items.map((item, i) => (
-                                                                            <div key={i} onContextMenu={isAdmin ? (e) => { e.stopPropagation(); handleCtxMenu(e, item, 'movements', { hideEdit: true }); } : undefined} style={{ display: 'grid', gridTemplateColumns: `36px ${cw.join(' ')}`, borderBottom: '1px solid var(--border)', background: 'var(--bg-main)', alignItems: 'center' }}>
-                                                                                <div />
-                                                                                <div style={{ ...subCell, color: 'var(--text-muted)' }}>{String(item.date || '').split(',')[0].split(' ')[0]}</div>
-                                                                                <div style={{ ...subCell, fontWeight: '500', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{item.itemName || '—'}</div>
-                                                                                <div style={{ ...subCell, color: 'var(--text-muted)' }}>{item.firmaAdi || item.recipient || '—'}</div>
-                                                                                <div style={{ ...subCell, fontWeight: '700', color: 'var(--success)', textAlign: 'right' }}>+{formatNumber(item.amount)} {item.unit || ''}</div>
-                                                                                <div style={{ ...subCell }}>
-                                                                                    {isAdmin && inlineEdit?.id === item.id && inlineEdit?.field === 'plaka' ? (
-                                                                                        <input autoFocus className="inline-edit-input" value={inlineEdit.value} onChange={e => setInlineEdit(p => ({ ...p, value: e.target.value }))} onKeyDown={e => { if (e.key === 'Enter') saveInlineEdit(); if (e.key === 'Escape') setInlineEdit(null); }} onBlur={saveInlineEdit} onClick={e => e.stopPropagation()} />
-                                                                                    ) : (
-                                                                                        <span className={isAdmin ? 'inline-edit-cell' : ''} style={{ color: 'var(--text-muted)' }} onClick={isAdmin ? () => setInlineEdit({ id: item.id, field: 'plaka', value: item.plaka || '' }) : undefined}>{item.plaka || '—'}</span>
-                                                                                    )}
-                                                                                </div>
-                                                                                <div style={{ ...subCell }}>
-                                                                                    {isAdmin && inlineEdit?.id === item.id && inlineEdit?.field === 'sofor' ? (
-                                                                                        <input autoFocus className="inline-edit-input" value={inlineEdit.value} onChange={e => setInlineEdit(p => ({ ...p, value: e.target.value }))} onKeyDown={e => { if (e.key === 'Enter') saveInlineEdit(); if (e.key === 'Escape') setInlineEdit(null); }} onBlur={saveInlineEdit} onClick={e => e.stopPropagation()} />
-                                                                                    ) : (
-                                                                                        <span className={isAdmin ? 'inline-edit-cell' : ''} style={{ color: 'var(--text-muted)' }} onClick={isAdmin ? () => setInlineEdit({ id: item.id, field: 'sofor', value: item.sofor || '' }) : undefined}>{item.sofor || '—'}</span>
-                                                                                    )}
-                                                                                </div>
-                                                                                <div style={{ ...subCell, color: 'var(--text-muted)' }}>{item.teslimAlan || item.recipient || '—'}</div>
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
-                                                                </td>
-                                                            </tr>
-                                                        </React.Fragment>
+                                                        <tr
+                                                            key={irsaliye.irsaliyeNo}
+                                                            onClick={() => { setSelectedIrsaliye(irsaliye); setShowIrsaliyeDetailModal(true); }}
+                                                            onContextMenu={canEdit ? (e) => { e.preventDefault(); e.stopPropagation(); handleCtxMenu(e, irsaliye, 'irsaliyeler'); } : undefined}
+                                                            style={{ cursor: 'pointer', ...rowStyle, ...hlRowStyle('irsaliyeler', irsaliye.irsaliyeNo) }}
+                                                            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover-row)'}
+                                                            onMouseLeave={e => e.currentTarget.style.background = ''}
+                                                        >
+                                                            <td style={{ ...CB_TD, border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
+                                                                <input type="checkbox" style={CB_STYLE} checked={isRowSel('irsaliyeler', irsaliye.irsaliyeNo)} onChange={() => toggleSel('irsaliyeler', String(irsaliye.irsaliyeNo))} />
+                                                            </td>
+                                                            <td style={{ ...cellStyle, textAlign: 'center', border: '1px solid var(--border)' }}>{tarih}</td>
+                                                            <td style={{ ...cellStyle, fontWeight: '600', textAlign: 'center', border: '1px solid var(--border)' }}>{irsaliye.irsaliyeNo}</td>
+                                                            <td style={{ ...cellStyle, textAlign: 'center', border: '1px solid var(--border)' }}>{irsaliye.firma}</td>
+                                                            <td style={{ ...cellStyle, textAlign: 'center', fontWeight: '700', color: 'var(--text-main)', border: '1px solid var(--border)' }}>{irsaliye.items.length}</td>
+                                                            <td style={{ ...cellStyle, textAlign: 'center', border: '1px solid var(--border)' }}>{irsaliye.teslimAlan}</td>
+                                                            <td style={{ ...cellStyle, textAlign: 'center', color: irsaliye.plaka ? 'var(--text-main)' : 'var(--text-muted)', fontSize: '12px', border: '1px solid var(--border)' }}>{irsaliye.plaka || '—'}</td>
+                                                            <td style={{ ...cellStyle, textAlign: 'center', color: irsaliye.sofor ? 'var(--text-main)' : 'var(--text-muted)', fontSize: '12px', border: '1px solid var(--border)' }}>{irsaliye.sofor || '—'}</td>
+                                                        </tr>
                                                     );
                                                 })}
                                             </tbody>
@@ -3502,66 +4027,94 @@ const App = () => {
                                 </div>
                                 {allUsers.length === 0 ? (
                                     <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '30px' }}>Kullanıcı bulunamadı.</p>
-                                ) : (() => {
-                                    const sortedUsers = [...allUsers].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
-                                    return (<>
-                                    <TableSelectionBar
-                                        selected={selUsers} allRows={sortedUsers} idKey="uid"
-                                        onSelectAll={() => toggleAll(setSelUsers, sortedUsers, 'uid')}
-                                        onClear={() => setSelUsers(new Set())}
-                                        onDelete={() => {
-                                            const toDelete = sortedUsers.filter(u => selUsers.has(u.uid) && u.uid !== authUser.uid);
-                                            if (toDelete.length === 0) { alert('Kendi hesabınızı silemezsiniz.'); return; }
-                                            if (!window.confirm(`${toDelete.length} kullanıcı silinecek. Emin misiniz?`)) return;
-                                            const updates = {};
-                                            toDelete.forEach(u => { updates[`users/${u.uid}`] = null; });
-                                            update(ref(db), updates);
-                                            setSelUsers(new Set());
-                                        }}
-                                        onEdit={() => { const u = sortedUsers.find(r => selUsers.has(r.uid)); if (u) { setEditingUser(u); setPagePermissionsEdit(u.pagePermissions || {}); setShowUserModal(true); } }}
-                                        onHighlight={(color) => handleBulkHighlight('users', selUsers, color)}
-                                    />
+                                ) : (
+                                    <>
+                                        {(() => {
+                                            const usrSorted = allUsers.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+                                            const usrSelKeys = tblSelKeys('users');
+                                            const usrSelRows = usrSorted.filter(u => usrSelKeys.includes(String(u.uid)));
+                                            const usrAllSel = usrSorted.length > 0 && usrSorted.every(u => isRowSel('users', u.uid));
+                                            return isAdmin && tblSelCount('users') > 0 ? (
+                                                <TableActionBar
+                                                    count={tblSelCount('users')}
+                                                    totalCount={usrSorted.length}
+                                                    allSelected={usrAllSel}
+                                                    onSelectAll={() => selectAllTbl('users', usrSorted.map(u => String(u.uid)))}
+                                                    onDelete={() => openBulkDel('users', usrSelRows.filter(u => u.uid !== authUser.uid))}
+                                                    onEdit={() => { if (usrSelRows.length === 1) setEditRow({ row: usrSelRows[0], collection: 'users' }); }}
+                                                    onHighlight={() => openHLPicker('users', usrSelKeys)}
+                                                />
+                                            ) : null;
+                                        })()}
                                     <div className="table-responsive-wrapper">
-                                        <table className="responsive-table col-6" style={{ width: '100%' }}>
+                                        <table className="responsive-table" style={{ borderCollapse: 'collapse' }}>
+                                            <colgroup>
+                                                <col style={{ width: '36px' }} />
+                                                <col className="col-tarih" />
+                                                <col className="col-malzeme" />
+                                                <col className="col-malzeme" />
+                                                <col className="col-kategori" />
+                                                <col className="col-islem" />
+                                            </colgroup>
                                             <thead>
                                                 <tr>
-                                                    <th className="tsel-th"><input type="checkbox" className="tsel-checkbox" checked={headerChecked(selUsers, sortedUsers, 'uid')} onChange={() => toggleAll(setSelUsers, sortedUsers, 'uid')} /></th>
-                                                    <th>KAYIT TARİHİ</th>
-                                                    <th>AD SOYAD</th>
-                                                    <th>E-POSTA</th>
-                                                    <th>ROL</th>
-                                                    <th>İŞLEMLER</th>
+                                                    <th style={{ ...CB_TH, border: '1px solid var(--border)' }}></th>
+                                                    <th style={{ border: '1px solid var(--border)' }}>KAYIT TARİHİ</th>
+                                                    <th style={{ border: '1px solid var(--border)' }}>AD SOYAD</th>
+                                                    <th style={{ border: '1px solid var(--border)' }}>E-POSTA</th>
+                                                    <th style={{ border: '1px solid var(--border)' }}>ROL</th>
+                                                    <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>İŞLEMLER</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {sortedUsers.map(u => (
-                                                    <tr key={u.uid} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, u, 'users') : undefined} style={hlStyle('users', u.uid)} className={selUsers.has(u.uid) ? 'tsel-selected' : ''}>
-                                                        <td className="tsel-td"><input type="checkbox" className="tsel-checkbox" checked={selUsers.has(u.uid)} onChange={() => toggleSel(setSelUsers, u.uid)} onClick={e => e.stopPropagation()} /></td>
-                                                        <td data-label="Kayıt Tarihi">
+                                                {allUsers.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)).map(u => (
+                                                    <tr key={u.uid} style={{ ...hlRowStyle('users', u.uid) }} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, u, 'users') : undefined}>
+                                                        <td style={{ ...CB_TD, border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
+                                                            <input type="checkbox" style={CB_STYLE} checked={isRowSel('users', u.uid)} onChange={() => toggleSel('users', String(u.uid))} />
+                                                        </td>
+                                                        <td data-label="Kayıt Tarihi" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>
                                                             {u.createdAt ? new Date(u.createdAt).toLocaleDateString('tr-TR') : '—'}
                                                         </td>
-                                                        <td data-label="Ad Soyad">
+                                                        <td data-label="Ad Soyad" style={{ fontWeight: '600', border: '1px solid var(--border)' }}>
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                                                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0, background: presence[u.uid]?.online ? '#22c55e' : '#d1d5db', boxShadow: presence[u.uid]?.online ? '0 0 0 2px rgba(34,197,94,0.25)' : 'none' }} title={presence[u.uid]?.online ? 'Çevrimiçi' : (presence[u.uid]?.lastSeen ? `Son görülme: ${new Date(presence[u.uid].lastSeen).toLocaleString('tr-TR')}` : 'Çevrimdışı')} />
+                                                                <span style={{
+                                                                    width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
+                                                                    background: presence[u.uid]?.online ? '#22c55e' : '#d1d5db',
+                                                                    boxShadow: presence[u.uid]?.online ? '0 0 0 2px rgba(34,197,94,0.25)' : 'none',
+                                                                }} title={presence[u.uid]?.online ? 'Çevrimiçi' : (presence[u.uid]?.lastSeen ? `Son görülme: ${new Date(presence[u.uid].lastSeen).toLocaleString('tr-TR')}` : 'Çevrimdışı')} />
                                                                 {u.name}
                                                                 {u.uid === authUser.uid && (
                                                                     <span style={{ fontSize: '11px', color: '#6d28d9', background: '#ede9fe', borderRadius: '10px', padding: '1px 7px' }}>Siz</span>
                                                                 )}
                                                             </div>
                                                         </td>
-                                                        <td data-label="E-posta">{u.email}</td>
-                                                        <td data-label="Rol">
-                                                            <span style={{ background: ROLE_COLORS[u.role]?.bg || '#f1f5f9', color: ROLE_COLORS[u.role]?.color || '#475569', borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '600' }}>
+                                                        <td data-label="E-posta" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{u.email}</td>
+                                                        <td data-label="Rol" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>
+                                                            <span style={{
+                                                                background: ROLE_COLORS[u.role]?.bg || '#f1f5f9',
+                                                                color: ROLE_COLORS[u.role]?.color || '#475569',
+                                                                borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '600'
+                                                            }}>
                                                                 {ROLE_LABELS[u.role] || u.role}
                                                             </span>
                                                         </td>
-                                                        <td data-label="İşlemler">
+                                                        <td data-label="İşlemler" style={{ textAlign: 'center', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>
                                                             <div className="flex align-center gap-1">
-                                                                <button className="btn-icon" title="Düzenle" onClick={() => { setEditingUser(u); setPagePermissionsEdit(u.pagePermissions || {}); setShowUserModal(true); }} style={{ color: '#3b82f6' }}>
+                                                                <button
+                                                                    className="btn-icon"
+                                                                    title="Düzenle"
+                                                                    onClick={() => { setEditingUser(u); setPagePermissionsEdit(u.pagePermissions || {}); setShowUserModal(true); }}
+                                                                    style={{ color: '#3b82f6' }}
+                                                                >
                                                                     <Edit3 size={15} />
                                                                 </button>
                                                                 {u.uid !== authUser.uid && (
-                                                                    <button className="btn-icon" title="Sil" onClick={() => handleDeleteUser(u.uid, u.name)} style={{ color: '#ef4444' }}>
+                                                                    <button
+                                                                        className="btn-icon"
+                                                                        title="Sil"
+                                                                        onClick={() => handleDeleteUser(u.uid, u.name)}
+                                                                        style={{ color: '#ef4444' }}
+                                                                    >
                                                                         <Trash2 size={15} />
                                                                     </button>
                                                                 )}
@@ -3572,8 +4125,8 @@ const App = () => {
                                             </tbody>
                                         </table>
                                     </div>
-                                    </>);
-                                })()}
+                                    </>
+                                )}
                             </div>
                         </div>
                     )}
@@ -3624,41 +4177,59 @@ const App = () => {
                                             <div className="table-toolbar">
                                                 <span className="section-title"><Truck size={17} /> Malzeme Talep Formları</span>
                                             </div>
-                                            <TableSelectionBar
-                                                selected={selSevkiyat} allRows={sevkiyat}
-                                                onSelectAll={() => toggleAll(setSelSevkiyat, sevkiyat)}
-                                                onClear={() => setSelSevkiyat(new Set())}
-                                                onDelete={canEdit ? () => handleBulkDelete('sevkiyat', selSevkiyat, sevkiyat, 'id', setSelSevkiyat) : undefined}
-                                                onEdit={canEdit ? () => { const row = sevkiyat.find(r => selSevkiyat.has(r.id)); if (row) setEditRow({ row, collection: 'sevkiyat' }); } : undefined}
-                                                onHighlight={(color) => handleBulkHighlight('sevkiyat', selSevkiyat, color)}
-                                            />
+                                            {(() => {
+                                                const sevSelKeys = tblSelKeys('sevkiyat');
+                                                const sevSelRows = sevkiyat.filter(s => sevSelKeys.includes(String(s.id)));
+                                                const sevAllSel = sevkiyat.length > 0 && sevkiyat.every(s => isRowSel('sevkiyat', s.id));
+                                                return canEdit && tblSelCount('sevkiyat') > 0 ? (
+                                                    <TableActionBar
+                                                        count={tblSelCount('sevkiyat')}
+                                                        totalCount={sevkiyat.length}
+                                                        allSelected={sevAllSel}
+                                                        onSelectAll={() => selectAllTbl('sevkiyat', sevkiyat.map(s => String(s.id)))}
+                                                        onDelete={() => openBulkDel('sevkiyat', sevSelRows)}
+                                                        onEdit={() => { if (sevSelRows.length === 1) setEditRow({ row: sevSelRows[0], collection: 'sevkiyat' }); }}
+                                                        onHighlight={() => openHLPicker('sevkiyat', sevSelKeys)}
+                                                    />
+                                                ) : null;
+                                            })()}
                                             <div className="table-responsive-wrapper" style={{ maxHeight: '320px', overflowY: 'auto' }}>
-                                                <table className="responsive-table col-5">
+                                                <table className="responsive-table" style={{ borderCollapse: 'collapse' }}>
+                                                    <colgroup>
+                                                        <col style={{ width: '36px' }} />
+                                                        <col className="col-tarih" />
+                                                        <col className="col-kategori" />
+                                                        <col className="col-malzeme" />
+                                                        <col className="col-kategori" />
+                                                        <col style={{ width: '40px' }} />
+                                                    </colgroup>
                                                     <thead>
                                                         <tr>
-                                                            <th className="tsel-th"><input type="checkbox" className="tsel-checkbox" checked={headerChecked(selSevkiyat, sevkiyat)} onChange={() => toggleAll(setSelSevkiyat, sevkiyat)} /></th>
-                                                            <th>TARİH</th>
-                                                            <th>FORM NO</th>
-                                                            <th style={{ textAlign: 'center' }}>MALZEME</th>
-                                                            <th>DURUM</th>
-                                                            <th style={{ textAlign: 'center', width: '40px' }}></th>
+                                                            <th style={{ ...CB_TH, border: '1px solid var(--border)' }}></th>
+                                                            <th style={{ border: '1px solid var(--border)' }}>TARİH</th>
+                                                            <th style={{ border: '1px solid var(--border)' }}>FORM NO</th>
+                                                            <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>MALZEME</th>
+                                                            <th style={{ border: '1px solid var(--border)' }}>DURUM</th>
+                                                            <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}></th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
                                                         {sevkiyat.map((s) => {
                                                             const durum = durumMap[s.satin_alim_durumu] || durumMap.BEKLEMEDE;
                                                             return (
-                                                                <tr key={s.id} onClick={() => setSevkiyatModal({ show: true, data: s })} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, s, 'sevkiyat') : undefined} style={{ cursor: 'pointer', ...hlStyle('sevkiyat', s.id) }} className={selSevkiyat.has(s.id) ? 'tsel-selected' : ''}>
-                                                                    <td className="tsel-td" onClick={e => e.stopPropagation()}><input type="checkbox" className="tsel-checkbox" checked={selSevkiyat.has(s.id)} onChange={() => toggleSel(setSelSevkiyat, s.id)} /></td>
-                                                                    <td data-label="Tarih">{s.sevkiyata_gonderilme_tarihi_tr?.split(' ')[0] || '-'}</td>
-                                                                    <td data-label="Form No">{s.satin_alim_form_no}</td>
-                                                                    <td data-label="Malzeme" style={{ textAlign: 'center' }}>{(s.items || []).length} kalem</td>
-                                                                    <td data-label="Durum">
+                                                                <tr key={s.id} onClick={() => setSevkiyatModal({ show: true, data: s })} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, s, 'sevkiyat') : undefined} style={{ cursor: 'pointer', ...hlRowStyle('sevkiyat', s.id) }}>
+                                                                    <td style={{ ...CB_TD, border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
+                                                                        <input type="checkbox" style={CB_STYLE} checked={isRowSel('sevkiyat', s.id)} onChange={() => toggleSel('sevkiyat', String(s.id))} />
+                                                                    </td>
+                                                                    <td data-label="Tarih" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{s.sevkiyata_gonderilme_tarihi_tr?.split(' ')[0] || '-'}</td>
+                                                                    <td data-label="Form No" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{s.satin_alim_form_no}</td>
+                                                                    <td data-label="Malzeme" style={{ textAlign: 'center', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{(s.items || []).length} kalem</td>
+                                                                    <td data-label="Durum" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>
                                                                         <span className={"movement-type-pill " + (durum.label === 'Tamamlandı' ? 'in' : 'out')}>
                                                                             {durum.label}
                                                                         </span>
                                                                     </td>
-                                                                    <td style={{ textAlign: 'center' }}><ArrowUpRight size={14} color="var(--text-muted)" /></td>
+                                                                    <td style={{ textAlign: 'center', border: '1px solid var(--border)' }}><ArrowUpRight size={14} color="var(--text-muted)" /></td>
                                                                 </tr>
                                                             );
                                                         })}
@@ -3684,14 +4255,21 @@ const App = () => {
                                                 </span>
                                             </div>
                                             <div className="table-responsive-wrapper">
-                                                <table className="responsive-table col-5">
+                                                <table className="responsive-table" style={{ borderCollapse: 'collapse' }}>
+                                                    <colgroup>
+                                                        <col className="col-malzeme" />
+                                                        <col className="col-kategori" />
+                                                        <col className="col-birim" />
+                                                        <col className="col-firma" />
+                                                        <col className="col-islem" />
+                                                    </colgroup>
                                                     <thead>
                                                         <tr>
-                                                            <th>MALZEME</th>
-                                                            <th>FORM NO</th>
-                                                            <th style={{ textAlign: 'center' }}>MİKTAR</th>
-                                                            <th>TALEP EDEN</th>
-                                                            <th style={{ textAlign: 'center', width: '200px' }}>İŞLEMLER</th>
+                                                            <th style={{ border: '1px solid var(--border)' }}>MALZEME</th>
+                                                            <th style={{ border: '1px solid var(--border)' }}>FORM NO</th>
+                                                            <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>MİKTAR</th>
+                                                            <th style={{ border: '1px solid var(--border)' }}>TALEP EDEN</th>
+                                                            <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>İŞLEMLER</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -3706,16 +4284,16 @@ const App = () => {
                                                             });
 
                                                             if (pendingList.length === 0) {
-                                                                return <tr><td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>İşlem bekleyen malzeme kalmadı.</td></tr>;
+                                                                return <tr><td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>İşlem bekleyen malzeme kalmadı.</td></tr>;
                                                             }
 
                                                             return pendingList.map((item) => (
                                                                 <tr key={`${item.s_id}-${item.s_idx}`}>
-                                                                    <td data-label="Malzeme" style={{ fontWeight: '600' }}>{item.itemName}</td>
-                                                                    <td data-label="Form No">{item.s_no}</td>
-                                                                    <td data-label="Miktar" style={{ textAlign: 'center' }}><strong>{item.amount}</strong> {item.unit}</td>
-                                                                    <td data-label="Talep Eden">{item.requestedBy}</td>
-                                                                    <td data-label="İşlemler" style={{ textAlign: 'center' }}>
+                                                                    <td data-label="Malzeme" style={{ fontWeight: '600', border: '1px solid var(--border)' }}>{item.itemName}</td>
+                                                                    <td data-label="Form No" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{item.s_no}</td>
+                                                                    <td data-label="Miktar" style={{ textAlign: 'center', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}><strong>{item.amount}</strong> {item.unit}</td>
+                                                                    <td data-label="Talep Eden" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{item.requestedBy}</td>
+                                                                    <td data-label="İşlemler" style={{ textAlign: 'center', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>
                                                                         <div className="flex gap-2 justify-center">
                                                                             <button
                                                                                 className="btn-primary"
@@ -3857,10 +4435,10 @@ const App = () => {
                                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                                             <thead>
                                                 <tr style={{ background: '#f8fafc' }}>
-                                                    <th style={{ padding: '8px 12px', textAlign: 'left', color: '#64748b', fontWeight: '700', borderBottom: '1px solid #e2e8f0' }}>Malzeme</th>
-                                                    <th style={{ padding: '8px 12px', textAlign: 'center', color: '#64748b', fontWeight: '700', borderBottom: '1px solid #e2e8f0' }}>Miktar</th>
-                                                    <th style={{ padding: '8px 12px', textAlign: 'center', color: '#64748b', fontWeight: '700', borderBottom: '1px solid #e2e8f0' }}>Birim</th>
-                                                    <th style={{ padding: '8px 12px', textAlign: 'center', color: '#64748b', fontWeight: '700', borderBottom: '1px solid #e2e8f0' }}>Durum</th>
+                                                    <th style={{ padding: '8px 12px', textAlign: 'left', color: '#64748b', fontWeight: '700', border: '1px solid #e2e8f0' }}>Malzeme</th>
+                                                    <th style={{ padding: '8px 12px', textAlign: 'center', color: '#64748b', fontWeight: '700', border: '1px solid #e2e8f0' }}>Miktar</th>
+                                                    <th style={{ padding: '8px 12px', textAlign: 'center', color: '#64748b', fontWeight: '700', border: '1px solid #e2e8f0' }}>Birim</th>
+                                                    <th style={{ padding: '8px 12px', textAlign: 'center', color: '#64748b', fontWeight: '700', border: '1px solid #e2e8f0' }}>Durum</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -3868,18 +4446,18 @@ const App = () => {
                                                     const st = sevkiyatModal.data.itemStatuses?.[idx] || 'pending';
                                                     return (
                                                         <tr key={idx} style={{
-                                                            borderBottom: '1px solid #f1f5f9',
                                                             background: st === 'purchased' ? '#f0fdf4' : st === 'cancelled' ? '#fef2f2' : 'white'
                                                         }}>
                                                             <td style={{
                                                                 padding: '10px 12px',
                                                                 fontWeight: '600',
                                                                 color: st === 'purchased' ? '#166534' : st === 'cancelled' ? '#991b1b' : '#334155',
-                                                                textDecoration: st === 'cancelled' ? 'line-through' : 'none'
+                                                                textDecoration: st === 'cancelled' ? 'line-through' : 'none',
+                                                                border: '1px solid #e2e8f0'
                                                             }}>{it.itemName}</td>
-                                                            <td style={{ padding: '10px 12px', textAlign: 'center' }}>{it.amount}</td>
-                                                            <td style={{ padding: '10px 12px', textAlign: 'center', color: '#64748b' }}>{it.unit}</td>
-                                                            <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                                                            <td style={{ padding: '10px 12px', textAlign: 'center', border: '1px solid #e2e8f0' }}>{it.amount}</td>
+                                                            <td style={{ padding: '10px 12px', textAlign: 'center', color: '#64748b', border: '1px solid #e2e8f0' }}>{it.unit}</td>
+                                                            <td style={{ padding: '10px 12px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
                                                                 <span style={{
                                                                     fontSize: '11px', fontWeight: '700', borderRadius: '8px', padding: '2px 8px',
                                                                     background: st === 'purchased' ? '#dcfce7' : st === 'cancelled' ? '#fee2e2' : '#f1f5f9',
@@ -4088,57 +4666,90 @@ const App = () => {
                                         )}
                                     </div>
                                 </div>
-                                <TableSelectionBar
-                                    selected={selPersonel} allRows={personel}
-                                    onSelectAll={() => toggleAll(setSelPersonel, personel)}
-                                    onClear={() => setSelPersonel(new Set())}
-                                    onDelete={canEdit ? () => handleBulkDelete('personel', selPersonel, personel, 'id', setSelPersonel) : undefined}
-                                    onEdit={canEdit ? () => { const p = personel.find(r => selPersonel.has(r.id)); if (p) { setEditingPersonel(p); setPersonelForm({ tc: p.tc, adSoyad: p.adSoyad, girisTarihi: p.girisTarihi, cikisTarihi: p.cikisTarihi || '', taseron: p.taseron }); setShowPersonelModal(true); } } : undefined}
-                                    onHighlight={(color) => handleBulkHighlight('personel', selPersonel, color)}
-                                />
+                                {(() => {
+                                    const perSelKeys = tblSelKeys('personel');
+                                    const perSelRows = personel.filter(p => perSelKeys.includes(String(p.id)));
+                                    const perAllSel = personel.length > 0 && personel.every(p => isRowSel('personel', p.id));
+                                    return canEdit && tblSelCount('personel') > 0 ? (
+                                        <TableActionBar
+                                            count={tblSelCount('personel')}
+                                            totalCount={personel.length}
+                                            allSelected={perAllSel}
+                                            onSelectAll={() => selectAllTbl('personel', personel.map(p => String(p.id)))}
+                                            onDelete={() => openBulkDel('personel', perSelRows)}
+                                            onEdit={() => { if (perSelRows.length === 1) setEditRow({ row: perSelRows[0], collection: 'personel' }); }}
+                                            onHighlight={() => openHLPicker('personel', perSelKeys)}
+                                        />
+                                    ) : null;
+                                })()}
                                 <div style={{ overflowY: 'auto', height: '555px' }}>
-                                    <table className="responsive-table col-7" style={{ width: '100%' }}>
+                                    <table className="responsive-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                        <colgroup>
+                                            <col style={{ width: '36px' }} />
+                                            <col className="col-tarih" />
+                                            <col className="col-tarih" />
+                                            <col className="col-detay" />
+                                            <col className="col-malzeme" />
+                                            <col className="col-firma" />
+                                            <col className="col-kategori" />
+                                            {canEdit && <col style={{ width: '90px' }} />}
+                                        </colgroup>
                                         <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: 'var(--bg-table-header)' }}>
                                             <tr>
-                                                <th className="tsel-th"><input type="checkbox" className="tsel-checkbox" checked={headerChecked(selPersonel, personel)} onChange={() => toggleAll(setSelPersonel, personel)} /></th>
-                                                <th>GİRİŞ TARİHİ</th>
-                                                <th>ÇIKIŞ TARİHİ</th>
-                                                <th>TC</th>
-                                                <th>AD SOYAD</th>
-                                                <th>TAŞERON</th>
-                                                <th style={{ textAlign: 'center' }}>DURUM</th>
-                                                {canEdit && <th style={{ textAlign: 'center', width: '90px' }}>İŞLEMLER</th>}
+                                                <th style={{ ...CB_TH, border: '1px solid var(--border)' }}></th>
+                                                <th style={{ border: '1px solid var(--border)' }}>GİRİŞ TARİHİ</th>
+                                                <th style={{ border: '1px solid var(--border)' }}>ÇIKIŞ TARİHİ</th>
+                                                <th style={{ border: '1px solid var(--border)' }}>TC</th>
+                                                <th style={{ border: '1px solid var(--border)' }}>AD SOYAD</th>
+                                                <th style={{ border: '1px solid var(--border)' }}>TAŞERON</th>
+                                                <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>DURUM</th>
+                                                {canEdit && <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>İŞLEMLER</th>}
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {personel.length === 0 && (
                                                 <tr>
-                                                    <td colSpan={canEdit ? 8 : 7} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
+                                                    <td colSpan={canEdit ? 8 : 7} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
                                                         Henüz personel kaydı yok.
                                                     </td>
                                                 </tr>
                                             )}
                                             {personel.map(p => (
-                                                <tr key={p.id} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, p, 'personel') : undefined} style={hlStyle('personel', p.id)} className={selPersonel.has(p.id) ? 'tsel-selected' : ''}>
-                                                    <td className="tsel-td"><input type="checkbox" className="tsel-checkbox" checked={selPersonel.has(p.id)} onChange={() => toggleSel(setSelPersonel, p.id)} onClick={e => e.stopPropagation()} /></td>
-                                                    <td data-label="Giriş Tarihi">{p.girisTarihi}</td>
-                                                    <td data-label="Çıkış Tarihi">{p.cikisTarihi || '—'}</td>
-                                                    <td data-label="TC">{p.tc}</td>
-                                                    <td data-label="Ad Soyad">{p.adSoyad}</td>
-                                                    <td data-label="Taşeron">{p.taseron}</td>
-                                                    <td data-label="Durum" style={{ textAlign: 'center' }}>
+                                                <tr key={p.id} style={{ ...hlRowStyle('personel', p.id) }} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, p, 'personel') : undefined}>
+                                                    <td style={{ ...CB_TD, border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
+                                                        <input type="checkbox" style={CB_STYLE} checked={isRowSel('personel', p.id)} onChange={() => toggleSel('personel', String(p.id))} />
+                                                    </td>
+                                                    <td data-label="Giriş Tarihi" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{p.girisTarihi}</td>
+                                                    <td data-label="Çıkış Tarihi" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{p.cikisTarihi || '—'}</td>
+                                                    <td data-label="TC" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{p.tc}</td>
+                                                    <td data-label="Ad Soyad" style={{ fontWeight: '600', border: '1px solid var(--border)' }}>{p.adSoyad}</td>
+                                                    <td data-label="Taşeron" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{p.taseron}</td>
+                                                    <td data-label="Durum" style={{ textAlign: 'center', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>
                                                         {!p.cikisTarihi
                                                             ? <span className="movement-type-pill in">Çalışıyor</span>
                                                             : <span className="movement-type-pill out">Çıkış Yapıldı</span>
                                                         }
                                                     </td>
                                                     {canEdit && (
-                                                        <td data-label="İşlemler" style={{ textAlign: 'center' }}>
+                                                        <td data-label="İşlemler" style={{ textAlign: 'center', border: '1px solid var(--border)' }}>
                                                             <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-                                                                <button className="btn-icon" title="Düzenle" onClick={() => { setEditingPersonel(p); setPersonelForm({ tc: p.tc, adSoyad: p.adSoyad, girisTarihi: p.girisTarihi, cikisTarihi: p.cikisTarihi || '', taseron: p.taseron }); setShowPersonelModal(true); }}>
+                                                                <button
+                                                                    className="btn-icon"
+                                                                    title="Düzenle"
+                                                                    onClick={() => {
+                                                                        setEditingPersonel(p);
+                                                                        setPersonelForm({ tc: p.tc, adSoyad: p.adSoyad, girisTarihi: p.girisTarihi, cikisTarihi: p.cikisTarihi || '', taseron: p.taseron });
+                                                                        setShowPersonelModal(true);
+                                                                    }}
+                                                                >
                                                                     <Edit3 size={14} />
                                                                 </button>
-                                                                <button className="btn-icon" title="Sil" style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={() => handleDeletePersonel(p.id)}>
+                                                                <button
+                                                                    className="btn-icon"
+                                                                    title="Sil"
+                                                                    style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                                                                    onClick={() => handleDeletePersonel(p.id)}
+                                                                >
                                                                     <Trash2 size={14} />
                                                                 </button>
                                                             </div>
@@ -4194,42 +4805,70 @@ const App = () => {
                                     <div className="scrollable-pending-list">
                                         {(() => {
                                             const pendingReqs = requests.filter(r => r.status === 'pending');
-                                            return (<>
-                                            <TableSelectionBar
-                                                selected={selRequests} allRows={pendingReqs}
-                                                onSelectAll={() => toggleAll(setSelRequests, pendingReqs)}
-                                                onClear={() => setSelRequests(new Set())}
-                                                onDelete={canEdit ? () => handleBulkDelete('requests', selRequests, pendingReqs, 'id', setSelRequests) : undefined}
-                                                onEdit={canEdit ? () => { const row = pendingReqs.find(r => selRequests.has(r.id)); if (row) setEditRow({ row, collection: 'requests' }); } : undefined}
-                                                onHighlight={(color) => handleBulkHighlight('requests', selRequests, color)}
-                                            />
-                                            <div className="table-responsive-wrapper">
-                                            <table className="responsive-table col-5">
+                                            const reqSelKeys = tblSelKeys('requests');
+                                            const reqSelRows = pendingReqs.filter(r => reqSelKeys.includes(String(r.id)));
+                                            const reqAllSel = pendingReqs.length > 0 && pendingReqs.every(r => isRowSel('requests', r.id));
+                                            return canEdit && tblSelCount('requests') > 0 ? (
+                                                <TableActionBar
+                                                    count={tblSelCount('requests')}
+                                                    totalCount={pendingReqs.length}
+                                                    allSelected={reqAllSel}
+                                                    onSelectAll={() => selectAllTbl('requests', pendingReqs.map(r => String(r.id)))}
+                                                    onDelete={() => openBulkDel('requests', reqSelRows)}
+                                                    onEdit={() => { if (reqSelRows.length === 1) setEditRow({ row: reqSelRows[0], collection: 'requests' }); }}
+                                                    onHighlight={() => openHLPicker('requests', reqSelKeys)}
+                                                />
+                                            ) : null;
+                                        })()}
+                                        <div className="table-responsive-wrapper">
+                                            <table className="responsive-table" style={{ borderCollapse: 'collapse' }}>
+                                                <colgroup>
+                                                    <col style={{ width: '36px' }} />
+                                                    <col className="col-tarih" />
+                                                    <col className="col-malzeme" />
+                                                    <col className="col-miktar" />
+                                                    <col className="col-firma" />
+                                                    {canEdit && <col className="col-islem" />}
+                                                </colgroup>
                                                 <thead>
                                                     <tr>
-                                                        <th className="tsel-th"><input type="checkbox" className="tsel-checkbox" checked={headerChecked(selRequests, pendingReqs)} onChange={() => toggleAll(setSelRequests, pendingReqs)} /></th>
-                                                        <th>TARİH</th>
-                                                        <th>MALZEME</th>
-                                                        <th style={{ textAlign: 'right' }}>MİKTAR</th>
-                                                        <th>TALEP EDEN</th>
-                                                        {canEdit && <th style={{ textAlign: 'center', width: '180px' }}>İŞLEMLER</th>}
+                                                        <th style={{ ...CB_TH, border: '1px solid var(--border)' }}></th>
+                                                        <th style={{ border: '1px solid var(--border)' }}>TARİH</th>
+                                                        <th style={{ border: '1px solid var(--border)' }}>MALZEME</th>
+                                                        <th style={{ textAlign: 'right', border: '1px solid var(--border)' }}>MİKTAR</th>
+                                                        <th style={{ border: '1px solid var(--border)' }}>TALEP EDEN</th>
+                                                        {canEdit && <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>İŞLEMLER</th>}
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {pendingReqs.length === 0 ? (
-                                                        <tr><td colSpan={canEdit ? 6 : 5} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Bekleyen talep yok.</td></tr>
-                                                    ) : pendingReqs.map(req => (
-                                                        <tr key={req.id} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, req, 'requests') : undefined} style={hlStyle('requests', req.id)} className={selRequests.has(req.id) ? 'tsel-selected' : ''}>
-                                                            <td className="tsel-td"><input type="checkbox" className="tsel-checkbox" checked={selRequests.has(req.id)} onChange={() => toggleSel(setSelRequests, req.id)} onClick={e => e.stopPropagation()} /></td>
-                                                            <td data-label="Tarih">{String(req.date || '').split(',')[0].split(' ')[0]}</td>
-                                                            <td data-label="Malzeme">{req.itemName}</td>
-                                                            <td data-label="Miktar" style={{ textAlign: 'right' }}>{req.amount} {req.unit}</td>
-                                                            <td data-label="Talep Eden">{req.requestedBy}</td>
+                                                    {requests.filter(r => r.status === 'pending').length === 0 ? (
+                                                        <tr><td colSpan={canEdit ? 6 : 5} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Bekleyen talep yok.</td></tr>
+                                                    ) : requests.filter(r => r.status === 'pending').map(req => (
+                                                        <tr key={req.id} style={{ ...hlRowStyle('requests', req.id) }} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, req, 'requests') : undefined}>
+                                                            <td style={{ ...CB_TD, border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
+                                                                <input type="checkbox" style={CB_STYLE} checked={isRowSel('requests', req.id)} onChange={() => toggleSel('requests', String(req.id))} />
+                                                            </td>
+                                                            <td data-label="Tarih" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{String(req.date || '').split(',')[0].split(' ')[0]}</td>
+                                                            <td data-label="Malzeme" style={{ fontWeight: '600', border: '1px solid var(--border)' }}>{req.itemName}</td>
+                                                            <td data-label="Miktar" style={{ textAlign: 'right', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{req.amount} {req.unit}</td>
+                                                            <td data-label="Talep Eden" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{req.requestedBy}</td>
                                                             {canEdit && (
-                                                                <td data-label="İşlemler" style={{ textAlign: 'center' }}>
+                                                                <td data-label="İşlemler" style={{ textAlign: 'center', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>
                                                                     <div className="flex gap-2 justify-center">
-                                                                        <button className="btn-primary" style={{ background: 'var(--success)', fontSize: '11px', padding: '5px 12px' }} onClick={() => handleApproveRequest(req)}>Onayla</button>
-                                                                        <button className="btn-primary" style={{ background: 'var(--danger)', fontSize: '11px', padding: '5px 12px' }} onClick={() => handleRejectRequest(req)}>Reddet</button>
+                                                                        <button
+                                                                            className="btn-primary"
+                                                                            style={{ background: 'var(--success)', fontSize: '11px', padding: '5px 12px' }}
+                                                                            onClick={() => handleApproveRequest(req)}
+                                                                        >
+                                                                            Onayla
+                                                                        </button>
+                                                                        <button
+                                                                            className="btn-primary"
+                                                                            style={{ background: 'var(--danger)', fontSize: '11px', padding: '5px 12px' }}
+                                                                            onClick={() => handleRejectRequest(req)}
+                                                                        >
+                                                                            Reddet
+                                                                        </button>
                                                                     </div>
                                                                 </td>
                                                             )}
@@ -4237,9 +4876,7 @@ const App = () => {
                                                     ))}
                                                 </tbody>
                                             </table>
-                                            </div>
-                                            </>);
-                                        })()}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -4292,16 +4929,25 @@ const App = () => {
                                                     </div>
                                                 ) : (
                                                     <div className="table-responsive-wrapper">
-                                                        <table className="responsive-table col-7">
+                                                        <table className="responsive-table" style={{ borderCollapse: 'collapse' }}>
+                                                            <colgroup>
+                                                                <col style={{ width: '40px' }} />
+                                                                <col className="col-malzeme" />
+                                                                <col className="col-miktar" />
+                                                                <col className="col-miktar" />
+                                                                <col className="col-birim" />
+                                                                <col className="col-firma" />
+                                                                <col className="col-detay" />
+                                                            </colgroup>
                                                             <thead>
                                                                 <tr>
-                                                                    <th>#</th>
-                                                                    <th>MALZEME</th>
-                                                                    <th style={{ textAlign: 'center' }}>STOK</th>
-                                                                    <th style={{ textAlign: 'center' }}>İSTENİLEN</th>
-                                                                    <th style={{ textAlign: 'center' }}>BİRİM</th>
-                                                                    <th>TALEP EDEN</th>
-                                                                    <th>AÇIKLAMA</th>
+                                                                    <th style={{ border: '1px solid var(--border)' }}>#</th>
+                                                                    <th style={{ border: '1px solid var(--border)' }}>MALZEME</th>
+                                                                    <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>STOK</th>
+                                                                    <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>TALEP</th>
+                                                                    <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>BİRİM</th>
+                                                                    <th style={{ border: '1px solid var(--border)' }}>TALEP EDEN</th>
+                                                                    <th style={{ border: '1px solid var(--border)' }}>ACIKLAMA</th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody>
@@ -4310,17 +4956,17 @@ const App = () => {
                                                                     const stockQty = stockItem ? stockItem.quantity : 0;
                                                                     return (
                                                                         <tr key={req.id}>
-                                                                            <td data-label="#">{idx + 1}</td>
-                                                                            <td data-label="Malzeme" style={{ fontWeight: '600' }}>{req.itemName}</td>
-                                                                            <td data-label="Stok" style={{ textAlign: 'center' }}>
+                                                                            <td data-label="#" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{idx + 1}</td>
+                                                                            <td data-label="Malzeme" style={{ fontWeight: '600', border: '1px solid var(--border)' }}>{req.itemName}</td>
+                                                                            <td data-label="Stok" style={{ textAlign: 'center', border: '1px solid var(--border)' }}>
                                                                                 <span style={{ color: stockQty <= 0 ? 'var(--danger)' : 'var(--text-muted)', fontWeight: '600' }}>
                                                                                     {formatNumber(stockQty)}
                                                                                 </span>
                                                                             </td>
-                                                                            <td data-label="Miktar" style={{ textAlign: 'center' }}>{req.amount}</td>
-                                                                            <td data-label="Birim" style={{ textAlign: 'center' }}>{req.unit}</td>
-                                                                            <td data-label="Talep Eden">{req.requestedBy}</td>
-                                                                            <td data-label="Açıklama">{req.note || '—'}</td>
+                                                                            <td data-label="Miktar" style={{ textAlign: 'center', border: '1px solid var(--border)' }}>{req.amount}</td>
+                                                                            <td data-label="Birim" style={{ textAlign: 'center', border: '1px solid var(--border)' }}>{req.unit}</td>
+                                                                            <td data-label="Talep Eden" style={{ border: '1px solid var(--border)' }}>{req.requestedBy}</td>
+                                                                            <td data-label="Açıklama" style={{ border: '1px solid var(--border)' }}>{req.note || '—'}</td>
                                                                         </tr>
                                                                     );
                                                                 })}
@@ -4541,254 +5187,342 @@ const App = () => {
                             setShowMoveModal(false); setIsQuickAdd(false); setIsNewRecipient(false);
                             setInIrsaliyeNo(''); setShowAddMalzemeAdi(false); setShowAddMalzemeTuru(false);
                             setShowAddBirim(false); setShowAddFirma(false); setShowAddIrsaliye(false);
+                            setShowAddVerilenBirim(false); setShowAddKullanimAlani(false); setShowAddRecipient(false);
+                            setNewVerilenBirimInput(''); setNewKullanimAlaniInput(''); setNewRecipientInput('');
                         };
                         return (
-                        <div className="modal-overlay">
-                            <div className="fm-modal">
-                                {/* Sol Panel */}
-                                <div className="fm-panel" style={{ background: accentGradient }}>
-                                    <div className="fm-panel-icon">
-                                        {isIn ? <ArrowUpRight size={30} /> : <ArrowDownLeft size={30} />}
-                                    </div>
-                                    <div className="fm-panel-title">
-                                        {isIn ? 'Malzeme\nGirişi' : 'Malzeme\nÇıkışı'}
-                                    </div>
-                                    <div className="fm-panel-desc">
-                                        {isIn
-                                            ? 'Depoya gelen malzemeleri kayıt altına alın'
-                                            : 'Depodan çıkan malzemeleri takip edin'}
-                                    </div>
-                                </div>
-
-                                {/* Sağ Gövde */}
-                                <div className="fm-body">
-                                    <div className="fm-close-row">
-                                        <button className="btn-icon" onClick={closeModal}><X size={16} /></button>
-                                    </div>
-
-                                    <form onSubmit={handleMoveStock} className="fm-form">
-                                        {isIn ? (
-                                            <>
-                                                {/* 1. Tarih */}
-                                                <div className="fm-field">
-                                                    <div className="fm-label-row"><span className="fm-label">Tarih</span></div>
-                                                    <input className="fm-input" name="actionDate" type="date" defaultValue={new Date().toISOString().split('T')[0]} required />
-                                                </div>
-
-                                                {/* 2. Firma */}
-                                                <div className="fm-field">
-                                                    <div className="fm-label-row">
-                                                        <span className="fm-label">Firma</span>
-                                                        <button type="button" className="fm-add-chip" onClick={() => setShowAddFirma(v => !v)}>+ Ekle</button>
-                                                    </div>
-                                                    {showAddFirma && (
-                                                        <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
-                                                            <input className="fm-input" value={newFirmaInput} onChange={e => setNewFirmaInput(e.target.value)} placeholder="Firma adı..." style={{ flex: 1 }} />
-                                                            <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
-                                                                onClick={async () => { if (!newFirmaInput.trim()) return; const id = String(Date.now()); await set(ref(db, `firmalar/${id}`), { id, name: newFirmaInput.trim() }); setNewFirmaInput(''); setShowAddFirma(false); }}>
-                                                                Kaydet
-                                                            </button>
-                                                            <button type="button" className="btn-icon" onClick={() => setShowAddFirma(false)}><X size={14} /></button>
-                                                        </div>
-                                                    )}
-                                                    <input className="fm-input" list="firma-datalist" value={inFirmaAdi} onChange={e => setInFirmaAdi(e.target.value)} placeholder="Firma adı yazın..." autoComplete="off" />
-                                                    <datalist id="firma-datalist">{allFirmaAdlari.map(f => <option key={f} value={f} />)}</datalist>
-                                                </div>
-
-                                                {/* 3. İrsaliye No */}
-                                                <div className="fm-field">
-                                                    <div className="fm-label-row">
-                                                        <span className="fm-label">İrsaliye No</span>
-                                                        <button type="button" className="fm-add-chip" onClick={() => setShowAddIrsaliye(v => !v)}>+ Ekle</button>
-                                                    </div>
-                                                    {showAddIrsaliye && (
-                                                        <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
-                                                            <input className="fm-input" value={newIrsaliyeInput} onChange={e => setNewIrsaliyeInput(e.target.value)} placeholder="İrsaliye numarası..." style={{ flex: 1 }} />
-                                                            <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
-                                                                onClick={async () => { if (!newIrsaliyeInput.trim()) return; const id = String(Date.now()); await set(ref(db, `irsaliyeListesi/${id}`), { id: Number(id), no: newIrsaliyeInput.trim() }); setInIrsaliyeNo(newIrsaliyeInput.trim()); setNewIrsaliyeInput(''); setShowAddIrsaliye(false); }}>
-                                                                Kaydet
-                                                            </button>
-                                                            <button type="button" className="btn-icon" onClick={() => setShowAddIrsaliye(false)}><X size={14} /></button>
-                                                        </div>
-                                                    )}
-                                                    <input className="fm-input" name="irsaliyeNo" list="irsaliye-datalist" value={inIrsaliyeNo} onChange={e => setInIrsaliyeNo(e.target.value)} placeholder="Örn: IRS-2026-001" autoComplete="off" />
-                                                    <datalist id="irsaliye-datalist">{irsaliyeListesi.map(i => <option key={i.id} value={i.no} />)}</datalist>
-                                                </div>
-
-                                                {/* 3b. Plaka */}
-                                                <div className="fm-field">
-                                                    <div className="fm-label-row">
-                                                        <span className="fm-label">Plaka</span>
-                                                        <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>opsiyonel</span>
-                                                    </div>
-                                                    <input className="fm-input" name="plaka" placeholder="Örn: 34 ABC 123" autoComplete="off" />
-                                                </div>
-
-                                                {/* 3c. Şoför */}
-                                                <div className="fm-field">
-                                                    <div className="fm-label-row">
-                                                        <span className="fm-label">Şoför</span>
-                                                        <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>opsiyonel</span>
-                                                    </div>
-                                                    <input className="fm-input" name="sofor" placeholder="Şoför adı..." autoComplete="off" />
-                                                </div>
-
-                                                {/* 4. Malzeme */}
-                                                <div className="fm-field">
-                                                    <div className="fm-label-row">
-                                                        <span className="fm-label">Malzeme</span>
-                                                        <button type="button" className="fm-add-chip" onClick={() => setShowAddMalzemeAdi(v => !v)}>+ Yeni Ekle</button>
-                                                    </div>
-                                                    {showAddMalzemeAdi && (
-                                                        <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
-                                                            <input className="fm-input" value={newMalzemeAdiInput} onChange={e => setNewMalzemeAdiInput(e.target.value)} placeholder="Yeni malzeme adı..." style={{ flex: 1 }} />
-                                                            <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 14px', background: 'var(--success)', borderRadius: '8px', fontSize: '12px' }}
-                                                                onClick={async () => { if (!newMalzemeAdiInput.trim()) return; const id = String(Date.now()); await set(ref(db, `items/${id}`), { id: Number(id), name: newMalzemeAdiInput.trim(), unit: 'Adet', category: 'Genel', quantity: 0, minStock: 0 }); setNewMalzemeAdiInput(''); setShowAddMalzemeAdi(false); }}>
-                                                                Kaydet
-                                                            </button>
-                                                            <button type="button" className="btn-icon" onClick={() => setShowAddMalzemeAdi(false)}><X size={14} /></button>
-                                                        </div>
-                                                    )}
-                                                    <input className="fm-input" list="malzeme-datalist" value={inMalzemeAdi} onChange={e => setInMalzemeAdi(e.target.value)} placeholder="Malzeme adı yazın veya seçin..." required autoComplete="off" />
-                                                    <datalist id="malzeme-datalist">{sortedItems.map(i => <option key={i.id} value={i.name} />)}</datalist>
-                                                </div>
-
-                                                {/* 5. Miktar */}
-                                                <div className="fm-field">
-                                                    <div className="fm-label-row"><span className="fm-label">Miktar</span></div>
-                                                    <input className="fm-input" name="amount" type="number" required min="0.01" step="0.01" placeholder="0.00" />
-                                                </div>
-
-                                                {/* 6. Birim */}
-                                                <div className="fm-field">
-                                                    <div className="fm-label-row">
-                                                        <span className="fm-label">Birim</span>
-                                                        <button type="button" className="fm-add-chip" onClick={() => setShowAddBirim(v => !v)}>+ Ekle</button>
-                                                    </div>
-                                                    {showAddBirim && (
-                                                        <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
-                                                            <input className="fm-input" value={newBirimInput} onChange={e => setNewBirimInput(e.target.value)} placeholder="Yeni birim..." style={{ flex: 1 }} />
-                                                            <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
-                                                                onClick={async () => { if (!newBirimInput.trim()) return; const id = String(Date.now()); await set(ref(db, `birimler/${id}`), { id, name: newBirimInput.trim() }); setNewBirimInput(''); setShowAddBirim(false); }}>
-                                                                Kaydet
-                                                            </button>
-                                                            <button type="button" className="btn-icon" onClick={() => setShowAddBirim(false)}><X size={14} /></button>
-                                                        </div>
-                                                    )}
-                                                    <select name="unit" className="fm-input">{birimlerList.map(b => <option key={b}>{b}</option>)}</select>
-                                                </div>
-
-                                                {/* 7. Birim Fiyat */}
-                                                <div className="fm-field">
-                                                    <div className="fm-label-row">
-                                                        <span className="fm-label">Birim Fiyat</span>
-                                                        <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>opsiyonel</span>
-                                                    </div>
-                                                    <div style={{ position: 'relative' }}>
-                                                        <input className="fm-input" name="price" type="number" min="0" step="0.01" placeholder="0.00" style={{ paddingRight: '32px' }} />
-                                                        <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '12px', color: 'var(--text-muted)', pointerEvents: 'none' }}>₺</span>
-                                                    </div>
-                                                </div>
-
-                                                {/* 8. Teslim Alan */}
-                                                <div className="fm-field">
-                                                    <div className="fm-label-row">
-                                                        <span className="fm-label">Teslim Alan</span>
-                                                        <button type="button" className="fm-add-chip" onClick={() => setShowAddTeslimAlan(v => !v)}>+ Ekle</button>
-                                                    </div>
-                                                    {showAddTeslimAlan && (
-                                                        <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
-                                                            <input className="fm-input" value={newTeslimAlanAdi} onChange={e => setNewTeslimAlanAdi(e.target.value)} placeholder="Kişi adı..." style={{ flex: 1 }} />
-                                                            <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
-                                                                onClick={async () => { if (!newTeslimAlanAdi.trim()) return; const id = String(Date.now()); await set(ref(db, `teslimAlanlar/${id}`), { id, name: newTeslimAlanAdi.trim() }); setNewTeslimAlanAdi(''); setShowAddTeslimAlan(false); }}>
-                                                                Kaydet
-                                                            </button>
-                                                            <button type="button" className="btn-icon" onClick={() => setShowAddTeslimAlan(false)}><X size={14} /></button>
-                                                        </div>
-                                                    )}
-                                                    <select name="teslimAlan" className="fm-input">
-                                                        <option value="">— Seçin —</option>
-                                                        {teslimAlanlar.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
-                                                    </select>
-                                                </div>
-
-                                                {/* Malzeme Türü (gizli, data için) */}
-                                                <select name="malzemeTuru" style={{ display: 'none' }}>
-                                                    <option value="">Genel</option>
-                                                    {malzemeTurleri.map(t => <option key={t} value={t}>{t}</option>)}
-                                                </select>
-                                            </>
-                                        ) : (
-                                            <>
-                                                {/* Tarih */}
-                                                <div className="fm-field">
-                                                    <div className="fm-label-row"><span className="fm-label">Tarih</span></div>
-                                                    <input className="fm-input" name="actionDate" type="date" defaultValue={new Date().toISOString().split('T')[0]} required />
-                                                </div>
-                                                {/* Malzeme */}
-                                                <div className="fm-field">
-                                                    <div className="fm-label-row"><span className="fm-label">Malzeme</span></div>
-                                                    <select className="fm-input" name="itemId" required value={selectedItemForMove?.id || ''} onChange={e => setSelectedItemForMove(items.find(i => i.id == e.target.value))}>
-                                                        <option value="" disabled>— Seçin —</option>
-                                                        {sortedItems.map(i => <option key={i.id} value={i.id}>{i.name} (Stok: {i.quantity})</option>)}
-                                                    </select>
-                                                </div>
-                                                {/* Miktar */}
-                                                <div className="fm-field">
-                                                    <div className="fm-label-row"><span className="fm-label">Miktar</span></div>
-                                                    <input className="fm-input" name="amount" type="number" required min="0.01" step="0.01" placeholder="0.00" />
-                                                </div>
-                                                {/* Birim */}
-                                                <div className="fm-field">
-                                                    <div className="fm-label-row"><span className="fm-label">Birim</span></div>
-                                                    <select className="fm-input" name="unit" defaultValue={selectedItemForMove?.unit || 'Adet'}>
-                                                        <option>Adet</option><option>Kg</option><option>M</option><option>M2</option><option>M3</option><option>Ton</option><option>Palet</option><option>Torba</option><option>Paket</option>
-                                                    </select>
-                                                </div>
-                                                {/* Verilen Birim */}
-                                                <div className="fm-field">
-                                                    <div className="fm-label-row"><span className="fm-label">Verilen Birim</span></div>
-                                                    <input className="fm-input" name="verilenBirim" placeholder="Örn: A Ekibi, Elektrik Birimi..." />
-                                                </div>
-                                                {/* Verilen Kişi */}
-                                                <div className="fm-field">
-                                                    <div className="fm-label-row"><span className="fm-label">Verilen Kişi</span></div>
-                                                    {isNewRecipient ? (
-                                                        <div className="fm-inline-add">
-                                                            <input autoFocus className="fm-input" name="recipient" placeholder="Yeni kişi adı yazın..." style={{ flex: 1 }} />
-                                                            <button type="button" className="btn-icon" onClick={() => setIsNewRecipient(false)}><X size={14} /></button>
-                                                        </div>
-                                                    ) : (
-                                                        <select className="fm-input" name="recipient" defaultValue="" onChange={e => { if (e.target.value === '__NEW__') setIsNewRecipient(true); }}>
-                                                            <option value="">— Seçin —</option>
-                                                            <option value="__NEW__">+ Yeni Ekle</option>
-                                                            {uniqueRecipients.map(r => <option key={r} value={r}>{r}</option>)}
-                                                        </select>
-                                                    )}
-                                                </div>
-                                                {/* Kullanım Alanı */}
-                                                <div className="fm-field">
-                                                    <div className="fm-label-row"><span className="fm-label">Kullanım Alanı</span></div>
-                                                    <input className="fm-input" name="kullanimAlani" placeholder="Örn: A Blok 3. kat, Temel kazısı..." />
-                                                </div>
-                                            </>
-                                        )}
-
-                                        <div className="fm-footer">
-                                            <button type="button" className="fm-btn-cancel" onClick={closeModal}>İptal</button>
-                                            <button
-                                                type="submit"
-                                                className="fm-btn-submit"
-                                                disabled={isSaving || (movementType === 'out' && !selectedItemForMove) || (movementType === 'in' && !inMalzemeAdi.trim())}
-                                                style={{ background: isIn ? 'linear-gradient(135deg, #34d399, #059669)' : 'linear-gradient(135deg, #f87171, #dc2626)' }}
-                                            >
-                                                {isSaving ? 'İşleniyor...' : (isIn ? '↑ Girişi Tamamla' : '↓ Çıkışı Tamamla')}
-                                            </button>
+                            <div className="modal-overlay">
+                                <div className="fm-modal">
+                                    {/* Sol Panel */}
+                                    <div className="fm-panel" style={{ background: accentGradient }}>
+                                        <div className="fm-panel-icon">
+                                            {isIn ? <ArrowUpRight size={30} /> : <ArrowDownLeft size={30} />}
                                         </div>
-                                    </form>
+                                        <div className="fm-panel-title">
+                                            {isIn ? 'Malzeme\nGirişi' : 'Malzeme\nÇıkışı'}
+                                        </div>
+                                        <div className="fm-panel-desc">
+                                            {isIn
+                                                ? 'Depoya gelen malzemeleri kayıt altına alın'
+                                                : 'Depodan çıkan malzemeleri takip edin'}
+                                        </div>
+                                    </div>
+
+                                    {/* Sağ Gövde */}
+                                    <div className="fm-body">
+                                        <div className="fm-close-row">
+                                            <button className="btn-icon" onClick={closeModal}><X size={16} /></button>
+                                        </div>
+
+                                        <form onSubmit={handleMoveStock} className="fm-form">
+                                            {isIn ? (
+                                                <>
+                                                    {/* 1. Tarih */}
+                                                    <div className="fm-field">
+                                                        <div className="fm-label-row"><span className="fm-label">Tarih</span></div>
+                                                        <input className="fm-input" name="actionDate" type="date" defaultValue={new Date().toISOString().split('T')[0]} required />
+                                                    </div>
+
+                                                    {/* 2. Firma */}
+                                                    <div className="fm-field">
+                                                        <div className="fm-label-row">
+                                                            <span className="fm-label">Firma</span>
+                                                            <button type="button" className="fm-add-chip" onClick={() => setShowAddFirma(v => !v)}>+ Ekle</button>
+                                                        </div>
+                                                        {showAddFirma && (
+                                                            <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                                <input className="fm-input" value={newFirmaInput} onChange={e => setNewFirmaInput(e.target.value)} placeholder="Firma adı..." style={{ flex: 1 }} />
+                                                                <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
+                                                                    onClick={async () => { if (!newFirmaInput.trim()) return; const id = String(Date.now()); await set(ref(db, `firmalar/${id}`), { id, name: newFirmaInput.trim() }); setNewFirmaInput(''); setShowAddFirma(false); }}>
+                                                                    Kaydet
+                                                                </button>
+                                                                <button type="button" className="btn-icon" onClick={() => setShowAddFirma(false)}><X size={14} /></button>
+                                                            </div>
+                                                        )}
+                                                        <input className="fm-input" list="firma-datalist" value={inFirmaAdi} onChange={e => setInFirmaAdi(e.target.value)} placeholder="Firma adı yazın..." autoComplete="off" />
+                                                        <datalist id="firma-datalist">{allFirmaAdlari.map(f => <option key={f} value={f} />)}</datalist>
+                                                    </div>
+
+                                                    {/* 3. İrsaliye No */}
+                                                    <div className="fm-field">
+                                                        <div className="fm-label-row">
+                                                            <span className="fm-label">İrsaliye No</span>
+                                                            <button type="button" className="fm-add-chip" onClick={() => setShowAddIrsaliye(v => !v)}>+ Ekle</button>
+                                                        </div>
+                                                        {showAddIrsaliye && (
+                                                            <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                                <input className="fm-input" value={newIrsaliyeInput} onChange={e => setNewIrsaliyeInput(e.target.value)} placeholder="İrsaliye numarası..." style={{ flex: 1 }} />
+                                                                <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
+                                                                    onClick={async () => { if (!newIrsaliyeInput.trim()) return; const id = String(Date.now()); await set(ref(db, `irsaliyeListesi/${id}`), { id: Number(id), no: newIrsaliyeInput.trim() }); setInIrsaliyeNo(newIrsaliyeInput.trim()); setNewIrsaliyeInput(''); setShowAddIrsaliye(false); }}>
+                                                                    Kaydet
+                                                                </button>
+                                                                <button type="button" className="btn-icon" onClick={() => setShowAddIrsaliye(false)}><X size={14} /></button>
+                                                            </div>
+                                                        )}
+                                                        <input className="fm-input" name="irsaliyeNo" list="irsaliye-datalist" value={inIrsaliyeNo} onChange={e => setInIrsaliyeNo(e.target.value)} placeholder="Örn: IRS-2026-001" autoComplete="off" />
+                                                        <datalist id="irsaliye-datalist">{irsaliyeListesi.map(i => <option key={i.id} value={i.no} />)}</datalist>
+                                                    </div>
+
+                                                    {/* 4. Malzeme */}
+                                                    <div className="fm-field">
+                                                        <div className="fm-label-row">
+                                                            <span className="fm-label">Malzeme</span>
+                                                            <button type="button" className="fm-add-chip" onClick={() => setShowAddMalzemeAdi(v => !v)}>+ Yeni Ekle</button>
+                                                        </div>
+                                                        {showAddMalzemeAdi && (
+                                                            <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                                <input className="fm-input" value={newMalzemeAdiInput} onChange={e => setNewMalzemeAdiInput(e.target.value)} placeholder="Yeni malzeme adı..." style={{ flex: 1 }} />
+                                                                <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 14px', background: 'var(--success)', borderRadius: '8px', fontSize: '12px' }}
+                                                                    onClick={async () => { if (!newMalzemeAdiInput.trim()) return; const id = String(Date.now()); await set(ref(db, `items/${id}`), { id: Number(id), name: newMalzemeAdiInput.trim(), unit: 'Adet', category: 'Genel', quantity: 0, minStock: 0 }); setNewMalzemeAdiInput(''); setShowAddMalzemeAdi(false); }}>
+                                                                    Kaydet
+                                                                </button>
+                                                                <button type="button" className="btn-icon" onClick={() => setShowAddMalzemeAdi(false)}><X size={14} /></button>
+                                                            </div>
+                                                        )}
+                                                        <input className="fm-input" list="malzeme-datalist" value={inMalzemeAdi} onChange={e => setInMalzemeAdi(e.target.value)} placeholder="Malzeme adı yazın veya seçin..." required autoComplete="off" />
+                                                        <datalist id="malzeme-datalist">{sortedItems.map(i => <option key={i.id} value={i.name} />)}</datalist>
+                                                    </div>
+
+                                                    {/* 5. Miktar */}
+                                                    <div className="fm-field">
+                                                        <div className="fm-label-row"><span className="fm-label">Miktar</span></div>
+                                                        <input className="fm-input" name="amount" type="number" required min="0.01" step="0.01" placeholder="0.00" />
+                                                    </div>
+
+                                                    {/* 6. Birim */}
+                                                    <div className="fm-field">
+                                                        <div className="fm-label-row">
+                                                            <span className="fm-label">Birim</span>
+                                                            <button type="button" className="fm-add-chip" onClick={() => setShowAddBirim(v => !v)}>+ Ekle</button>
+                                                        </div>
+                                                        {showAddBirim && (
+                                                            <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                                <input className="fm-input" value={newBirimInput} onChange={e => setNewBirimInput(e.target.value)} placeholder="Yeni birim..." style={{ flex: 1 }} />
+                                                                <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
+                                                                    onClick={async () => { if (!newBirimInput.trim()) return; const id = String(Date.now()); await set(ref(db, `birimler/${id}`), { id, name: newBirimInput.trim() }); setNewBirimInput(''); setShowAddBirim(false); }}>
+                                                                    Kaydet
+                                                                </button>
+                                                                <button type="button" className="btn-icon" onClick={() => setShowAddBirim(false)}><X size={14} /></button>
+                                                            </div>
+                                                        )}
+                                                        <select name="unit" className="fm-input">{birimlerList.map(b => <option key={b}>{b}</option>)}</select>
+                                                    </div>
+
+                                                    {/* 7. Birim Fiyat */}
+                                                    <div className="fm-field">
+                                                        <div className="fm-label-row">
+                                                            <span className="fm-label">Birim Fiyat</span>
+                                                            <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>opsiyonel</span>
+                                                        </div>
+                                                        <div style={{ position: 'relative' }}>
+                                                            <input className="fm-input" name="price" type="number" min="0" step="0.01" placeholder="0.00" style={{ paddingRight: '32px' }} />
+                                                            <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '12px', color: 'var(--text-muted)', pointerEvents: 'none' }}>₺</span>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* 8. Teslim Alan */}
+                                                    <div className="fm-field">
+                                                        <div className="fm-label-row">
+                                                            <span className="fm-label">Teslim Alan</span>
+                                                            <button type="button" className="fm-add-chip" onClick={() => setShowAddTeslimAlan(v => !v)}>+ Ekle</button>
+                                                        </div>
+                                                        {showAddTeslimAlan && (
+                                                            <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                                <input className="fm-input" value={newTeslimAlanAdi} onChange={e => setNewTeslimAlanAdi(e.target.value)} placeholder="Kişi adı..." style={{ flex: 1 }} />
+                                                                <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
+                                                                    onClick={async () => { if (!newTeslimAlanAdi.trim()) return; const id = String(Date.now()); await set(ref(db, `teslimAlanlar/${id}`), { id, name: newTeslimAlanAdi.trim() }); setNewTeslimAlanAdi(''); setShowAddTeslimAlan(false); }}>
+                                                                    Kaydet
+                                                                </button>
+                                                                <button type="button" className="btn-icon" onClick={() => setShowAddTeslimAlan(false)}><X size={14} /></button>
+                                                            </div>
+                                                        )}
+                                                        <select name="teslimAlan" className="fm-input">
+                                                            <option value="">— Seçin —</option>
+                                                            {teslimAlanlar.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                                                        </select>
+                                                    </div>
+
+                                                     {/* 9. Malzeme Türü / Kategori */}
+                                                     <div className="fm-field">
+                                                        <div className="fm-label-row">
+                                                            <span className="fm-label">Malzeme Kategorisi</span>
+                                                            <button type="button" className="fm-add-chip" onClick={() => setShowAddMalzemeTuru(v => !v)}>+ Ekle</button>
+                                                        </div>
+                                                        {showAddMalzemeTuru && (
+                                                            <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                                <input className="fm-input" value={newMalzemeTuruInput} onChange={e => setNewMalzemeTuruInput(e.target.value)} placeholder="Yeni kategori adı..." style={{ flex: 1 }} />
+                                                                <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
+                                                                    onClick={async () => { 
+                                                                        if (!newMalzemeTuruInput.trim()) return; 
+                                                                        const id = String(Date.now()); 
+                                                                        await set(ref(db, `malzemeTurleri/${id}`), newMalzemeTuruInput.trim()); 
+                                                                        setNewMalzemeTuruInput(''); 
+                                                                        setShowAddMalzemeTuru(false); 
+                                                                    }}>
+                                                                    Kaydet
+                                                                </button>
+                                                                <button type="button" className="btn-icon" onClick={() => setShowAddMalzemeTuru(false)}><X size={14} /></button>
+                                                            </div>
+                                                        )}
+                                                        <select name="malzemeTuru" className="fm-input">
+                                                            <option value="">Genel</option>
+                                                            {malzemeTurleri.map(t => <option key={t} value={t}>{t}</option>)}
+                                                        </select>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    {/* Tarih */}
+                                                    <div className="fm-field">
+                                                        <div className="fm-label-row"><span className="fm-label">Tarih</span></div>
+                                                        <input className="fm-input" name="actionDate" type="date" defaultValue={new Date().toISOString().split('T')[0]} required />
+                                                    </div>
+                                                    {/* Malzeme */}
+                                                    <div className="fm-field">
+                                                        <div className="fm-label-row">
+                                                            <span className="fm-label">Malzeme</span>
+                                                            <button type="button" className="fm-add-chip" onClick={() => setShowAddMalzemeAdi(v => !v)}>+ Yeni Ekle</button>
+                                                        </div>
+                                                        {showAddMalzemeAdi && (
+                                                            <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                                <input className="fm-input" value={newMalzemeAdiInput} onChange={e => setNewMalzemeAdiInput(e.target.value)} placeholder="Yeni malzeme adı..." style={{ flex: 1 }} />
+                                                                <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 14px', background: 'var(--success)', borderRadius: '8px', fontSize: '12px' }}
+                                                                    onClick={async () => {
+                                                                        if (!newMalzemeAdiInput.trim()) return;
+                                                                        const id = Date.now();
+                                                                        const newItem = { id: Number(id), name: newMalzemeAdiInput.trim(), unit: 'Adet', category: 'Genel', quantity: 0, minStock: 0 };
+                                                                        await set(ref(db, `items/${id}`), newItem);
+                                                                        setSelectedItemForMove(newItem);
+                                                                        setNewMalzemeAdiInput('');
+                                                                        setShowAddMalzemeAdi(false);
+                                                                    }}>
+                                                                    Kaydet
+                                                                </button>
+                                                                <button type="button" className="btn-icon" onClick={() => setShowAddMalzemeAdi(false)}><X size={14} /></button>
+                                                            </div>
+                                                        )}
+                                                        <select className="fm-input" name="itemId" required value={selectedItemForMove?.id || ''} onChange={e => setSelectedItemForMove(items.find(i => String(i.id) === String(e.target.value)))}>
+                                                            <option value="" disabled>— Seçin —</option>
+                                                            {sortedItems.map(i => <option key={i.id} value={i.id}>{i.name} (Stok: {i.quantity})</option>)}
+                                                        </select>
+                                                    </div>
+
+                                                    {/* Miktar */}
+                                                    <div className="fm-field">
+                                                        <div className="fm-label-row"><span className="fm-label">Miktar</span></div>
+                                                        <input className="fm-input" name="amount" type="number" required min="0.01" step="0.01" placeholder="0.00" />
+                                                    </div>
+
+                                                    {/* Birim */}
+                                                    <div className="fm-field">
+                                                        <div className="fm-label-row">
+                                                            <span className="fm-label">Birim</span>
+                                                            <button type="button" className="fm-add-chip" onClick={() => setShowAddBirim(v => !v)}>+ Ekle</button>
+                                                        </div>
+                                                        {showAddBirim && (
+                                                            <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                                <input className="fm-input" value={newBirimInput} onChange={e => setNewBirimInput(e.target.value)} placeholder="Yeni birim..." style={{ flex: 1 }} />
+                                                                <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
+                                                                    onClick={async () => { if (!newBirimInput.trim()) return; const id = String(Date.now()); await set(ref(db, `birimler/${id}`), { id, name: newBirimInput.trim() }); setNewBirimInput(''); setShowAddBirim(false); }}>
+                                                                    Kaydet
+                                                                </button>
+                                                                <button type="button" className="btn-icon" onClick={() => setShowAddBirim(false)}><X size={14} /></button>
+                                                            </div>
+                                                        )}
+                                                        <select className="fm-input" name="unit" defaultValue={selectedItemForMove?.unit || 'Adet'}>
+                                                            {birimlerList.map(b => <option key={b}>{b}</option>)}
+                                                        </select>
+                                                    </div>
+
+                                                    {/* Verilen Birim */}
+                                                    <div className="fm-field">
+                                                        <div className="fm-label-row">
+                                                            <span className="fm-label">Verilen Birim</span>
+                                                            <button type="button" className="fm-add-chip" onClick={() => setShowAddVerilenBirim(v => !v)}>+ Ekle</button>
+                                                        </div>
+                                                        {showAddVerilenBirim && (
+                                                            <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                                <input className="fm-input" value={newVerilenBirimInput} onChange={e => setNewVerilenBirimInput(e.target.value)} placeholder="Yeni birim/ekip..." style={{ flex: 1 }} />
+                                                                <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
+                                                                    onClick={async () => { if (!newVerilenBirimInput.trim()) return; const id = String(Date.now()); await set(ref(db, `verilenBirimler/${id}`), { id, name: newVerilenBirimInput.trim() }); setNewVerilenBirimInput(''); setShowAddVerilenBirim(false); }}>
+                                                                    Kaydet
+                                                                </button>
+                                                                <button type="button" className="btn-icon" onClick={() => setShowAddVerilenBirim(false)}><X size={14} /></button>
+                                                            </div>
+                                                        )}
+                                                        <select className="fm-input" name="verilenBirim">
+                                                            <option value="">— Seçin —</option>
+                                                            {uniqueVerilenBirimler.map(v => <option key={v} value={v}>{v}</option>)}
+                                                        </select>
+                                                    </div>
+
+                                                    {/* Verilen Kişi */}
+                                                    <div className="fm-field">
+                                                        <div className="fm-label-row">
+                                                            <span className="fm-label">Verilen Kişi</span>
+                                                            <button type="button" className="fm-add-chip" onClick={() => setShowAddRecipient(v => !v)}>+ Ekle</button>
+                                                        </div>
+                                                        {showAddRecipient && (
+                                                            <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                                <input className="fm-input" value={newRecipientInput} onChange={e => setNewRecipientInput(e.target.value)} placeholder="Kişi adı..." style={{ flex: 1 }} />
+                                                                <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
+                                                                    onClick={async () => {
+                                                                        if (!newRecipientInput.trim()) return;
+                                                                        const id = String(Date.now());
+                                                                        await set(ref(db, `teslimAlanlar/${id}`), { id, name: newRecipientInput.trim() });
+                                                                        setShowAddRecipient(false);
+                                                                    }}>
+                                                                    Kaydet
+                                                                </button>
+                                                                <button type="button" className="btn-icon" onClick={() => setShowAddRecipient(false)}><X size={14} /></button>
+                                                            </div>
+                                                        )}
+                                                        <select className="fm-input" name="recipient">
+                                                            <option value="">— Seçin —</option>
+                                                            {newRecipientInput && <option value={newRecipientInput}>{newRecipientInput} (Yeni)</option>}
+                                                            {[...new Set([...uniqueRecipients, ...teslimAlanlar.map(t => t.name)])].sort((a, b) => a.localeCompare(b, 'tr')).map(r => <option key={r} value={r}>{r}</option>)}
+                                                        </select>
+                                                    </div>
+
+                                                    {/* Kullanım Alanı */}
+                                                    <div className="fm-field">
+                                                        <div className="fm-label-row">
+                                                            <span className="fm-label">Kullanım Alanı</span>
+                                                            <button type="button" className="fm-add-chip" onClick={() => setShowAddKullanimAlani(v => !v)}>+ Ekle</button>
+                                                        </div>
+                                                        {showAddKullanimAlani && (
+                                                            <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                                <input className="fm-input" value={newKullanimAlaniInput} onChange={e => setNewKullanimAlaniInput(e.target.value)} placeholder="Yeni kullanım alanı..." style={{ flex: 1 }} />
+                                                                <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
+                                                                    onClick={async () => { if (!newKullanimAlaniInput.trim()) return; const id = String(Date.now()); await set(ref(db, `kullanimAlanlari/${id}`), { id, name: newKullanimAlaniInput.trim() }); setNewKullanimAlaniInput(''); setShowAddKullanimAlani(false); }}>
+                                                                    Kaydet
+                                                                </button>
+                                                                <button type="button" className="btn-icon" onClick={() => setShowAddKullanimAlani(false)}><X size={14} /></button>
+                                                            </div>
+                                                        )}
+                                                        <select className="fm-input" name="kullanimAlani">
+                                                            <option value="">— Seçin —</option>
+                                                            {uniqueKullanimAlanlari.map(k => <option key={k} value={k}>{k}</option>)}
+                                                        </select>
+                                                    </div>
+                                                </>
+                                            )}
+
+                                            <div className="fm-footer">
+                                                <button type="button" className="fm-btn-cancel" onClick={closeModal}>İptal</button>
+                                                <button
+                                                    type="submit"
+                                                    className="fm-btn-submit"
+                                                    disabled={isSaving || (movementType === 'out' && !selectedItemForMove) || (movementType === 'in' && !inMalzemeAdi.trim())}
+                                                    style={{ background: isIn ? 'linear-gradient(135deg, #34d399, #059669)' : 'linear-gradient(135deg, #f87171, #dc2626)' }}
+                                                >
+                                                    {isSaving ? 'İşleniyor...' : (isIn ? '↑ Girişi Tamamla' : '↓ Çıkışı Tamamla')}
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
                         );
                     })()}
 
@@ -5014,14 +5748,14 @@ const App = () => {
                                                             : (page.isAction ? actionDefault : roleDefault);
                                                         const options = page.isAction
                                                             ? [
-                                                                { val: 'none', lbl: 'Gizli',    bg: '#fee2e2', color: '#dc2626', border: '#fca5a5' },
-                                                                { val: 'edit', lbl: 'Yönetim',  bg: '#dcfce7', color: '#16a34a', border: '#86efac' },
-                                                              ]
+                                                                { val: 'none', lbl: 'Gizli', bg: '#fee2e2', color: '#dc2626', border: '#fca5a5' },
+                                                                { val: 'edit', lbl: 'Yönetim', bg: '#dcfce7', color: '#16a34a', border: '#86efac' },
+                                                            ]
                                                             : [
-                                                                { val: 'none', lbl: 'Gizli',    bg: '#fee2e2', color: '#dc2626', border: '#fca5a5' },
-                                                                { val: 'view', lbl: 'İzle',     bg: '#dbeafe', color: '#1d4ed8', border: '#93c5fd' },
-                                                                { val: 'edit', lbl: 'Düzenle',  bg: '#dcfce7', color: '#16a34a', border: '#86efac' },
-                                                              ];
+                                                                { val: 'none', lbl: 'Gizli', bg: '#fee2e2', color: '#dc2626', border: '#fca5a5' },
+                                                                { val: 'view', lbl: 'İzle', bg: '#dbeafe', color: '#1d4ed8', border: '#93c5fd' },
+                                                                { val: 'edit', lbl: 'Düzenle', bg: '#dcfce7', color: '#16a34a', border: '#86efac' },
+                                                            ];
                                                         return (
                                                             <div key={page.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 12px', background: 'var(--bg-main)', borderRadius: '8px', border: '1px solid var(--border)' }}>
                                                                 <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-main)' }}>
@@ -5097,187 +5831,33 @@ const App = () => {
                                     </div>
                                 </div>
                                 <div className="table-responsive-wrapper" style={{ marginTop: '1rem' }}>
-                                    <table className="responsive-table col-4">
+                                    <table className="responsive-table" style={{ borderCollapse: 'collapse' }}>
+                                        <colgroup>
+                                            <col className="col-tarih" />
+                                            <col className="col-malzeme" />
+                                            <col className="col-miktar" />
+                                            <col className="col-birim" />
+                                        </colgroup>
                                         <thead>
                                             <tr>
-                                                <th>Tarih</th>
-                                                <th>{detailModal.type === 'in' ? 'Kaynak' : 'Alan'}</th>
-                                                <th>Miktar</th>
-                                                <th>Birim</th>
+                                                <th style={{ border: '1px solid var(--border)' }}>Tarih</th>
+                                                <th style={{ border: '1px solid var(--border)' }}>{detailModal.type === 'in' ? 'Kaynak' : 'Alan'}</th>
+                                                <th style={{ textAlign: 'right', border: '1px solid var(--border)' }}>Miktar</th>
+                                                <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>Birim</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {detailModal.item.movements.filter(m => m.type === detailModal.type).sort((a, b) => b.id - a.id).map(m => (
                                                 <tr key={m.id}>
-                                                    <td data-label="Tarih">{String(m.date || '').split(',')[0].split(' ')[0]}</td>
-                                                    <td data-label={detailModal.type === 'in' ? 'Kaynak' : 'Alan'}>{m.recipient || '-'}</td>
-                                                    <td style={{ textAlign: 'right' }} data-label="Miktar">{formatNumber(m.amount)}</td>
-                                                    <td style={{ textAlign: 'center' }} data-label="Birim">{detailModal.item.unit}</td>
+                                                    <td data-label="Tarih" style={{ border: '1px solid var(--border)' }}>{String(m.date || '').split(',')[0].split(' ')[0]}</td>
+                                                    <td data-label={detailModal.type === 'in' ? 'Kaynak' : 'Alan'} style={{ border: '1px solid var(--border)' }}>{m.recipient || '-'}</td>
+                                                    <td style={{ textAlign: 'right', border: '1px solid var(--border)' }} data-label="Miktar">{formatNumber(m.amount)}</td>
+                                                    <td style={{ textAlign: 'center', border: '1px solid var(--border)' }} data-label="Birim">{detailModal.item.unit}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
                                     </table>
                                 </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Dashboard Detail Modal */}
-                    {dashModal.show && (
-                        <div className="modal-overlay">
-                            <div className="modal-card modal-card-wide" style={{ maxHeight: '85vh', overflowY: 'auto' }}>
-                                <div className="modal-header">
-                                    <span className="modal-title">{dashModal.title}</span>
-                                    <div className="flex align-center gap-2">
-                                        <ExportButtons
-                                            data={dashModal.data}
-                                            title={dashModal.title}
-                                            columns={dashModal.type === 'stock' ? [
-                                                { key: 'name', label: 'MALZEME' },
-                                                { key: 'quantity', label: 'MIKTAR' },
-                                                { key: 'unit', label: 'BIRIM' }
-                                            ] : dashModal.moveType === 'in' ? [
-                                                { key: 'date', label: 'TARİH' },
-                                                { key: 'firmaAdi', label: 'FİRMA' },
-                                                { key: 'irsaliyeNo', label: 'İRSALİYE NO' },
-                                                { key: 'itemName', label: 'MALZEME' },
-                                                { key: 'amount', label: 'MİKTAR' },
-                                                { key: 'unit', label: 'BİRİM' }
-                                            ] : [
-                                                { key: 'date', label: 'TARİH' },
-                                                { key: 'itemName', label: 'MALZEME' },
-                                                { key: 'amount', label: 'MİKTAR' },
-                                                { key: 'unit', label: 'BİRİM' },
-                                                { key: 'verilenBirim', label: 'VERİLEN BİRİM' },
-                                                { key: 'recipient', label: 'VERİLEN KİŞİ' },
-                                                { key: 'kullanimAlani', label: 'KULLANIM ALANI' }
-                                            ]}
-                                            filename={dashModal.title.replace(/\s+/g, '_')}
-                                        />
-                                        <button className="btn-icon" onClick={() => setDashModal({ ...dashModal, show: false })}><X size={16} /></button>
-                                    </div>
-                                </div>
-                                <div className="table-responsive-wrapper">
-                                    <table className={`responsive-table ${dashModal.type === 'stock' ? 'col-3' : dashModal.moveType === 'in' ? 'col-6' : 'col-7'}`}>
-                                        <thead>
-                                            {dashModal.type === 'stock' ? (
-                                                <tr><th>MALZEME</th><th>MİKTAR</th><th>BİRİM</th></tr>
-                                            ) : dashModal.moveType === 'in' ? (
-                                                <tr>
-                                                    <th>TARİH</th>
-                                                    <th>FİRMA</th>
-                                                    <th>İRSALİYE NO</th>
-                                                    <th>MALZEME</th>
-                                                    <th>MİKTAR</th>
-                                                    <th>BİRİM</th>
-                                                </tr>
-                                            ) : (
-                                                <tr>
-                                                    <th>TARİH</th>
-                                                    <th>MALZEME</th>
-                                                    <th>MİKTAR</th>
-                                                    <th>BİRİM</th>
-                                                    <th>VERİLEN BİRİM</th>
-                                                    <th>VERİLEN KİŞİ</th>
-                                                    <th>KULLANIM ALANI</th>
-                                                </tr>
-                                            )}
-                                        </thead>
-                                        <tbody>
-                                            {dashModal.data.length === 0 ? (
-                                                <tr><td colSpan="7" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>Kayıt bulunamadı.</td></tr>
-                                            ) : dashModal.data.map((item, idx) => (
-                                                <tr key={idx}>
-                                                    {dashModal.type === 'stock' ? (
-                                                        <>
-                                                            <td data-label="Malzeme">
-                                                                <div className="material-cell"><Package size={14} className="material-icon-small" /><span>{item.name}</span></div>
-                                                            </td>
-                                                            <td style={{ textAlign: 'right' }} data-label="Miktar">{formatNumber(item.quantity)}</td>
-                                                            <td style={{ textAlign: 'center' }} data-label="Birim">{item.unit}</td>
-                                                        </>
-                                                    ) : dashModal.moveType === 'in' ? (
-                                                        <>
-                                                            <td data-label="Tarih">{String(item.date || '').split(',')[0].split(' ')[0]}</td>
-                                                            <td data-label="Firma">{item.firmaAdi || '—'}</td>
-                                                            <td data-label="İrsaliye No">{item.irsaliyeNo || '—'}</td>
-                                                            <td data-label="Malzeme" style={{ fontWeight: '600' }}>{item.itemName}</td>
-                                                            <td data-label="Miktar" style={{ color: 'var(--success)', fontWeight: '700' }}>+{formatNumber(item.amount)}</td>
-                                                            <td data-label="Birim">{item.unit || '—'}</td>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <td data-label="Tarih">{String(item.date || '').split(',')[0].split(' ')[0]}</td>
-                                                            <td data-label="Malzeme" style={{ fontWeight: '600' }}>{item.itemName}</td>
-                                                            <td data-label="Miktar" style={{ color: 'var(--danger)', fontWeight: '700' }}>−{formatNumber(item.amount)}</td>
-                                                            <td data-label="Birim">{item.unit || '—'}</td>
-                                                            <td data-label="Verilen Birim">{item.verilenBirim || '—'}</td>
-                                                            <td data-label="Verilen Kişi">{item.recipient || '—'}</td>
-                                                            <td data-label="Kullanım Alanı">{item.kullanimAlani || item.note || '—'}</td>
-                                                        </>
-                                                    )}
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* ── REQUEST MODAL ── */}
-                    {showRequestModal && (
-                        <div className="modal-overlay">
-                            <div className="modal-card">
-                                <div className="modal-header">
-                                    <span className="modal-title">
-                                        <ClipboardList size={16} style={{ marginRight: 5, verticalAlign: 'middle' }} />
-                                        Malzeme Talebi Oluştur
-                                    </span>
-                                    <button className="btn-icon" onClick={() => setShowRequestModal(false)}><X size={16} /></button>
-                                </div>
-                                <div style={{
-                                    background: '#f8f9fa', border: '1px solid #e5e7eb', borderRadius: 6,
-                                    padding: '8px 12px', fontSize: '12px', color: '#6b7280', marginBottom: 14
-                                }}>
-                                    ℹ️ Talebiniz yöneticiye iletilecek. Onaylandığında satın alım listesine eklenir.
-                                </div>
-                                <form onSubmit={handleCreateRequest}>
-                                    <div className="mb-2">
-                                        <label className="label">Malzeme Seçin</label>
-                                        <select name="itemId" required defaultValue="">
-                                            <option value="" disabled>-- Malzeme Seçin --</option>
-                                            {items.sort((a, b) => a.name.localeCompare(b.name)).map(i => (
-                                                <option key={i.id} value={String(i.id)}>{i.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="flex gap-2 mb-2">
-                                        <div style={{ flex: 1 }}>
-                                            <label className="label">Miktar</label>
-                                            <input name="amount" type="number" required min="1" placeholder="Örn: 50" />
-                                        </div>
-                                        <div style={{ flex: 1 }}>
-                                            <label className="label">Birim</label>
-                                            <select name="unit" defaultValue="Adet">
-                                                <option>Adet</option>
-                                                <option>Metre</option>
-                                                <option>Torba</option>
-                                                <option>Palet</option>
-                                                <option>M3</option>
-                                                <option>Ton</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div className="mb-2">
-                                        <label className="label">Açıklama / Sebep</label>
-                                        <input name="note" placeholder="Örn: A Blok çatı için gerekli" />
-                                    </div>
-                                    <button type="submit" className="btn-primary"
-                                        style={{ width: '100%', marginTop: '1rem' }}>
-                                        <Send size={14} /> Talebi Gönder
-                                    </button>
-                                </form>
                             </div>
                         </div>
                     )}
@@ -5290,6 +5870,261 @@ const App = () => {
             </div>
 
             {/* Center Success Message Overlay */}
+            {showIrsaliyeDetailModal && selectedIrsaliye && (
+                <div className="modal-overlay">
+                    <div className="modal-card modal-card-wide" style={{ maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
+                        <div className="modal-header">
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span className="modal-title">{selectedIrsaliye.irsaliyeNo} — Malzeme Listesi</span>
+                                <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                    {selectedIrsaliye.firma} | {selectedIrsaliye.date}
+                                </span>
+                            </div>
+                            <div className="flex align-center gap-2">
+                                <ExportButtons
+                                    data={selectedIrsaliye.items.map(m => ({
+                                        'Malzeme': m.itemName,
+                                        'Miktar': m.amount,
+                                        'Birim': m.unit,
+                                        'Birim Fiyat': m.birimFiyat ? `${formatNumber(m.birimFiyat)} ₺` : '—'
+                                    }))}
+                                    title={`Irsaliye_${selectedIrsaliye.irsaliyeNo}_Detay`}
+                                    columns={[
+                                        { key: 'Malzeme', label: 'MALZEME' },
+                                        { key: 'Miktar', label: 'MİKTAR' },
+                                        { key: 'Birim', label: 'BİRİM' },
+                                        { key: 'Birim Fiyat', label: 'BİRİM FİYAT' }
+                                    ]}
+                                    filename={`Irsaliye_${selectedIrsaliye.irsaliyeNo}`}
+                                />
+                                <button className="btn-icon" onClick={() => setShowIrsaliyeDetailModal(false)}><X size={16} /></button>
+                            </div>
+                        </div>
+                        <div className="table-responsive-wrapper" style={{ marginTop: '1rem' }}>
+                            <table className="responsive-table" style={{ borderCollapse: 'collapse' }}>
+                                <colgroup>
+                                    <col className="col-malzeme" />
+                                    <col className="col-miktar" />
+                                    <col className="col-birim" />
+                                    <col className="col-miktar" />
+                                </colgroup>
+                                <thead>
+                                    <tr>
+                                        <th style={{ border: '1px solid var(--border)' }}>MALZEME</th>
+                                        <th style={{ textAlign: 'right', border: '1px solid var(--border)' }}>MİKTAR</th>
+                                        <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>BİRİM</th>
+                                        <th style={{ textAlign: 'right', border: '1px solid var(--border)' }}>BİRİM FİYAT</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {selectedIrsaliye.items.map((m, idx) => (
+                                        <tr key={idx}>
+                                            <td data-label="Malzeme" style={{ fontWeight: '600', border: '1px solid var(--border)' }}>{m.itemName}</td>
+                                            <td data-label="Miktar" style={{ textAlign: 'right', fontWeight: '700', color: 'var(--success)', border: '1px solid var(--border)' }}>{formatNumber(m.amount)}</td>
+                                            <td data-label="Birim" style={{ textAlign: 'center', border: '1px solid var(--border)' }}>{m.unit}</td>
+                                            <td data-label="Birim Fiyat" style={{ textAlign: 'right', border: '1px solid var(--border)' }}>{m.birimFiyat ? `${formatNumber(m.birimFiyat)} ₺` : '—'}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
+                            <button className="btn-primary" onClick={() => setShowIrsaliyeDetailModal(false)}>Kapat</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Center Success Message Overlay */}
+            {dashModal.show && (
+                <div className="modal-overlay">
+                    <div className="modal-card modal-card-wide" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
+                        <div className="modal-header">
+                            <span className="modal-title">{dashModal.title}</span>
+                            <div className="flex align-center gap-2">
+                                <ExportButtons
+                                    data={dashModal.data}
+                                    title={dashModal.title}
+                                    columns={dashModal.type === 'stock' ? [
+                                        { key: 'name', label: 'MALZEME' },
+                                        { key: 'quantity', label: 'MIKTAR' },
+                                        { key: 'unit', label: 'BIRIM' }
+                                    ] : dashModal.moveType === 'in' ? [
+                                        { key: 'date', label: 'TARİH' },
+                                        { key: 'firmaAdi', label: 'FİRMA' },
+                                        { key: 'irsaliyeNo', label: 'İRSALİYE NO' },
+                                        { key: 'itemName', label: 'MALZEME' },
+                                        { key: 'amount', label: 'MİKTAR' },
+                                        { key: 'unit', label: 'BİRİM' }
+                                    ] : [
+                                        { key: 'date', label: 'TARİH' },
+                                        { key: 'itemName', label: 'MALZEME' },
+                                        { key: 'amount', label: 'MİKTAR' },
+                                        { key: 'unit', label: 'BİRİM' },
+                                        { key: 'verilenBirim', label: 'VERİLEN BİRİM' },
+                                        { key: 'recipient', label: 'VERİLEN KİŞİ' },
+                                        { key: 'kullanimAlani', label: 'KULLANIM ALANI' }
+                                    ]}
+                                    filename={dashModal.title.replace(/\s+/g, '_')}
+                                />
+                                <button className="btn-icon" onClick={() => setDashModal({ ...dashModal, show: false })}><X size={16} /></button>
+                            </div>
+                        </div>
+                        <div className="table-responsive-wrapper">
+                            <table className="responsive-table" style={{ borderCollapse: 'collapse' }}>
+                                {dashModal.type === 'stock' ? (
+                                    <colgroup>
+                                        <col className="col-malzeme" />
+                                        <col className="col-miktar" />
+                                        <col className="col-birim" />
+                                    </colgroup>
+                                ) : dashModal.moveType === 'in' ? (
+                                    <colgroup>
+                                        <col className="col-tarih" />
+                                        <col className="col-firma" />
+                                        <col className="col-kategori" />
+                                        <col className="col-malzeme" />
+                                        <col className="col-miktar" />
+                                        <col className="col-birim" />
+                                    </colgroup>
+                                ) : (
+                                    <colgroup>
+                                        <col className="col-tarih" />
+                                        <col className="col-malzeme" />
+                                        <col className="col-miktar" />
+                                        <col className="col-birim" />
+                                        <col className="col-birim" />
+                                        <col className="col-firma" />
+                                        <col className="col-detay" />
+                                    </colgroup>
+                                )}
+                                <thead>
+                                    {dashModal.type === 'stock' ? (
+                                        <tr>
+                                            <th style={{ border: '1px solid var(--border)' }}>MALZEME</th>
+                                            <th className="txt-right" style={{ border: '1px solid var(--border)' }}>MİKTAR</th>
+                                            <th className="txt-center" style={{ border: '1px solid var(--border)' }}>BİRİM</th>
+                                        </tr>
+                                    ) : dashModal.moveType === 'in' ? (
+                                        <tr>
+                                            <th style={{ border: '1px solid var(--border)' }}>TARİH</th>
+                                            <th style={{ border: '1px solid var(--border)' }}>FİRMA</th>
+                                            <th style={{ border: '1px solid var(--border)' }}>İRSALİYE NO</th>
+                                            <th style={{ border: '1px solid var(--border)' }}>MALZEME</th>
+                                            <th className="txt-right" style={{ border: '1px solid var(--border)' }}>MİKTAR</th>
+                                            <th className="txt-center" style={{ border: '1px solid var(--border)' }}>BİRİM</th>
+                                        </tr>
+                                    ) : (
+                                        <tr>
+                                            <th style={{ border: '1px solid var(--border)' }}>TARİH</th>
+                                            <th style={{ border: '1px solid var(--border)' }}>MALZEME</th>
+                                            <th className="txt-right" style={{ border: '1px solid var(--border)' }}>MİKTAR</th>
+                                            <th className="txt-center" style={{ border: '1px solid var(--border)' }}>BİRİM</th>
+                                            <th className="txt-center" style={{ border: '1px solid var(--border)' }}>BİRİM</th>
+                                            <th style={{ border: '1px solid var(--border)' }}>VERİLEN KİŞİ</th>
+                                            <th style={{ border: '1px solid var(--border)' }}>KULLANIM ALANI</th>
+                                        </tr>
+                                    )}
+                                </thead>
+                                <tbody>
+                                    {dashModal.data.length === 0 ? (
+                                        <tr><td colSpan="10" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Kayıt bulunamadı.</td></tr>
+                                    ) : dashModal.data.map((item, idx) => (
+                                        <tr key={idx}>
+                                            {dashModal.type === 'stock' ? (
+                                                <>
+                                                    <td data-label="Malzeme" style={{ border: '1px solid var(--border)' }}>
+                                                        <div className="material-cell"><Package size={14} className="material-icon-small" /><span>{item.name}</span></div>
+                                                    </td>
+                                                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap', border: '1px solid var(--border)' }} data-label="Miktar" className="txt-right">{formatNumber(item.quantity)}</td>
+                                                    <td style={{ textAlign: 'center', whiteSpace: 'nowrap', border: '1px solid var(--border)' }} data-label="Birim" className="txt-center">{item.unit}</td>
+                                                </>
+                                            ) : dashModal.moveType === 'in' ? (
+                                                <>
+                                                    <td data-label="Tarih" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{String(item.date || '').split(',')[0].split(' ')[0]}</td>
+                                                    <td data-label="Firma" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{item.firmaAdi || '—'}</td>
+                                                    <td data-label="İrsaliye No" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{item.irsaliyeNo || '—'}</td>
+                                                    <td data-label="Malzeme" style={{ fontWeight: '600', border: '1px solid var(--border)' }}>{item.itemName}</td>
+                                                    <td data-label="Miktar" style={{ color: 'var(--success)', fontWeight: '700', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>+{formatNumber(item.amount)}</td>
+                                                    <td data-label="Birim" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{item.unit || '—'}</td>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <td data-label="Tarih" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{String(item.date || '').split(',')[0].split(' ')[0]}</td>
+                                                    <td data-label="Malzeme" style={{ fontWeight: '600', border: '1px solid var(--border)' }}>{item.itemName}</td>
+                                                    <td data-label="Miktar" style={{ color: 'var(--danger)', fontWeight: '700', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>−{formatNumber(item.amount)}</td>
+                                                    <td data-label="Birim" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{item.unit || '—'}</td>
+                                                    <td data-label="Verilen Birim" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{item.verilenBirim || '—'}</td>
+                                                    <td data-label="Verilen Kişi" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{item.recipient || '—'}</td>
+                                                    <td data-label="Kullanım Alanı" style={{ border: '1px solid var(--border)' }}>{item.kullanimAlani || item.note || '—'}</td>
+                                                </>
+                                            )}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showRequestModal && (
+                <div className="modal-overlay">
+                    <div className="modal-card" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
+                        <div className="modal-header">
+                            <span className="modal-title">
+                                <ClipboardList size={16} style={{ marginRight: 5, verticalAlign: 'middle' }} />
+                                Malzeme Talebi Oluştur
+                            </span>
+                            <button className="btn-icon" onClick={() => setShowRequestModal(false)}><X size={16} /></button>
+                        </div>
+                        <div style={{
+                            background: '#f8f9fa', border: '1px solid #e5e7eb', borderRadius: 6,
+                            padding: '8px 12px', fontSize: '12px', color: '#6b7280', marginBottom: 14
+                        }}>
+                            ℹ️ Talebiniz yöneticiye iletilecek. Onaylandığında satın alım listesine eklenir.
+                        </div>
+                        <form onSubmit={handleCreateRequest}>
+                            <div className="mb-2">
+                                <label className="label">Malzeme Seçin</label>
+                                <select name="itemId" required defaultValue="">
+                                    <option value="" disabled>-- Malzeme Seçin --</option>
+                                    {items.sort((a, b) => a.name.localeCompare(b.name)).map(i => (
+                                        <option key={i.id} value={String(i.id)}>{i.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="flex gap-2 mb-2">
+                                <div style={{ flex: 1 }}>
+                                    <label className="label">Miktar</label>
+                                    <input name="amount" type="number" required min="1" placeholder="Örn: 50" />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label className="label">Birim</label>
+                                    <select name="unit" defaultValue="Adet">
+                                        <option>Adet</option>
+                                        <option>Metre</option>
+                                        <option>Torba</option>
+                                        <option>Palet</option>
+                                        <option>M3</option>
+                                        <option>Ton</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="mb-2">
+                                <label className="label">Açıklama / Sebep</label>
+                                <input name="note" placeholder="Örn: A Blok çatı için gerekli" />
+                            </div>
+                            <button type="submit" className="btn-primary"
+                                style={{ width: '100%', marginTop: '1rem' }}>
+                                <Send size={14} /> Talebi Gönder
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Center Success Message Overlay */}
             {showSuccessOverlay && (
                 <div className="center-success-overlay">
                     <div className="success-message-card">
@@ -5299,6 +6134,50 @@ const App = () => {
                 </div>
             )}
 
+            {/* Bulk Delete Confirm */}
+            <BulkDeleteModal
+                data={bulkDelState}
+                onConfirm={async () => {
+                    if (bulkDelState) {
+                        if (bulkDelState.tableId === 'dash_mixed') {
+                            for (const row of bulkDelState.rows) {
+                                const col = row.category === 'zimmet' ? 'zimmet' : 'movements';
+                                const cfg = EDIT_CONFIGS[col];
+                                try { await remove(ref(db, cfg.path(row))); } catch(e) {}
+                            }
+                            clearSel('dash');
+                        } else if (bulkDelState.tableId === 'movements_mixed') {
+                            for (const row of bulkDelState.rows) {
+                                const col = row.category === 'zimmet' ? 'zimmet' : 'movements';
+                                const cfg = EDIT_CONFIGS[col];
+                                try { await remove(ref(db, cfg.path(row))); } catch(e) {}
+                            }
+                            clearSel('movements');
+                        } else if (bulkDelState.tableId === 'irsaliyeler_batch') {
+                            for (const irsaliye of bulkDelState.rows) {
+                                const relatedMovements = movements.filter(m => m.irsaliyeNo === irsaliye.irsaliyeNo);
+                                for (const mv of relatedMovements) {
+                                    try { await remove(ref(db, `movements/${mv.id}`)); } catch(e) {}
+                                }
+                                const metaKey = irsaliye.irsaliyeNo.replace(/[./\s]/g, '_');
+                                try { await remove(ref(db, `irsaliyeMeta/${metaKey}`)); } catch(e) {}
+                            }
+                            clearSel('irsaliyeler');
+                        } else {
+                            await handleBulkDelete(bulkDelState.tableId, bulkDelState.rows);
+                        }
+                    }
+                    setBulkDelState(null);
+                }}
+                onCancel={() => setBulkDelState(null)}
+            />
+            {/* Highlight Color Picker */}
+            {hlPickerState && (
+                <HighlightColorPicker
+                    onSelect={(color) => applyHL(hlPickerState.tableId, hlPickerState.rowKeys, color)}
+                    onClose={() => setHlPickerState(null)}
+                />
+            )}
             {/* Admin Right-Click Menu */}
             <AdminContextMenu
                 ctx={ctxMenu}

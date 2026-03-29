@@ -408,72 +408,6 @@ input[type="date"]::-webkit-date-and-time-value {
 .sidebar-action-success { background: linear-gradient(135deg, #34d399, #059669); }
 .sidebar-action-danger  { background: linear-gradient(135deg, #f87171, #dc2626); }
 .sidebar-action-purple  { background: linear-gradient(135deg, #a78bfa, #6d28d9); }
-.sidebar-action-badge {
-  background: rgba(255,255,255,0.95);
-  border-radius: 99px;
-  font-size: 10.5px;
-  font-weight: 800;
-  min-width: 20px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 5px;
-  flex-shrink: 0;
-  letter-spacing: -0.02em;
-  line-height: 1;
-}
-.sidebar-action-badge-green  { color: #059669; }
-.sidebar-action-badge-red    { color: #dc2626; }
-.sidebar-action-badge-purple { color: #6d28d9; }
-
-/* ── Tablo Seçim Sistemi ──────────────────────────────────────────────────── */
-.tsel-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 14px;
-  background: #eef2ff;
-  border: 1px solid #c7d7ff;
-  border-radius: 8px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-  animation: fadeIn 0.15s ease;
-}
-.tsel-count { font-size: 12px; color: #4338ca; min-width: 80px; }
-.tsel-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.tsel-btn {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 5px 11px; border-radius: 6px; font-size: 12px; font-weight: 600;
-  cursor: pointer; border: 1px solid #c7d7ff; background: white; color: #4338ca;
-  transition: background 0.12s;
-}
-.tsel-btn:hover { background: #e0e7ff; }
-.tsel-btn-danger  { border-color: #fecaca; color: #dc2626; }
-.tsel-btn-danger:hover  { background: #fee2e2; }
-.tsel-btn-edit    { border-color: #bfdbfe; color: #2563eb; }
-.tsel-btn-edit:hover    { background: #eff6ff; }
-.tsel-btn-highlight { border-color: #fde68a; color: #92400e; }
-.tsel-btn-highlight:hover { background: #fffbeb; }
-.tsel-color-picker {
-  position: absolute; top: calc(100% + 6px); left: 0; z-index: 9999;
-  background: white; border-radius: 8px; box-shadow: 0 4px 18px rgba(0,0,0,0.14);
-  border: 1px solid #e2e8f0; min-width: 120px; overflow: hidden;
-}
-.tsel-color-btn {
-  display: flex; align-items: center; gap: 8px;
-  width: 100%; padding: 8px 12px; font-size: 12.5px; color: #1e293b;
-  background: none; border: none; cursor: pointer; text-align: left;
-  transition: background 0.1s;
-}
-.tsel-color-btn:hover { background: #f8fafc; }
-.tsel-color-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
-.tsel-th, .tsel-td { width: 36px !important; min-width: 36px !important; max-width: 36px !important; padding: 0 0 0 12px !important; }
-.tsel-checkbox {
-  width: 15px; height: 15px; cursor: pointer; accent-color: #4f46e5;
-  border-radius: 3px; flex-shrink: 0; display: block;
-}
-tr.tsel-selected { outline: 1px solid rgba(99,102,241,0.2); }
 
 /* Mini stat buttons (in toolbar) */
 .stat-mini-btn {
@@ -830,8 +764,6 @@ tr.tsel-selected { outline: 1px solid rgba(99,102,241,0.2); }
 /* Dashboard hareket kartları — başlık & tablo aynı genişlik, satırlar kompakt */
 .movements-grid .table-responsive-wrapper {
   overflow-x: hidden;
-  overflow-y: auto;
-  max-height: calc(100vh - 320px);
 }
 .movements-grid .responsive-table {
   width: 100%;
@@ -876,7 +808,7 @@ input[type="date"] {
   background: var(--bg-card);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
-  overflow: visible;
+  overflow: hidden;
 }
 
 .movements-card-header {
@@ -1190,69 +1122,75 @@ input[type="date"] {
 
 .table-responsive-wrapper {
   overflow-x: auto;
-  overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  max-height: calc(100vh - 260px);
-}
-
-.table-responsive-wrapper::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.table-responsive-wrapper::-webkit-scrollbar-track {
-  background: var(--bg-card);
-  border-left: 1px solid var(--border-light);
-}
-
-.table-responsive-wrapper::-webkit-scrollbar-thumb {
-  background: var(--text-muted);
-  border-radius: 4px;
-}
-
-.table-responsive-wrapper::-webkit-scrollbar-thumb:hover {
-  background: var(--text-main);
-}
-
-.table-responsive-wrapper::-webkit-scrollbar-corner {
-  background: var(--bg-card);
 }
 
 /* ═══════════════════════════════════════════
-   RESPONSIVE TABLE
+   RESPONSIVE TABLE — Professional Grid System
 ═══════════════════════════════════════════ */
 .responsive-table {
   width: 100%;
-  border-collapse: collapse;
+  table-layout: fixed; /* MİMARİ: Artık browser'ın insafına bırakmıyoruz */
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 13px;
   color: var(--text-main);
-  border: 1px solid var(--border);
+  background: var(--bg-card);
 }
 
 .responsive-table th {
   background: var(--bg-table-header);
-  padding: var(--row-pad-v) 14px;
-  text-align: center;
-  font-size: 11.5px;
+  padding: 10px 12px;
+  text-align: left; /* Varsayılan sola hizalı */
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   color: var(--text-table-header);
-  border: 1px solid var(--border);
+  border-bottom: 2px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 10;
-  box-shadow: 0 2px 0 var(--border);
+  white-space: nowrap;
 }
 
-/* Matches nav-item row rhythm */
 .responsive-table td {
-  padding: var(--row-pad-v) 14px;
-  border: 1px solid var(--border-light);
+  padding: var(--row-pad-v) 12px;
+  border-bottom: 1px solid var(--border-light);
   color: var(--text-main);
   vertical-align: middle;
-  text-align: center;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+
+/* ── COLUMN PRESETS ── */
+/* Kısa kolonlar (Sabit) */
+.col-tarih    { width: 100px !important; }
+.col-kategori { width: 95px !important; }
+.col-miktar   { width: 90px !important; text-align: right !important; }
+.col-birim    { width: 70px !important; text-align: center !important; }
+.col-islem    { width: 150px !important; text-align: center !important; }
+
+/* Esnek kolonlar (Oransal) */
+.col-malzeme  { width: auto; } /* En esnek olan */
+.col-firma    { width: 150px; min-width: 150px; }
+.col-detay    { width: 20%; min-width: 160px; }
+
+/* Özel durumlar */
+.responsive-table th.txt-right, 
+.responsive-table td.txt-right { text-align: right !important; }
+
+.responsive-table th.txt-center, 
+.responsive-table td.txt-center { text-align: center !important; }
+
+/* İçerik sığmıyorsa tooltip için title attribute kullanılmalı veya hover */
+.responsive-table td:hover {
+  overflow: visible;
+  position: relative;
+}
+/* Hover durumunda eğer veri uzunsa gösterim iyileştirme (isteğe bağlı) */
 
 .responsive-table tbody tr:last-child td {
   border-bottom: 1px solid var(--border-light);
@@ -1262,143 +1200,7 @@ input[type="date"] {
   background: var(--bg-hover-row);
 }
 
-/* Column widths */
-.col-5 th:nth-child(1),
-.col-5 td:nth-child(1) {
-  width: 30%;
-  text-align: center !important;
-}
-
-.col-5 th:nth-child(2),
-.col-5 td:nth-child(2) {
-  width: 15%;
-  text-align: center !important;
-}
-
-.col-5 th:nth-child(3),
-.col-5 td:nth-child(3) {
-  width: 15%;
-  text-align: center !important;
-}
-
-.col-5 th:nth-child(4),
-.col-5 td:nth-child(4) {
-  width: 20%;
-  text-align: center !important;
-  font-weight: 600;
-}
-
-.col-5 th:nth-child(5),
-.col-5 td:nth-child(5) {
-  width: 20%;
-  text-align: center !important;
-}
-
-.col-7 th:nth-child(1),
-.col-7 td:nth-child(1) {
-  width: 22%;
-  text-align: center !important;
-}
-
-.col-7 th:nth-child(2),
-.col-7 td:nth-child(2),
-.col-7 th:nth-child(3),
-.col-7 td:nth-child(3),
-.col-7 th:nth-child(4),
-.col-7 td:nth-child(4),
-.col-7 th:nth-child(5),
-.col-7 td:nth-child(5),
-.col-7 th:nth-child(6),
-.col-7 td:nth-child(6) {
-  width: 11%;
-  text-align: center !important;
-}
-
-.col-7 th:nth-child(7),
-.col-7 td:nth-child(7) {
-  width: 12%;
-  text-align: center !important;
-}
-
-.col-4 th,
-.col-4 td {
-  text-align: center !important;
-}
-
-.col-4 th:nth-child(1),
-.col-4 td:nth-child(1) {
-  width: 25%;
-}
-
-.col-4 th:nth-child(2),
-.col-4 td:nth-child(2) {
-  width: 30%;
-}
-
-.col-4 th:nth-child(3),
-.col-4 td:nth-child(3) {
-  width: 20%;
-}
-
-.col-4 th:nth-child(4),
-.col-4 td:nth-child(4) {
-  width: 25%;
-}
-
-.col-3 th,
-.col-3 td {
-  text-align: center !important;
-}
-
-.col-3 th:nth-child(1),
-.col-3 td:nth-child(1) {
-  width: 40%;
-}
-
-.col-3 th:nth-child(2),
-.col-3 td:nth-child(2) {
-  width: 30%;
-}
-
-.col-3 th:nth-child(3),
-.col-3 td:nth-child(3) {
-  width: 30%;
-}
-
-.col-6 th,
-.col-6 td {
-  text-align: center !important;
-}
-
-.col-6 th:nth-child(1),
-.col-6 td:nth-child(1) {
-  width: 14%;
-}
-
-.col-6 th:nth-child(2),
-.col-6 td:nth-child(2) {
-  width: 10%;
-}
-
-.col-6 th:nth-child(3),
-.col-6 td:nth-child(3) {
-  width: 26%;
-}
-
-.col-6 th:nth-child(4),
-.col-6 td:nth-child(4) {
-  width: 22%;
-}
-
-.col-6 th:nth-child(5),
-.col-6 td:nth-child(5) {
-  width: 12%;
-}
-
-.col-6 th:nth-child(6),
-.col-6 td:nth-child(6) {
-  width: 16%;
-}
+/* Brittle col-X classes removed in favor of semantic col-classes */
 
 .material-cell {
   display: flex;
@@ -1462,13 +1264,17 @@ input[type="date"] {
 ═══════════════════════════════════════════ */
 .modal-overlay {
   position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.35);
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 9999;
   padding: 20px;
+  backdrop-filter: blur(2px);
 }
 
 .modal-card {
@@ -1928,18 +1734,6 @@ input[type="date"] {
 }
 
 /* ═══════════════════════════════════════════
-   TABLE SCROLL — RESPONSIVE MAX-HEIGHT
-═══════════════════════════════════════════ */
-@media (max-width: 600px) {
-  .table-responsive-wrapper {
-    max-height: calc(100vh - 200px);
-  }
-  .movements-grid .table-responsive-wrapper {
-    max-height: calc(100vh - 240px);
-  }
-}
-
-/* ═══════════════════════════════════════════
    MOBILE RESPONSIVE
 ═══════════════════════════════════════════ */
 @media (max-width: 600px) {
@@ -2330,40 +2124,220 @@ input[type="date"] {
   }
 }
 
-/* ── Inline Düzenleme Hücreleri ─────────────────────────────────────────── */
-.inline-edit-cell {
-  display: block;
-  cursor: text;
-  border-radius: 4px;
-  padding: 2px 4px;
-  transition: background 0.1s;
+/* ═══════════════════════════════════════════
+   MODERN STOCK SUMMARY (DASHBOARD) UI
+   Refined ERP/Management style
+═══════════════════════════════════════════ */
+
+.summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  gap: 16px;
 }
-.inline-edit-cell:hover {
-  background: rgba(99,102,241,0.08);
-  outline: 1.5px dashed #a5b4fc;
+
+.summary-title-area {
+  display: flex;
+  flex-direction: column;
 }
-.inline-edit-input {
-  width: 100%;
-  padding: 4px 6px;
-  border: 1.5px solid var(--primary, #6366f1);
-  border-radius: 4px;
+
+.summary-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.5px;
+  margin: 0;
+}
+
+.summary-subtitle {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.summary-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* KPI Cards Grid */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.kpi-card {
+  background: var(--bg-card);
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.04);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.kpi-icon-wrapper {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.kpi-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.kpi-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.kpi-value {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-main);
+  margin-top: 2px;
+}
+
+/* Color variations for icons */
+.icon-primary { background: #eff6ff; color: #2563eb; }
+.icon-danger  { background: #fef2f2; color: #dc2626; }
+.icon-success { background: #f0fdf4; color: #16a34a; }
+.icon-warning { background: #fffbeb; color: #d97706; }
+
+/* Enhanced Table Container */
+.table-container-modern {
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.table-toolbar-refined {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  background: rgba(255,255,255,0.4);
+}
+
+/* Status Badges */
+.status-badge {
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.status-badge.critical { background: #fef2f2; color: #991b1b; border: 1px solid #fee2e2; }
+.status-badge.warning  { background: #fffbeb; color: #92400e; border: 1px solid #fef3c7; }
+.status-badge.healthy  { background: #f0fdf4; color: #166534; border: 1px solid #dcfce7; }
+.status-badge.neutral  { background: #f8fafc; color: #475569; border: 1px solid #f1f5f9; }
+
+/* Mini Progress Bar for Occupancy/Stock */
+.stock-progress-container {
+  width: 100px;
+  height: 6px;
+  background: #f1f5f9;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.stock-progress-bar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* Row Expansion */
+.expand-row-details {
+  background: var(--bg-main);
+  padding: 0 !important;
+  border-top: none !important;
+}
+
+.details-content {
+  padding: 20px 32px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 20px;
+  background: linear-gradient(to bottom, #f8fafc, #ffffff);
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.detail-value {
   font-size: 13px;
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.val-faint {
+  opacity: 0.35;
+}
+
+/* Zebra & Hover Improvements */
+.responsive-table.zebra tbody tr:nth-child(even) {
+  background-color: rgba(248, 250, 252, 0.4);
+}
+
+.responsive-table.zebra tbody tr:hover {
+  background-color: rgba(241, 245, 249, 0.8) !important;
+}
+
+/* Alignment Utilities */
+.txt-right { text-align: right !important; }
+.txt-center { text-align: center !important; }
+.txt-left { text-align: left !important; }
+
+/* Filter Selects */
+.filter-select {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: white;
+  font-size: 13px;
+  color: var(--text-main);
   font-family: inherit;
   outline: none;
-  background: white;
-  box-sizing: border-box;
 }
 
-/* ── Fiyat Analizi Tablosu ───────────────────────────────────────────────── */
-.price-analysis-table th,
-.price-analysis-table td { text-align: left !important; }
+.filter-select:focus {
+  border-color: var(--primary);
+}
 
-.price-analysis-table th:nth-child(3),
-.price-analysis-table td:nth-child(3),
-.price-analysis-table th:nth-child(5),
-.price-analysis-table td:nth-child(5),
-.price-analysis-table th:nth-child(6),
-.price-analysis-table td:nth-child(6) { text-align: right !important; }
-
-.price-analysis-table th:nth-child(4),
-.price-analysis-table td:nth-child(4) { text-align: center !important; }

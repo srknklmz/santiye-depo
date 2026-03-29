@@ -1,4 +1,7 @@
 {
+    "database": {
+        "rules": "database.rules.json"
+    },
     "hosting": {
         "site": "shintea-dc091",
         "public": "dist",
