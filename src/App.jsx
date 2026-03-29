@@ -492,6 +492,62 @@ const BulkDeleteModal = ({ data, onConfirm, onCancel }) => {
     );
 };
 
+// ─── MultiSelectDropdown ─────────────────────────────────────────────────────
+const MultiSelectDropdown = ({ label, options, selected, onChange }) => {
+    const [open, setOpen] = React.useState(false);
+    const ref = React.useRef(null);
+    React.useEffect(() => {
+        if (!open) return;
+        const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [open]);
+    return (
+        <div ref={ref} style={{ position: 'relative', flex: 1 }}>
+            <button onClick={() => setOpen(o => !o)} style={{
+                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '5px 8px', fontSize: '11px', fontWeight: 500, borderRadius: '7px',
+                border: '1px solid var(--border)', background: selected.size > 0 ? 'var(--accent)' : 'var(--bg-card)',
+                color: selected.size > 0 ? '#fff' : 'var(--text-muted)', cursor: 'pointer', gap: '4px',
+            }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {selected.size > 0 ? `${selected.size} seçili` : label}
+                </span>
+                <ChevronDown size={11} style={{ flexShrink: 0 }} />
+            </button>
+            {open && (
+                <div style={{
+                    position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 200,
+                    background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px',
+                    boxShadow: '0 6px 20px rgba(0,0,0,0.12)', maxHeight: '200px', overflowY: 'auto', padding: '4px 0',
+                }}>
+                    {selected.size > 0 && (
+                        <button onClick={() => onChange(new Set())} style={{
+                            width: '100%', textAlign: 'left', padding: '5px 10px', fontSize: '11px',
+                            color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer',
+                            borderBottom: '1px solid var(--border)', fontWeight: 600,
+                        }}>Temizle</button>
+                    )}
+                    {options.map(opt => (
+                        <label key={opt} style={{
+                            display: 'flex', alignItems: 'center', gap: '8px',
+                            padding: '5px 10px', cursor: 'pointer', fontSize: '12px',
+                            color: 'var(--text-main)',
+                        }}>
+                            <input type="checkbox" checked={selected.has(opt)} onChange={() => {
+                                const next = new Set(selected);
+                                if (next.has(opt)) next.delete(opt); else next.add(opt);
+                                onChange(next);
+                            }} style={{ accentColor: 'var(--primary)', cursor: 'pointer' }} />
+                            {opt}
+                        </label>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 // ─── DateRangePicker ──────────────────────────────────────────────────────────
 
 const DateRangePicker = ({ startDate, endDate, onChange }) => {
@@ -672,6 +728,8 @@ const App = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [summaryFilters, setSummaryFilters] = useState({ unit: 'all', status: 'all', sortBy: 'name', sortOrder: 'asc' });
     const [summarySelected, setSummarySelected] = useState(null);
+    const [summaryFilterNames, setSummaryFilterNames] = useState(new Set());
+    const [summaryFilterCategories, setSummaryFilterCategories] = useState(new Set());
     const [expandedRows, setExpandedRows] = useState(new Set());
     const [visibleCols, setVisibleCols] = useState(['Malzeme', 'Giris', 'Cikis', 'Depo', 'Zimmet', 'Toplam', 'Birim']);
     const [categoryFilter, setCategoryFilter] = useState('Tümü');
@@ -1453,31 +1511,21 @@ const App = () => {
             list = list.filter(s => s.name.toLowerCase().includes(q) || (s.category || '').toLowerCase().includes(q));
         }
 
-        // Unit Filter
-        if (summaryFilters.unit !== 'all') {
-            list = list.filter(s => s.unit === summaryFilters.unit);
+        // Malzeme multi-select filter
+        if (summaryFilterNames.size > 0) {
+            list = list.filter(s => summaryFilterNames.has(s.name));
         }
 
-        // Status Filter
-        if (summaryFilters.status !== 'all') {
-            list = list.filter(s => s.status === summaryFilters.status);
+        // Kategori multi-select filter
+        if (summaryFilterCategories.size > 0) {
+            list = list.filter(s => summaryFilterCategories.has(s.category || ''));
         }
 
-        // Sorting
-        list.sort((a, b) => {
-            let valA = a[summaryFilters.sortBy];
-            let valB = b[summaryFilters.sortBy];
-            
-            if (typeof valA === 'string') valA = valA.toLowerCase();
-            if (typeof valB === 'string') valB = valB.toLowerCase();
-
-            if (valA < valB) return summaryFilters.sortOrder === 'asc' ? -1 : 1;
-            if (valA > valB) return summaryFilters.sortOrder === 'asc' ? 1 : -1;
-            return 0;
-        });
+        // Sorting A-Z
+        list.sort((a, b) => a.name.localeCompare(b.name, 'tr'));
 
         return list;
-    }, [items, movements, zimmet, searchQuery, summaryFilters]);
+    }, [items, movements, zimmet, searchQuery, summaryFilterNames, summaryFilterCategories]);
 
     const summaryStats = useMemo(() => {
         const totalProducts = items.length;
@@ -2622,7 +2670,7 @@ const App = () => {
                     <div>
                         <div style={{ position: 'relative', display: 'inline-block' }}>
                             <div className="sidebar-logo-text">Shintea</div>
-                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.047</span>
+                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.048</span>
                         </div>
                     </div>
                 </div>
@@ -3087,14 +3135,25 @@ const App = () => {
                         </div>
                     )}
                     {activeTab === 'summary' && pagePerm('summary') !== 'none' && (
-                        <div className="animate-fade">
-                            {/* ── HEADER AREA ── */}
-                            <div className="summary-header">
-                                <div className="summary-title-area">
-                                    <h1 className="summary-title">Stok Özeti</h1>
-                                    <span className="summary-subtitle">Depodaki güncel malzeme giriş, çıkış ve bakiye durumu analizi</span>
+                        <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
+                            {/* ── COMPACT HEADER ── */}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0 10px', flexShrink: 0, gap: '12px', flexWrap: 'wrap' }}>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
+                                    <h1 className="summary-title" style={{ fontSize: '18px', margin: 0 }}>Stok Özeti</h1>
                                 </div>
-                                <div className="summary-actions">
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                    {/* Mini KPI Chips */}
+                                    {[
+                                        { val: summaryStats.totalProducts, label: 'Toplam', color: 'var(--primary)', bg: '#eff6ff' },
+                                        { val: summaryStats.criticalItems, label: 'Kritik', color: '#dc2626', bg: '#fef2f2' },
+                                        { val: summaryStats.monthlyIns, label: 'Ay Giriş', color: '#16a34a', bg: '#f0fdf4' },
+                                        { val: summaryStats.monthlyOuts, label: 'Ay Çıkış', color: '#d97706', bg: '#fffbeb' },
+                                    ].map(chip => (
+                                        <div key={chip.label} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '20px', background: chip.bg, border: `1px solid ${chip.color}22` }}>
+                                            <span style={{ fontSize: '13px', fontWeight: 800, color: chip.color }}>{chip.val}</span>
+                                            <span style={{ fontSize: '10px', fontWeight: 600, color: chip.color, opacity: 0.75, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{chip.label}</span>
+                                        </div>
+                                    ))}
                                     <ExportButtons
                                         data={stockSummary}
                                         title="Stok Özeti Raporu"
@@ -3109,46 +3168,14 @@ const App = () => {
                                         filename={`Stok_Ozeti_${new Date().toLocaleDateString('tr-TR')}`}
                                         options={{ showKpis: true }}
                                     />
-                                    <button className="btn-primary" style={{ background: 'var(--bg-card)', color: 'var(--text-main)', border: '1px solid var(--border)' }} onClick={() => { /* logic to refresh */ }}>
-                                        <RotateCcw size={15} /> <span style={{ marginLeft: '4px' }}>Yenile</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* ── KPI CARDS ── */}
-                            <div className="kpi-grid">
-                                <div className="kpi-card">
-                                    <div className="kpi-icon-wrapper icon-primary"><Package size={22} /></div>
-                                    <div className="kpi-info">
-                                        <span className="kpi-label">Toplam Ürün</span>
-                                        <span className="kpi-value">{summaryStats.totalProducts}</span>
-                                    </div>
-                                </div>
-                                <div className="kpi-card">
-                                    <div className="kpi-icon-wrapper icon-danger"><AlertTriangle size={22} /></div>
-                                    <div className="kpi-info">
-                                        <span className="kpi-label">Kritik Stok</span>
-                                        <span className="kpi-value">{summaryStats.criticalItems}</span>
-                                    </div>
-                                </div>
-                                <div className="kpi-card">
-                                    <div className="kpi-icon-wrapper icon-success"><ArrowDownLeft size={22} /></div>
-                                    <div className="kpi-info">
-                                        <span className="kpi-label">Bu Ay Giriş</span>
-                                        <span className="kpi-value">{summaryStats.monthlyIns} <small style={{ fontSize: '11px', fontWeight: 500, opacity: 0.6 }}>işlem</small></span>
-                                    </div>
-                                </div>
-                                <div className="kpi-card">
-                                    <div className="kpi-icon-wrapper icon-warning"><ArrowUpRight size={22} /></div>
-                                    <div className="kpi-info">
-                                        <span className="kpi-label">Bu Ay Çıkış</span>
-                                        <span className="kpi-value">{summaryStats.monthlyOuts} <small style={{ fontSize: '11px', fontWeight: 500, opacity: 0.6 }}>işlem</small></span>
-                                    </div>
                                 </div>
                             </div>
 
                             {/* ── MASTER / DETAIL ── */}
                             {(() => {
+                                const allItemNames = [...new Set(items.map(i => i.name))].sort((a, b) => a.localeCompare(b, 'tr'));
+                                const allCategories = [...new Set(items.map(i => i.category || '').filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'));
+
                                 const selRow = summarySelected && stockSummary.find(r => r.id === summarySelected.id)
                                     ? stockSummary.find(r => r.id === summarySelected.id)
                                     : stockSummary[0] || null;
@@ -3162,11 +3189,11 @@ const App = () => {
                                 }[status] || { label: 'BELİRSİZ', color: '#94a3b8', bg: '#f8fafc', barColor: '#94a3b8' });
 
                                 return (
-                                    <div style={{ display: 'flex', gap: '14px', minHeight: '580px' }}>
+                                    <div style={{ display: 'flex', gap: '14px', flex: 1, minHeight: 0 }}>
                                         {/* ── SOL: LİSTE ── */}
                                         <div style={{ width: '300px', flexShrink: 0, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                                             {/* Arama + Filtreler */}
-                                            <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                            <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
                                                 <div className="search-container" style={{ margin: 0, width: '100%' }}>
                                                     <Search size={13} className="search-icon" />
                                                     <input
@@ -3179,30 +3206,18 @@ const App = () => {
                                                     />
                                                 </div>
                                                 <div style={{ display: 'flex', gap: '6px' }}>
-                                                    <select className="filter-select" style={{ flex: 1, fontSize: '11px', padding: '4px 6px' }} value={summaryFilters.status} onChange={(e) => setSummaryFilters(prev => ({ ...prev, status: e.target.value }))}>
-                                                        <option value="all">Tüm Durumlar</option>
-                                                        <option value="critical">🔴 Kritik</option>
-                                                        <option value="warning">🟡 Azalan</option>
-                                                        <option value="healthy">🟢 Normal</option>
-                                                        <option value="inactive">⚪ Atıl</option>
-                                                    </select>
-                                                    <select className="filter-select" style={{ flex: 1, fontSize: '11px', padding: '4px 6px' }} value={summaryFilters.sortBy} onChange={(e) => setSummaryFilters(prev => ({ ...prev, sortBy: e.target.value }))}>
-                                                        <option value="name">A–Z</option>
-                                                        <option value="quantity">Bakiye</option>
-                                                        <option value="totalReceived">Giriş</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-
-                                            {/* Mini KPI Şerit */}
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '1px solid var(--border)' }}>
-                                                <div style={{ padding: '8px 12px', borderRight: '1px solid var(--border)', textAlign: 'center' }}>
-                                                    <div style={{ fontSize: '18px', fontWeight: 900, color: 'var(--text-main)' }}>{stockSummary.length}</div>
-                                                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>MALZEME</div>
-                                                </div>
-                                                <div style={{ padding: '8px 12px', textAlign: 'center' }}>
-                                                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#ef4444' }}>{summaryStats.criticalItems}</div>
-                                                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>KRİTİK</div>
+                                                    <MultiSelectDropdown
+                                                        label="Malzeme"
+                                                        options={allItemNames}
+                                                        selected={summaryFilterNames}
+                                                        onChange={setSummaryFilterNames}
+                                                    />
+                                                    <MultiSelectDropdown
+                                                        label="Kategori"
+                                                        options={allCategories}
+                                                        selected={summaryFilterCategories}
+                                                        onChange={setSummaryFilterCategories}
+                                                    />
                                                 </div>
                                             </div>
 
