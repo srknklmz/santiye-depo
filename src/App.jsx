@@ -264,6 +264,9 @@ const EDIT_CONFIGS = {
             { key: 'unit',        label: 'Birim',      type: 'text' },
             { key: 'firmaAdi',    label: 'Firma',      type: 'text' },
             { key: 'irsaliyeNo',  label: 'İrsaliye No',type: 'text' },
+            { key: 'plaka',       label: 'Plaka',      type: 'text' },
+            { key: 'sofor',       label: 'Şoför',      type: 'text' },
+            { key: 'teslimAlan',  label: 'Teslim Alan',type: 'text' },
             { key: 'recipient',   label: 'Kişi',       type: 'text' },
             { key: 'note',        label: 'Not',        type: 'text' },
         ],
@@ -332,6 +335,68 @@ const EDIT_CONFIGS = {
     },
 };
 
+// ─── Tablo Seçim Sistemi ─────────────────────────────────────────────────────
+const HIGHLIGHT_COLORS = {
+    yellow: { bg: 'rgba(254,243,199,0.7)', label: 'Sarı',    dot: '#f59e0b' },
+    blue:   { bg: 'rgba(219,234,254,0.7)', label: 'Mavi',    dot: '#3b82f6' },
+    red:    { bg: 'rgba(254,226,226,0.7)', label: 'Kırmızı', dot: '#ef4444' },
+};
+
+function TableSelectionBar({ selected, allRows, idKey = 'id', onDelete, onEdit, onHighlight, onSelectAll, onClear }) {
+    const [showColors, setShowColors] = React.useState(false);
+    const pickerRef = React.useRef(null);
+    React.useEffect(() => {
+        if (!showColors) return;
+        const handler = (e) => { if (pickerRef.current && !pickerRef.current.contains(e.target)) setShowColors(false); };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [showColors]);
+    if (!selected || selected.size === 0) return null;
+    return (
+        <div className="tsel-bar">
+            <span className="tsel-count"><strong>{selected.size}</strong> satır seçili</span>
+            <div className="tsel-actions">
+                <button className="tsel-btn" onClick={onSelectAll}>Tümünü Seç&nbsp;({allRows.length})</button>
+                <button className="tsel-btn" onClick={onClear}>Seçimi Kaldır</button>
+                {onDelete && (
+                    <button className="tsel-btn tsel-btn-danger" onClick={onDelete}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                        Sil
+                    </button>
+                )}
+                {onEdit && selected.size === 1 && (
+                    <button className="tsel-btn tsel-btn-edit" onClick={onEdit}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        Düzenle
+                    </button>
+                )}
+                {onHighlight && (
+                    <div style={{ position: 'relative' }} ref={pickerRef}>
+                        <button className="tsel-btn tsel-btn-highlight" onClick={() => setShowColors(p => !p)}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                            Vurgula
+                        </button>
+                        {showColors && (
+                            <div className="tsel-color-picker">
+                                {Object.entries(HIGHLIGHT_COLORS).map(([key, val]) => (
+                                    <button key={key} className="tsel-color-btn" onClick={() => { onHighlight(key); setShowColors(false); }}>
+                                        <span className="tsel-color-dot" style={{ background: val.dot }} />
+                                        {val.label}
+                                    </button>
+                                ))}
+                                <button className="tsel-color-btn" onClick={() => { onHighlight(null); setShowColors(false); }}>
+                                    <span className="tsel-color-dot" style={{ border: '1.5px dashed #94a3b8', background: 'transparent' }} />
+                                    Temizle
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 const AdminContextMenu = ({ ctx, onEdit, onDelete, onClose }) => {
     const ref = useRef(null);
     useEffect(() => {
@@ -347,13 +412,15 @@ const AdminContextMenu = ({ ctx, onEdit, onDelete, onClose }) => {
             background: 'white', borderRadius: '8px', boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
             border: '1px solid #e2e8f0', minWidth: '150px', overflow: 'hidden', userSelect: 'none',
         }}>
-            <div onClick={onEdit} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 14px', fontSize: '13px', cursor: 'pointer', color: '#1e293b' }}
-                onMouseEnter={e => e.currentTarget.style.background='#f1f5f9'}
-                onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                Düzenle
-            </div>
-            <div style={{ height: '1px', background: '#f1f5f9' }} />
+            {!ctx.hideEdit && <>
+                <div onClick={onEdit} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 14px', fontSize: '13px', cursor: 'pointer', color: '#1e293b' }}
+                    onMouseEnter={e => e.currentTarget.style.background='#f1f5f9'}
+                    onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    Düzenle
+                </div>
+                <div style={{ height: '1px', background: '#f1f5f9' }} />
+            </>}
             <div onClick={onDelete} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 14px', fontSize: '13px', cursor: 'pointer', color: '#dc2626' }}
                 onMouseEnter={e => e.currentTarget.style.background='#fef2f2'}
                 onMouseLeave={e => e.currentTarget.style.background='transparent'}>
@@ -702,14 +769,37 @@ const App = () => {
         return canEdit ? 'edit' : 'view';
     };
 
+    // ── Tablo Seçim State'leri ──
+    const [selItems,     setSelItems]     = useState(new Set());
+    const [selMovements, setSelMovements] = useState(new Set());
+    const [selZimmet,    setSelZimmet]    = useState(new Set());
+    const [selPersonel,  setSelPersonel]  = useState(new Set());
+    const [selUsers,     setSelUsers]     = useState(new Set());
+    const [selSevkiyat,  setSelSevkiyat]  = useState(new Set());
+    const [selRequests,  setSelRequests]  = useState(new Set());
+    const [highlights,   setHighlights]   = useState({}); // { 'table:id': 'yellow'|'blue'|'red' }
+    const [inlineEdit,   setInlineEdit]   = useState(null); // { id, field, value, groupItems? }
+
+    const saveInlineEdit = () => {
+        if (!inlineEdit) return;
+        if (inlineEdit.groupItems) {
+            const updates = {};
+            inlineEdit.groupItems.forEach(item => { updates[`movements/${item.id}/${inlineEdit.field}`] = inlineEdit.value; });
+            update(ref(db), updates);
+        } else {
+            update(ref(db, `movements/${inlineEdit.id}`), { [inlineEdit.field]: inlineEdit.value });
+        }
+        setInlineEdit(null);
+    };
+
     // ── Admin Right-Click ──
     const [ctxMenu, setCtxMenu] = useState(null);   // { x, y, row, collection }
     const [editRow, setEditRow] = useState(null);   // { row, collection }
 
-    const handleCtxMenu = (e, row, collection) => {
+    const handleCtxMenu = (e, row, collection, options = {}) => {
         e.preventDefault();
         e.stopPropagation();
-        setCtxMenu({ x: e.clientX, y: e.clientY, row, collection });
+        setCtxMenu({ x: e.clientX, y: e.clientY, row, collection, ...options });
     };
 
     const handleCtxDelete = () => {
@@ -719,6 +809,46 @@ const App = () => {
         remove(ref(db, cfg.path(ctxMenu.row)));
         setCtxMenu(null);
     };
+
+    // Toplu silme
+    const handleBulkDelete = (collection, selectedIds, rows, idKey, setSel) => {
+        if (selectedIds.size === 0) return;
+        if (!window.confirm(`${selectedIds.size} kayıt kalıcı olarak silinecek. Emin misiniz?`)) return;
+        const cfg = EDIT_CONFIGS[collection];
+        const updates = {};
+        rows.filter(r => selectedIds.has(r[idKey])).forEach(r => { updates[cfg.path(r)] = null; });
+        update(ref(db), updates);
+        setSel(new Set());
+    };
+
+    // Highlight
+    const handleBulkHighlight = (tableKey, selectedIds, color) => {
+        setHighlights(prev => {
+            const next = { ...prev };
+            selectedIds.forEach(id => {
+                const k = `${tableKey}:${id}`;
+                if (color === null) delete next[k]; else next[k] = color;
+            });
+            return next;
+        });
+    };
+
+    // Tablo için row style (highlight)
+    const hlStyle = (tableKey, id) => {
+        const c = highlights[`${tableKey}:${id}`];
+        return c ? { background: HIGHLIGHT_COLORS[c].bg } : {};
+    };
+
+    // Toggle helper
+    const toggleSel = (setSel, id) => setSel(prev => {
+        const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next;
+    });
+
+    // Header checkbox helper
+    const headerChecked = (sel, rows, idKey = 'id') => rows.length > 0 && rows.every(r => sel.has(r[idKey]));
+    const toggleAll = (setSel, rows, idKey = 'id') => setSel(prev =>
+        prev.size === rows.length && rows.every(r => prev.has(r[idKey])) ? new Set() : new Set(rows.map(r => r[idKey]))
+    );
 
     const handleCtxEdit = () => {
         if (!ctxMenu) return;
@@ -1127,9 +1257,10 @@ const App = () => {
             totalItems: items.length,
             lowStock: items.filter(item => item.quantity <= item.minStock).length,
             todayIn: movements.filter(m => m.type === 'in' && String(m.date || '').includes(today)).length,
-            todayOut: movements.filter(m => m.type === 'out' && String(m.date || '').includes(today)).length
+            todayOut: movements.filter(m => m.type === 'out' && String(m.date || '').includes(today)).length,
+            todayZimmet: zimmet.filter(z => String(z.date || '').includes(today)).length
         };
-    }, [items, movements]);
+    }, [items, movements, zimmet]);
 
     const pendingRequestsCount = useMemo(() =>
         requests.filter(r => r.status === 'pending').length,
@@ -1221,12 +1352,23 @@ const App = () => {
 
     const priceAnalysis = useMemo(() => {
         return items.map(item => {
-            const itemInMovements = movements.filter(m => Number(m.itemId) === Number(item.id) && m.type === 'in');
+            const itemInMovements = movements.filter(m => {
+                if (m.type !== 'in') return false;
+                if (m.itemId && Number(m.itemId) === Number(item.id)) return true;
+                if (m.itemName && m.itemName.toLowerCase() === item.name.toLowerCase()) return true;
+                return false;
+            });
             const totalQtyReceived = itemInMovements.reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
-            const totalSpent = itemInMovements.reduce((sum, m) => sum + (Number(m.amount) * (Number(m.price) || 0)), 0);
-            const avgPrice = totalQtyReceived > 0 ? (totalSpent / totalQtyReceived) : 0;
-            return { ...item, totalQtyReceived, totalSpent, avgPrice };
-        }).sort((a, b) => b.totalSpent - a.totalSpent);
+            // Sadece fiyat girilmiş hareketleri hesaplamaya dahil et
+            const pricedMovements = itemInMovements.filter(m => Number(m.price) > 0);
+            const totalSpent = pricedMovements.reduce((sum, m) => sum + (Number(m.amount) * Number(m.price)), 0);
+            const pricedQty = pricedMovements.reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
+            const avgPrice = pricedQty > 0 ? (totalSpent / pricedQty) : 0;
+            const lastPrice = pricedMovements.length > 0
+                ? Number(pricedMovements[pricedMovements.length - 1].price)
+                : 0;
+            return { ...item, totalQtyReceived, totalSpent, avgPrice, lastPrice, pricedQty };
+        }).filter(row => row.totalSpent > 0).sort((a, b) => a.name.localeCompare(b.name, 'tr'));
     }, [items, movements]);
 
     // ── Data Handlers ──
@@ -1281,6 +1423,8 @@ const App = () => {
                 const malzemeTuru = formData.get('malzemeTuru') || 'Genel';
                 const firmaAdi = inFirmaAdi.trim();
                 const teslimAlan = formData.get('teslimAlan') || '';
+                const plaka = (formData.get('plaka') || '').trim();
+                const sofor = (formData.get('sofor') || '').trim();
                 const amount = parseFloat(formData.get('amount') || 0);
                 if (!malzemeAdi) { setIsSaving(false); return; }
 
@@ -1300,6 +1444,8 @@ const App = () => {
                     malzemeTuru,
                     firmaAdi,
                     teslimAlan,
+                    plaka,
+                    sofor,
                     amount,
                     unit,
                     irsaliyeNo,
@@ -2259,7 +2405,7 @@ const App = () => {
                     <div>
                         <div style={{ position: 'relative', display: 'inline-block' }}>
                             <div className="sidebar-logo-text">Shintea</div>
-                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.032</span>
+                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.043</span>
                         </div>
                     </div>
                 </div>
@@ -2276,19 +2422,22 @@ const App = () => {
                         {pagePerm('action_giris') === 'edit' && (
                             <button className="sidebar-action-btn sidebar-action-success"
                                 onClick={() => { setMovementType('in'); setSelectedItemForMove(null); setShowMoveModal(true); }}>
-                                <ArrowUpRight size={15} /> <span>Giriş Ekle</span>
+                                <ArrowUpRight size={15} /> <span style={{ flex: 1 }}>Giriş Ekle</span>
+                                <span className="sidebar-action-badge sidebar-action-badge-green">{stats.todayIn}</span>
                             </button>
                         )}
                         {pagePerm('action_cikis') === 'edit' && (
                             <button className="sidebar-action-btn sidebar-action-danger"
                                 onClick={() => { setMovementType('out'); setSelectedItemForMove(null); setShowMoveModal(true); }}>
-                                <ArrowDownLeft size={15} /> <span>Çıkış Ekle</span>
+                                <ArrowDownLeft size={15} /> <span style={{ flex: 1 }}>Çıkış Ekle</span>
+                                <span className="sidebar-action-badge sidebar-action-badge-red">{stats.todayOut}</span>
                             </button>
                         )}
                         {pagePerm('action_zimmet') === 'edit' && (
                             <button className="sidebar-action-btn sidebar-action-purple"
                                 onClick={() => { setShowZimmetModal(true); setSelectedItemForZimmet(null); }}>
-                                <UserCheck size={15} /> <span>Zimmet Ekle</span>
+                                <UserCheck size={15} /> <span style={{ flex: 1 }}>Zimmet Ekle</span>
+                                <span className="sidebar-action-badge sidebar-action-badge-purple">{stats.todayZimmet}</span>
                             </button>
                         )}
                     </div>
@@ -2619,42 +2768,6 @@ const App = () => {
                                 return (
                                     <div className="table-card">
                                         {/* Filtre Butonları */}
-                                        <div className="table-toolbar" style={{ justifyContent: 'space-between', gap: '8px' }}>
-                                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-                                                <button className="stat-mini-btn"
-                                                    onClick={() => setDashModal({ show: true, title: 'Tüm Malzemeler', data: items, type: 'stock' })}>
-                                                    <span className="stat-mini-val">{stats.totalItems}</span>
-                                                    <span className="stat-mini-lbl">Toplam</span>
-                                                </button>
-                                                <button className="stat-mini-btn stat-mini-danger"
-                                                    onClick={() => setDashModal({ show: true, title: 'Kritik Stoktaki Malzemeler', data: items.filter(i => i.quantity <= i.minStock), type: 'stock' })}>
-                                                    <span className="stat-mini-val">{stats.lowStock}</span>
-                                                    <span className="stat-mini-lbl">Kritik</span>
-                                                </button>
-                                                <button className="stat-mini-btn stat-mini-success"
-                                                    onClick={() => { const today = new Date().toLocaleDateString(); const todayIn = movements.filter(m => m.type === 'in' && String(m.date || '').includes(today)); setDashModal({ show: true, title: 'Bugünkü Giriş İşlemleri', data: todayIn, type: 'move', moveType: 'in' }); }}>
-                                                    <span className="stat-mini-val">{stats.todayIn}</span>
-                                                    <span className="stat-mini-lbl">Giriş</span>
-                                                </button>
-                                                <button className="stat-mini-btn stat-mini-warning"
-                                                    onClick={() => { const today = new Date().toLocaleDateString(); const todayOut = movements.filter(m => m.type === 'out' && String(m.date || '').includes(today)); setDashModal({ show: true, title: 'Bugünkü Çıkış İşlemleri', data: todayOut, type: 'move', moveType: 'out' }); }}>
-                                                    <span className="stat-mini-val">{stats.todayOut}</span>
-                                                    <span className="stat-mini-lbl">Çıkış</span>
-                                                </button>
-                                            </div>
-                                            <div style={{ display: 'flex', gap: '8px' }}>
-                                                {[['in','Giriş'], ['out','Çıkış'], ['zimmet','Zimmet']].map(([val, label]) => {
-                                                    const active = dashboardFilters.has(val);
-                                                    return (
-                                                        <button key={val} className="btn-filter-3d" onClick={() => toggleFilter(val)} style={{
-                                                            background: active ? filterBg[val] : 'var(--bg-hover)',
-                                                            color: active ? '#fff' : 'var(--text-muted)',
-                                                            boxShadow: active ? filterShadow[val] : inactiveShadow,
-                                                        }}>{label}</button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
                                         {/* Tablo */}
                                         <div className="table-responsive-wrapper dash-unified-wrap">
                                             <table className="responsive-table col-6">
@@ -2738,10 +2851,22 @@ const App = () => {
                                     </div>
                                 </div>
                             </div>
-                            <div className="table-responsive-wrapper dash-unified-wrap">
+                            {(() => {
+                                const filteredItems = stockSummary.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
+                                return (<>
+                                <TableSelectionBar
+                                    selected={selItems} allRows={filteredItems}
+                                    onSelectAll={() => toggleAll(setSelItems, filteredItems)}
+                                    onClear={() => setSelItems(new Set())}
+                                    onDelete={canEdit ? () => handleBulkDelete('items', selItems, filteredItems, 'id', setSelItems) : undefined}
+                                    onEdit={canEdit ? () => { const row = filteredItems.find(r => selItems.has(r.id)); if (row) setEditRow({ row, collection: 'items' }); } : undefined}
+                                    onHighlight={(color) => handleBulkHighlight('items', selItems, color)}
+                                />
+                                <div className="table-responsive-wrapper dash-unified-wrap">
                                 <table className="responsive-table col-7">
                                     <colgroup>
-                                        <col style={{ width: '32%' }} />
+                                        <col style={{ width: '36px' }} />
+                                        <col style={{ width: '28%' }} />
                                         <col style={{ width: '11%' }} />
                                         <col style={{ width: '11%' }} />
                                         <col style={{ width: '11%' }} />
@@ -2751,6 +2876,7 @@ const App = () => {
                                     </colgroup>
                                     <thead>
                                         <tr>
+                                            <th className="tsel-th"><input type="checkbox" className="tsel-checkbox" checked={headerChecked(selItems, filteredItems)} onChange={() => toggleAll(setSelItems, filteredItems)} /></th>
                                             <th>MALZEME</th>
                                             <th style={{ textAlign: 'right' }}>GİRİŞ</th>
                                             <th style={{ textAlign: 'right' }}>ÇIKIŞ</th>
@@ -2761,10 +2887,11 @@ const App = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {stockSummary.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase())).map(row => {
+                                        {filteredItems.map(row => {
                                             const depoCount = row.quantity - row.zimmetteCount;
                                             return (
-                                                <tr key={row.id} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, row, 'items') : undefined}>
+                                                <tr key={row.id} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, row, 'items') : undefined} style={hlStyle('items', row.id)} className={selItems.has(row.id) ? 'tsel-selected' : ''}>
+                                                    <td className="tsel-td"><input type="checkbox" className="tsel-checkbox" checked={selItems.has(row.id)} onChange={() => toggleSel(setSelItems, row.id)} onClick={e => e.stopPropagation()} /></td>
                                                     <td data-label="Malzeme" style={{ fontWeight: '600' }}>{row.name}</td>
                                                     <td style={{ textAlign: 'right', color: 'var(--success)', fontWeight: '600' }} data-label="Giriş">
                                                         <button onClick={() => setDetailModal({ show: true, item: row, type: 'in' })}>{formatNumber(row.totalReceived)}</button>
@@ -2781,7 +2908,9 @@ const App = () => {
                                         })}
                                     </tbody>
                                 </table>
-                            </div>
+                                </div>
+                                </>);
+                            })()}
                         </div>
                     )}
 
@@ -2849,9 +2978,24 @@ const App = () => {
                                 </div>
                             </div>
                             <div className="table-responsive-wrapper" style={{ overflowX: 'auto' }}>
-                                <table className="responsive-table col-5">
+                                {(() => {
+                                    const filteredZ = zimmet.filter(z =>
+                                        (zimmetView === 'active' ? z.status === 'zimmette' : true) &&
+                                        (z.itemName.toLowerCase().includes(searchQuery.toLowerCase()) || z.person.toLowerCase().includes(searchQuery.toLowerCase()))
+                                    ).sort((a, b) => (b.updated_at || b.created_at || b.id || 0) - (a.updated_at || a.created_at || a.id || 0));
+                                    return (<>
+                                    <TableSelectionBar
+                                        selected={selZimmet} allRows={filteredZ}
+                                        onSelectAll={() => toggleAll(setSelZimmet, filteredZ)}
+                                        onClear={() => setSelZimmet(new Set())}
+                                        onDelete={canEdit ? () => handleBulkDelete('zimmet', selZimmet, filteredZ, 'id', setSelZimmet) : undefined}
+                                        onEdit={canEdit ? () => { const row = filteredZ.find(r => selZimmet.has(r.id)); if (row) setEditRow({ row, collection: 'zimmet' }); } : undefined}
+                                        onHighlight={(color) => handleBulkHighlight('zimmet', selZimmet, color)}
+                                    />
+                                    <table className="responsive-table col-5">
                                     <thead>
                                         <tr>
+                                            <th className="tsel-th"><input type="checkbox" className="tsel-checkbox" checked={headerChecked(selZimmet, filteredZ)} onChange={() => toggleAll(setSelZimmet, filteredZ)} /></th>
                                             <th>İŞLEM TARİHİ</th>
                                             <th>MALZEME</th>
                                             <th>KİŞİ / EKİP</th>
@@ -2860,56 +3004,36 @@ const App = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {(() => {
-                                            const filtered = zimmet.filter(z =>
-                                                (zimmetView === 'active' ? z.status === 'zimmette' : true) &&
-                                                (z.itemName.toLowerCase().includes(searchQuery.toLowerCase()) || z.person.toLowerCase().includes(searchQuery.toLowerCase()))
-                                            ).sort((a, b) => (b.updated_at || b.created_at || b.id || 0) - (a.updated_at || a.created_at || a.id || 0));
-
-                                            if (filtered.length === 0) {
-                                                return <tr><td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>{zimmetView === 'active' ? 'Aktif zimmet kaydı bulunamadı.' : 'Henüz bir hareket kaydı yok.'}</td></tr>;
-                                            }
-
-                                            return filtered.map(z => (
-                                                <tr key={z.id} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, z, 'zimmet') : undefined}>
-                                                    <td data-label="İşlem Tarihi">{z.date}</td>
-                                                    <td data-label="Malzeme">{z.itemName}</td>
-                                                    <td data-label="Kişi / Ekip">{z.person}</td>
-                                                    <td data-label="Miktar" style={{ textAlign: 'right' }}>{z.amount}</td>
-                                                    <td data-label={zimmetView === 'active' ? "İşlem" : "Tür"}>
-                                                        {zimmetView === 'active' ? (
-                                                            pagePerm('zimmet') === 'edit' ? (
-                                                                <button
-                                                                    className="btn-ghost"
-                                                                    style={{ color: '#4f46e5', fontWeight: '600', padding: '6px 12px', borderRadius: '6px', background: '#f5f3ff', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-                                                                    onClick={() => handleReturnZimmet(z)}
-                                                                >
-                                                                    <RotateCcw size={14} /> Geri Alındı
-                                                                </button>
-                                                            ) : (
-                                                                <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                                                    <Eye size={13} /> Zimmette
-                                                                </span>
-                                                            )
+                                        {filteredZ.length === 0 ? (
+                                            <tr><td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>{zimmetView === 'active' ? 'Aktif zimmet kaydı bulunamadı.' : 'Henüz bir hareket kaydı yok.'}</td></tr>
+                                        ) : filteredZ.map(z => (
+                                            <tr key={z.id} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, z, 'zimmet') : undefined} style={hlStyle('zimmet', z.id)} className={selZimmet.has(z.id) ? 'tsel-selected' : ''}>
+                                                <td className="tsel-td"><input type="checkbox" className="tsel-checkbox" checked={selZimmet.has(z.id)} onChange={() => toggleSel(setSelZimmet, z.id)} onClick={e => e.stopPropagation()} /></td>
+                                                <td data-label="İşlem Tarihi">{z.date}</td>
+                                                <td data-label="Malzeme">{z.itemName}</td>
+                                                <td data-label="Kişi / Ekip">{z.person}</td>
+                                                <td data-label="Miktar" style={{ textAlign: 'right' }}>{z.amount}</td>
+                                                <td data-label={zimmetView === 'active' ? "İşlem" : "Tür"}>
+                                                    {zimmetView === 'active' ? (
+                                                        pagePerm('zimmet') === 'edit' ? (
+                                                            <button className="btn-ghost" style={{ color: '#4f46e5', fontWeight: '600', padding: '6px 12px', borderRadius: '6px', background: '#f5f3ff', display: 'inline-flex', alignItems: 'center', gap: '5px' }} onClick={() => handleReturnZimmet(z)}>
+                                                                <RotateCcw size={14} /> Geri Alındı
+                                                            </button>
                                                         ) : (
-                                                            <span style={{
-                                                                padding: '4px 10px',
-                                                                borderRadius: '20px',
-                                                                fontSize: '11px',
-                                                                fontWeight: '700',
-                                                                background: z.type === 'verildi' ? '#eff6ff' : '#f0fdf4',
-                                                                color: z.type === 'verildi' ? '#2563eb' : '#16a34a',
-                                                                border: `1px solid ${z.type === 'verildi' ? '#dbeafe' : '#dcfce7'}`
-                                                            }}>
-                                                                {z.type === 'verildi' ? 'ZİMMET VERİLDİ' : 'GERİ ALINDI'}
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            ));
-                                        })()}
+                                                            <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Eye size={13} /> Zimmette</span>
+                                                        )
+                                                    ) : (
+                                                        <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700', background: z.type === 'verildi' ? '#eff6ff' : '#f0fdf4', color: z.type === 'verildi' ? '#2563eb' : '#16a34a', border: `1px solid ${z.type === 'verildi' ? '#dbeafe' : '#dcfce7'}` }}>
+                                                            {z.type === 'verildi' ? 'ZİMMET VERİLDİ' : 'GERİ ALINDI'}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
                                     </tbody>
-                                </table>
+                                    </table>
+                                    </>);
+                                })()}
                             </div>
                         </div>
                     )}
@@ -2931,46 +3055,61 @@ const App = () => {
                                         * Giriş işlemlerindeki fiyatlar baz alınarak hesaplanmaktadır.
                                     </div>
                                 </div>
-                                <ExportButtons
-                                    data={priceAnalysis}
-                                    title="Malzeme Fiyat Analizi"
-                                    columns={[
-                                        { key: 'name', label: 'MALZEME' },
-                                        { key: 'totalQtyReceived', label: 'TOPLAM ALIM' },
-                                        { key: 'avgPrice', label: 'ORT BIRIM FIYAT' },
-                                        { key: 'totalSpent', label: 'TOPLAM TUTAR' }
-                                    ]}
-                                    filename="Fiyat_Analizi"
-                                />
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                    {priceAnalysis.length > 0 && (
+                                        <>
+                                            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{priceAnalysis.length} malzeme</span>
+                                            <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-main)' }}>
+                                                Genel Toplam: <span style={{ color: 'var(--primary)' }}>{formatNumber(priceAnalysis.reduce((s, r) => s + r.totalSpent, 0))} ₺</span>
+                                            </span>
+                                        </>
+                                    )}
+                                    <ExportButtons
+                                        data={priceAnalysis}
+                                        title="Malzeme Fiyat Analizi"
+                                        columns={[
+                                            { key: 'name',       label: 'MALZEME' },
+                                            { key: 'category',   label: 'KATEGORİ' },
+                                            { key: 'totalQtyReceived', label: 'MİKTAR' },
+                                            { key: 'unit',       label: 'BİRİM' },
+                                            { key: 'avgPrice',   label: 'ORT. BİRİM FİYAT' },
+                                            { key: 'totalSpent', label: 'TOPLAM TUTAR' }
+                                        ]}
+                                        filename="Fiyat_Analizi"
+                                    />
+                                </div>
                             </div>
                             <div className="table-responsive-wrapper dash-unified-wrap">
-                                <table className="responsive-table col-5">
+                                <table className="responsive-table price-analysis-table">
                                     <colgroup>
-                                        <col style={{ width: '34%' }} />
-                                        <col style={{ width: '16%' }} />
-                                        <col style={{ width: '18%' }} />
-                                        <col style={{ width: '18%' }} />
+                                        <col style={{ width: '28%' }} />
                                         <col style={{ width: '14%' }} />
+                                        <col style={{ width: '12%' }} />
+                                        <col style={{ width: '8%' }} />
+                                        <col style={{ width: '18%' }} />
+                                        <col style={{ width: '20%' }} />
                                     </colgroup>
                                     <thead>
                                         <tr>
                                             <th>MALZEME</th>
-                                            <th style={{ textAlign: 'right' }}>TOPLAM ALIM</th>
-                                            <th style={{ textAlign: 'right' }}>ORT. BİRİM FİYAT</th>
-                                            <th style={{ textAlign: 'right' }}>TOPLAM TUTAR</th>
-                                            <th style={{ textAlign: 'center' }}>BİRİM</th>
+                                            <th>KATEGORİ</th>
+                                            <th>MİKTAR</th>
+                                            <th>BİRİM</th>
+                                            <th>ORT. BİRİM FİYAT</th>
+                                            <th>TOPLAM TUTAR</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {priceAnalysis.length === 0 ? (
-                                            <tr><td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Fiyatlı giriş kaydı bulunamadı.</td></tr>
+                                            <tr><td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Fiyatlı giriş kaydı bulunamadı.</td></tr>
                                         ) : priceAnalysis.map((row, idx) => (
                                             <tr key={idx}>
                                                 <td style={{ fontWeight: '600' }}>{row.name}</td>
-                                                <td style={{ textAlign: 'right' }}>{formatNumber(row.totalQtyReceived)}</td>
-                                                <td style={{ textAlign: 'right', color: 'var(--primary)', fontWeight: '600' }}>{formatNumber(row.avgPrice)} ₺</td>
-                                                <td style={{ textAlign: 'right', fontWeight: '700' }}>{formatNumber(row.totalSpent)} ₺</td>
-                                                <td style={{ textAlign: 'center' }}>{row.unit}</td>
+                                                <td style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{row.category || '—'}</td>
+                                                <td>{formatNumber(row.totalQtyReceived)}</td>
+                                                <td>{row.unit}</td>
+                                                <td style={{ color: 'var(--primary)', fontWeight: '600' }}>{formatNumber(row.avgPrice)} ₺</td>
+                                                <td style={{ fontWeight: '700' }}>{formatNumber(row.totalSpent)} ₺</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -3090,20 +3229,28 @@ const App = () => {
                                 );
                             })()}
 
+                            <TableSelectionBar
+                                selected={selMovements} allRows={movementsFiltered}
+                                onSelectAll={() => toggleAll(setSelMovements, movementsFiltered)}
+                                onClear={() => setSelMovements(new Set())}
+                                onDelete={canEdit ? () => handleBulkDelete('movements', selMovements, movementsFiltered, 'id', setSelMovements) : undefined}
+                                onEdit={canEdit ? () => { const row = movementsFiltered.find(r => selMovements.has(r.id)); if (row) setEditRow({ row, collection: 'movements' }); } : undefined}
+                                onHighlight={(color) => handleBulkHighlight('movements', selMovements, color)}
+                            />
                             <div className="table-responsive-wrapper dash-unified-wrap">
-                                {(() => {
-                                    return (
                                 <table className="responsive-table col-6">
                                     <colgroup>
-                                        <col style={{ width: '11%' }} />
-                                        <col style={{ width: '36%' }} />
+                                        <col style={{ width: '36px' }} />
+                                        <col style={{ width: '10%' }} />
+                                        <col style={{ width: '33%' }} />
                                         <col style={{ width: '9%' }} />
                                         <col style={{ width: '8%' }} />
-                                        <col style={{ width: '22%' }} />
+                                        <col style={{ width: '20%' }} />
                                         <col style={{ width: '14%' }} />
                                     </colgroup>
                                     <thead>
                                         <tr>
+                                            <th className="tsel-th"><input type="checkbox" className="tsel-checkbox" checked={headerChecked(selMovements, movementsFiltered)} onChange={() => toggleAll(setSelMovements, movementsFiltered)} /></th>
                                             <th>TARİH</th>
                                             <th>MALZEME</th>
                                             <th style={{ textAlign: 'right' }}>MİKTAR</th>
@@ -3114,7 +3261,7 @@ const App = () => {
                                     </thead>
                                     <tbody>
                                         {movementsFiltered.length === 0 ? (
-                                            <tr><td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Kayıt bulunamadı.</td></tr>
+                                            <tr><td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Kayıt bulunamadı.</td></tr>
                                         ) : movementsFiltered.map((m) => {
                                             const isIn = m.normalizedType === 'in';
                                             const tipColor = isIn ? 'var(--success)' : 'var(--danger)';
@@ -3122,8 +3269,10 @@ const App = () => {
                                             const kisi = isIn ? (m.firmaAdi || m.recipient || '—') : (m.recipient || m.firmaAdi || '—');
                                             const detay = isIn ? (m.irsaliyeNo || '—') : (m.kullanimAlani || m.note || '—');
                                             const tarih = String(m.date || '—').split(',')[0].split(' ')[0];
+                                            const hlBg = highlights[`movements:${m.id}`] ? HIGHLIGHT_COLORS[highlights[`movements:${m.id}`]].bg : undefined;
                                             return (
-                                                <tr key={m.id} style={{ borderLeft: `20px solid ${tipColor}` }} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, m, 'movements') : undefined}>
+                                                <tr key={m.id} style={{ borderLeft: `20px solid ${tipColor}`, ...(hlBg ? { background: hlBg } : {}) }} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, m, 'movements') : undefined} className={selMovements.has(m.id) ? 'tsel-selected' : ''}>
+                                                    <td className="tsel-td"><input type="checkbox" className="tsel-checkbox" checked={selMovements.has(m.id)} onChange={() => toggleSel(setSelMovements, m.id)} onClick={e => e.stopPropagation()} /></td>
                                                     <td style={{ whiteSpace: 'nowrap' }}>{tarih}</td>
                                                     <td>{m.itemName || '—'}</td>
                                                     <td style={{ textAlign: 'right' }}>{miktar}</td>
@@ -3135,8 +3284,6 @@ const App = () => {
                                         })}
                                     </tbody>
                                 </table>
-                                    );
-                                })()}
                             </div>
                         </div>
                         );
@@ -3149,14 +3296,14 @@ const App = () => {
                         inMovements.forEach(m => {
                             const key = m.irsaliyeNo.trim();
                             if (!grouped[key]) {
-                                grouped[key] = { irsaliyeNo: key, items: [], date: m.date, firma: m.firmaAdi || m.recipient || '—', teslimAlan: m.teslimAlan || m.recipient || '—' };
+                                grouped[key] = { irsaliyeNo: key, items: [], date: m.date, firma: m.firmaAdi || m.recipient || '—', plaka: m.plaka || '—', sofor: m.sofor || '—', teslimAlan: m.teslimAlan || m.recipient || '—' };
                             }
                             grouped[key].items.push(m);
                         });
                         const irsaliyeList = Object.values(grouped).sort((a, b) => String(b.date || '') > String(a.date || '') ? 1 : -1);
-                        // col widths: tarih | irsaliyeNo/malzeme | firma | adet | teslimAlan
-                        const cw = ['11%', '22%', '26%', '9%', '32%'];
-                        const subCell = { padding: '9px 12px', fontSize: '13px', verticalAlign: 'middle', overflow: 'hidden' };
+                        // col widths: tarih | irsaliyeNo/malzeme | firma | adet | plaka | sofor | teslimAlan
+                        const cw = ['10%', '18%', '20%', '7%', '13%', '13%', '19%'];
+                        const subCell = { padding: '8px 14px', fontSize: '13px', verticalAlign: 'middle', overflow: 'hidden' };
                         return (
                             <div className="table-card animate-fade">
                                 <div className="table-toolbar">
@@ -3168,17 +3315,28 @@ const App = () => {
                                         Henüz irsaliyeli giriş kaydı yok.
                                     </div>
                                 ) : (
-                                    <div className="table-responsive-wrapper">
-                                        <table className="responsive-table col-5">
+                                    <>
+                                    <TableSelectionBar
+                                        selected={selMovements} allRows={irsaliyeList} idKey="irsaliyeNo"
+                                        onSelectAll={() => toggleAll(setSelMovements, irsaliyeList, 'irsaliyeNo')}
+                                        onClear={() => setSelMovements(new Set())}
+                                        onHighlight={(color) => handleBulkHighlight('irsaliye', selMovements, color)}
+                                    />
+                                    <div className="table-responsive-wrapper dash-unified-wrap">
+                                        <table className="responsive-table col-7">
                                             <colgroup>
+                                                <col style={{ width: '36px' }} />
                                                 {cw.map((w, i) => <col key={i} style={{ width: w }} />)}
                                             </colgroup>
                                             <thead>
                                                 <tr>
+                                                    <th className="tsel-th"><input type="checkbox" className="tsel-checkbox" checked={headerChecked(selMovements, irsaliyeList, 'irsaliyeNo')} onChange={() => toggleAll(setSelMovements, irsaliyeList, 'irsaliyeNo')} /></th>
                                                     <th>TARİH</th>
                                                     <th>İRSALİYE NO</th>
                                                     <th>FİRMA</th>
                                                     <th style={{ textAlign: 'center' }}>ÜRÜN</th>
+                                                    <th>PLAKA</th>
+                                                    <th>ŞOFÖR</th>
                                                     <th>TESLİM ALAN</th>
                                                 </tr>
                                             </thead>
@@ -3186,27 +3344,60 @@ const App = () => {
                                                 {irsaliyeList.map(irsaliye => {
                                                     const expanded = expandedIrsaliye === irsaliye.irsaliyeNo;
                                                     const tarih = String(irsaliye.date || '—').split(',')[0].split(' ')[0];
+                                                    const hlBg = highlights[`irsaliye:${irsaliye.irsaliyeNo}`] ? HIGHLIGHT_COLORS[highlights[`irsaliye:${irsaliye.irsaliyeNo}`]].bg : undefined;
                                                     return (
                                                         <React.Fragment key={irsaliye.irsaliyeNo}>
                                                             <tr
                                                                 onClick={() => setExpandedIrsaliye(expanded ? null : irsaliye.irsaliyeNo)}
-                                                                style={{ cursor: 'pointer', background: expanded ? 'var(--bg-hover)' : undefined }}
+                                                                onContextMenu={isAdmin && irsaliye.items.length > 0 ? (e) => { e.stopPropagation(); handleCtxMenu(e, irsaliye.items[0], 'movements', { hideEdit: true }); } : undefined}
+                                                                style={{ cursor: 'pointer', background: hlBg || (expanded ? 'var(--bg-hover)' : undefined) }}
+                                                                className={selMovements.has(irsaliye.irsaliyeNo) ? 'tsel-selected' : ''}
                                                             >
+                                                                <td className="tsel-td" onClick={e => e.stopPropagation()}><input type="checkbox" className="tsel-checkbox" checked={selMovements.has(irsaliye.irsaliyeNo)} onChange={() => toggleSel(setSelMovements, irsaliye.irsaliyeNo)} /></td>
                                                                 <td>{tarih}</td>
                                                                 <td style={{ fontWeight: '600' }}>{irsaliye.irsaliyeNo}</td>
                                                                 <td>{irsaliye.firma}</td>
                                                                 <td style={{ textAlign: 'center', fontWeight: '700', color: 'var(--text-main)' }}>{irsaliye.items.length}</td>
+                                                                <td onClick={e => e.stopPropagation()}>
+                                                                    {isAdmin && inlineEdit?.id === `group-${irsaliye.irsaliyeNo}` && inlineEdit?.field === 'plaka' ? (
+                                                                        <input autoFocus className="inline-edit-input" value={inlineEdit.value} onChange={e => setInlineEdit(p => ({ ...p, value: e.target.value }))} onKeyDown={e => { if (e.key === 'Enter') saveInlineEdit(); if (e.key === 'Escape') setInlineEdit(null); }} onBlur={saveInlineEdit} onClick={e => e.stopPropagation()} />
+                                                                    ) : (
+                                                                        <span className={isAdmin ? 'inline-edit-cell' : ''} onClick={isAdmin ? () => setInlineEdit({ id: `group-${irsaliye.irsaliyeNo}`, field: 'plaka', value: irsaliye.plaka === '—' ? '' : (irsaliye.plaka || ''), groupItems: irsaliye.items }) : undefined}>{irsaliye.plaka}</span>
+                                                                    )}
+                                                                </td>
+                                                                <td onClick={e => e.stopPropagation()}>
+                                                                    {isAdmin && inlineEdit?.id === `group-${irsaliye.irsaliyeNo}` && inlineEdit?.field === 'sofor' ? (
+                                                                        <input autoFocus className="inline-edit-input" value={inlineEdit.value} onChange={e => setInlineEdit(p => ({ ...p, value: e.target.value }))} onKeyDown={e => { if (e.key === 'Enter') saveInlineEdit(); if (e.key === 'Escape') setInlineEdit(null); }} onBlur={saveInlineEdit} onClick={e => e.stopPropagation()} />
+                                                                    ) : (
+                                                                        <span className={isAdmin ? 'inline-edit-cell' : ''} onClick={isAdmin ? () => setInlineEdit({ id: `group-${irsaliye.irsaliyeNo}`, field: 'sofor', value: irsaliye.sofor === '—' ? '' : (irsaliye.sofor || ''), groupItems: irsaliye.items }) : undefined}>{irsaliye.sofor}</span>
+                                                                    )}
+                                                                </td>
                                                                 <td>{irsaliye.teslimAlan}</td>
                                                             </tr>
                                                             <tr style={{ padding: 0 }}>
-                                                                <td colSpan={5} style={{ padding: 0, border: 'none' }}>
-                                                                    <div style={{ overflow: 'hidden', maxHeight: expanded ? `${irsaliye.items.length * 40}px` : '0', transition: 'max-height 0.35s cubic-bezier(0.4,0,0.2,1)', borderLeft: '3px solid var(--success)' }}>
+                                                                <td colSpan={8} style={{ padding: 0, border: 'none' }}>
+                                                                    <div style={{ overflow: 'hidden', maxHeight: expanded ? `${irsaliye.items.length * 37}px` : '0', transition: 'max-height 0.35s cubic-bezier(0.4,0,0.2,1)', borderLeft: '3px solid var(--success)' }}>
                                                                         {irsaliye.items.map((item, i) => (
-                                                                            <div key={i} style={{ display: 'grid', gridTemplateColumns: cw.join(' '), borderBottom: '1px solid var(--border)', background: 'var(--bg-main)', alignItems: 'center' }}>
+                                                                            <div key={i} onContextMenu={isAdmin ? (e) => { e.stopPropagation(); handleCtxMenu(e, item, 'movements', { hideEdit: true }); } : undefined} style={{ display: 'grid', gridTemplateColumns: `36px ${cw.join(' ')}`, borderBottom: '1px solid var(--border)', background: 'var(--bg-main)', alignItems: 'center' }}>
+                                                                                <div />
                                                                                 <div style={{ ...subCell, color: 'var(--text-muted)' }}>{String(item.date || '').split(',')[0].split(' ')[0]}</div>
                                                                                 <div style={{ ...subCell, fontWeight: '500', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{item.itemName || '—'}</div>
                                                                                 <div style={{ ...subCell, color: 'var(--text-muted)' }}>{item.firmaAdi || item.recipient || '—'}</div>
                                                                                 <div style={{ ...subCell, fontWeight: '700', color: 'var(--success)', textAlign: 'right' }}>+{formatNumber(item.amount)} {item.unit || ''}</div>
+                                                                                <div style={{ ...subCell }}>
+                                                                                    {isAdmin && inlineEdit?.id === item.id && inlineEdit?.field === 'plaka' ? (
+                                                                                        <input autoFocus className="inline-edit-input" value={inlineEdit.value} onChange={e => setInlineEdit(p => ({ ...p, value: e.target.value }))} onKeyDown={e => { if (e.key === 'Enter') saveInlineEdit(); if (e.key === 'Escape') setInlineEdit(null); }} onBlur={saveInlineEdit} onClick={e => e.stopPropagation()} />
+                                                                                    ) : (
+                                                                                        <span className={isAdmin ? 'inline-edit-cell' : ''} style={{ color: 'var(--text-muted)' }} onClick={isAdmin ? () => setInlineEdit({ id: item.id, field: 'plaka', value: item.plaka || '' }) : undefined}>{item.plaka || '—'}</span>
+                                                                                    )}
+                                                                                </div>
+                                                                                <div style={{ ...subCell }}>
+                                                                                    {isAdmin && inlineEdit?.id === item.id && inlineEdit?.field === 'sofor' ? (
+                                                                                        <input autoFocus className="inline-edit-input" value={inlineEdit.value} onChange={e => setInlineEdit(p => ({ ...p, value: e.target.value }))} onKeyDown={e => { if (e.key === 'Enter') saveInlineEdit(); if (e.key === 'Escape') setInlineEdit(null); }} onBlur={saveInlineEdit} onClick={e => e.stopPropagation()} />
+                                                                                    ) : (
+                                                                                        <span className={isAdmin ? 'inline-edit-cell' : ''} style={{ color: 'var(--text-muted)' }} onClick={isAdmin ? () => setInlineEdit({ id: item.id, field: 'sofor', value: item.sofor || '' }) : undefined}>{item.sofor || '—'}</span>
+                                                                                    )}
+                                                                                </div>
                                                                                 <div style={{ ...subCell, color: 'var(--text-muted)' }}>{item.teslimAlan || item.recipient || '—'}</div>
                                                                             </div>
                                                                         ))}
@@ -3219,6 +3410,7 @@ const App = () => {
                                             </tbody>
                                         </table>
                                     </div>
+                                    </>
                                 )}
                             </div>
                         );
@@ -3310,11 +3502,30 @@ const App = () => {
                                 </div>
                                 {allUsers.length === 0 ? (
                                     <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '30px' }}>Kullanıcı bulunamadı.</p>
-                                ) : (
+                                ) : (() => {
+                                    const sortedUsers = [...allUsers].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+                                    return (<>
+                                    <TableSelectionBar
+                                        selected={selUsers} allRows={sortedUsers} idKey="uid"
+                                        onSelectAll={() => toggleAll(setSelUsers, sortedUsers, 'uid')}
+                                        onClear={() => setSelUsers(new Set())}
+                                        onDelete={() => {
+                                            const toDelete = sortedUsers.filter(u => selUsers.has(u.uid) && u.uid !== authUser.uid);
+                                            if (toDelete.length === 0) { alert('Kendi hesabınızı silemezsiniz.'); return; }
+                                            if (!window.confirm(`${toDelete.length} kullanıcı silinecek. Emin misiniz?`)) return;
+                                            const updates = {};
+                                            toDelete.forEach(u => { updates[`users/${u.uid}`] = null; });
+                                            update(ref(db), updates);
+                                            setSelUsers(new Set());
+                                        }}
+                                        onEdit={() => { const u = sortedUsers.find(r => selUsers.has(r.uid)); if (u) { setEditingUser(u); setPagePermissionsEdit(u.pagePermissions || {}); setShowUserModal(true); } }}
+                                        onHighlight={(color) => handleBulkHighlight('users', selUsers, color)}
+                                    />
                                     <div className="table-responsive-wrapper">
                                         <table className="responsive-table col-6" style={{ width: '100%' }}>
                                             <thead>
                                                 <tr>
+                                                    <th className="tsel-th"><input type="checkbox" className="tsel-checkbox" checked={headerChecked(selUsers, sortedUsers, 'uid')} onChange={() => toggleAll(setSelUsers, sortedUsers, 'uid')} /></th>
                                                     <th>KAYIT TARİHİ</th>
                                                     <th>AD SOYAD</th>
                                                     <th>E-POSTA</th>
@@ -3323,18 +3534,15 @@ const App = () => {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {allUsers.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)).map(u => (
-                                                    <tr key={u.uid} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, u, 'users') : undefined}>
+                                                {sortedUsers.map(u => (
+                                                    <tr key={u.uid} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, u, 'users') : undefined} style={hlStyle('users', u.uid)} className={selUsers.has(u.uid) ? 'tsel-selected' : ''}>
+                                                        <td className="tsel-td"><input type="checkbox" className="tsel-checkbox" checked={selUsers.has(u.uid)} onChange={() => toggleSel(setSelUsers, u.uid)} onClick={e => e.stopPropagation()} /></td>
                                                         <td data-label="Kayıt Tarihi">
                                                             {u.createdAt ? new Date(u.createdAt).toLocaleDateString('tr-TR') : '—'}
                                                         </td>
                                                         <td data-label="Ad Soyad">
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                                                                <span style={{
-                                                                    width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
-                                                                    background: presence[u.uid]?.online ? '#22c55e' : '#d1d5db',
-                                                                    boxShadow: presence[u.uid]?.online ? '0 0 0 2px rgba(34,197,94,0.25)' : 'none',
-                                                                }} title={presence[u.uid]?.online ? 'Çevrimiçi' : (presence[u.uid]?.lastSeen ? `Son görülme: ${new Date(presence[u.uid].lastSeen).toLocaleString('tr-TR')}` : 'Çevrimdışı')} />
+                                                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0, background: presence[u.uid]?.online ? '#22c55e' : '#d1d5db', boxShadow: presence[u.uid]?.online ? '0 0 0 2px rgba(34,197,94,0.25)' : 'none' }} title={presence[u.uid]?.online ? 'Çevrimiçi' : (presence[u.uid]?.lastSeen ? `Son görülme: ${new Date(presence[u.uid].lastSeen).toLocaleString('tr-TR')}` : 'Çevrimdışı')} />
                                                                 {u.name}
                                                                 {u.uid === authUser.uid && (
                                                                     <span style={{ fontSize: '11px', color: '#6d28d9', background: '#ede9fe', borderRadius: '10px', padding: '1px 7px' }}>Siz</span>
@@ -3343,31 +3551,17 @@ const App = () => {
                                                         </td>
                                                         <td data-label="E-posta">{u.email}</td>
                                                         <td data-label="Rol">
-                                                            <span style={{
-                                                                background: ROLE_COLORS[u.role]?.bg || '#f1f5f9',
-                                                                color: ROLE_COLORS[u.role]?.color || '#475569',
-                                                                borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '600'
-                                                            }}>
+                                                            <span style={{ background: ROLE_COLORS[u.role]?.bg || '#f1f5f9', color: ROLE_COLORS[u.role]?.color || '#475569', borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '600' }}>
                                                                 {ROLE_LABELS[u.role] || u.role}
                                                             </span>
                                                         </td>
                                                         <td data-label="İşlemler">
                                                             <div className="flex align-center gap-1">
-                                                                <button
-                                                                    className="btn-icon"
-                                                                    title="Düzenle"
-                                                                    onClick={() => { setEditingUser(u); setPagePermissionsEdit(u.pagePermissions || {}); setShowUserModal(true); }}
-                                                                    style={{ color: '#3b82f6' }}
-                                                                >
+                                                                <button className="btn-icon" title="Düzenle" onClick={() => { setEditingUser(u); setPagePermissionsEdit(u.pagePermissions || {}); setShowUserModal(true); }} style={{ color: '#3b82f6' }}>
                                                                     <Edit3 size={15} />
                                                                 </button>
                                                                 {u.uid !== authUser.uid && (
-                                                                    <button
-                                                                        className="btn-icon"
-                                                                        title="Sil"
-                                                                        onClick={() => handleDeleteUser(u.uid, u.name)}
-                                                                        style={{ color: '#ef4444' }}
-                                                                    >
+                                                                    <button className="btn-icon" title="Sil" onClick={() => handleDeleteUser(u.uid, u.name)} style={{ color: '#ef4444' }}>
                                                                         <Trash2 size={15} />
                                                                     </button>
                                                                 )}
@@ -3378,7 +3572,8 @@ const App = () => {
                                             </tbody>
                                         </table>
                                     </div>
-                                )}
+                                    </>);
+                                })()}
                             </div>
                         </div>
                     )}
@@ -3429,10 +3624,19 @@ const App = () => {
                                             <div className="table-toolbar">
                                                 <span className="section-title"><Truck size={17} /> Malzeme Talep Formları</span>
                                             </div>
+                                            <TableSelectionBar
+                                                selected={selSevkiyat} allRows={sevkiyat}
+                                                onSelectAll={() => toggleAll(setSelSevkiyat, sevkiyat)}
+                                                onClear={() => setSelSevkiyat(new Set())}
+                                                onDelete={canEdit ? () => handleBulkDelete('sevkiyat', selSevkiyat, sevkiyat, 'id', setSelSevkiyat) : undefined}
+                                                onEdit={canEdit ? () => { const row = sevkiyat.find(r => selSevkiyat.has(r.id)); if (row) setEditRow({ row, collection: 'sevkiyat' }); } : undefined}
+                                                onHighlight={(color) => handleBulkHighlight('sevkiyat', selSevkiyat, color)}
+                                            />
                                             <div className="table-responsive-wrapper" style={{ maxHeight: '320px', overflowY: 'auto' }}>
                                                 <table className="responsive-table col-5">
                                                     <thead>
                                                         <tr>
+                                                            <th className="tsel-th"><input type="checkbox" className="tsel-checkbox" checked={headerChecked(selSevkiyat, sevkiyat)} onChange={() => toggleAll(setSelSevkiyat, sevkiyat)} /></th>
                                                             <th>TARİH</th>
                                                             <th>FORM NO</th>
                                                             <th style={{ textAlign: 'center' }}>MALZEME</th>
@@ -3444,7 +3648,8 @@ const App = () => {
                                                         {sevkiyat.map((s) => {
                                                             const durum = durumMap[s.satin_alim_durumu] || durumMap.BEKLEMEDE;
                                                             return (
-                                                                <tr key={s.id} onClick={() => setSevkiyatModal({ show: true, data: s })} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, s, 'sevkiyat') : undefined} style={{ cursor: 'pointer' }}>
+                                                                <tr key={s.id} onClick={() => setSevkiyatModal({ show: true, data: s })} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, s, 'sevkiyat') : undefined} style={{ cursor: 'pointer', ...hlStyle('sevkiyat', s.id) }} className={selSevkiyat.has(s.id) ? 'tsel-selected' : ''}>
+                                                                    <td className="tsel-td" onClick={e => e.stopPropagation()}><input type="checkbox" className="tsel-checkbox" checked={selSevkiyat.has(s.id)} onChange={() => toggleSel(setSelSevkiyat, s.id)} /></td>
                                                                     <td data-label="Tarih">{s.sevkiyata_gonderilme_tarihi_tr?.split(' ')[0] || '-'}</td>
                                                                     <td data-label="Form No">{s.satin_alim_form_no}</td>
                                                                     <td data-label="Malzeme" style={{ textAlign: 'center' }}>{(s.items || []).length} kalem</td>
@@ -3883,10 +4088,19 @@ const App = () => {
                                         )}
                                     </div>
                                 </div>
+                                <TableSelectionBar
+                                    selected={selPersonel} allRows={personel}
+                                    onSelectAll={() => toggleAll(setSelPersonel, personel)}
+                                    onClear={() => setSelPersonel(new Set())}
+                                    onDelete={canEdit ? () => handleBulkDelete('personel', selPersonel, personel, 'id', setSelPersonel) : undefined}
+                                    onEdit={canEdit ? () => { const p = personel.find(r => selPersonel.has(r.id)); if (p) { setEditingPersonel(p); setPersonelForm({ tc: p.tc, adSoyad: p.adSoyad, girisTarihi: p.girisTarihi, cikisTarihi: p.cikisTarihi || '', taseron: p.taseron }); setShowPersonelModal(true); } } : undefined}
+                                    onHighlight={(color) => handleBulkHighlight('personel', selPersonel, color)}
+                                />
                                 <div style={{ overflowY: 'auto', height: '555px' }}>
                                     <table className="responsive-table col-7" style={{ width: '100%' }}>
                                         <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: 'var(--bg-table-header)' }}>
                                             <tr>
+                                                <th className="tsel-th"><input type="checkbox" className="tsel-checkbox" checked={headerChecked(selPersonel, personel)} onChange={() => toggleAll(setSelPersonel, personel)} /></th>
                                                 <th>GİRİŞ TARİHİ</th>
                                                 <th>ÇIKIŞ TARİHİ</th>
                                                 <th>TC</th>
@@ -3899,13 +4113,14 @@ const App = () => {
                                         <tbody>
                                             {personel.length === 0 && (
                                                 <tr>
-                                                    <td colSpan={canEdit ? 7 : 6} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
+                                                    <td colSpan={canEdit ? 8 : 7} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
                                                         Henüz personel kaydı yok.
                                                     </td>
                                                 </tr>
                                             )}
                                             {personel.map(p => (
-                                                <tr key={p.id} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, p, 'personel') : undefined}>
+                                                <tr key={p.id} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, p, 'personel') : undefined} style={hlStyle('personel', p.id)} className={selPersonel.has(p.id) ? 'tsel-selected' : ''}>
+                                                    <td className="tsel-td"><input type="checkbox" className="tsel-checkbox" checked={selPersonel.has(p.id)} onChange={() => toggleSel(setSelPersonel, p.id)} onClick={e => e.stopPropagation()} /></td>
                                                     <td data-label="Giriş Tarihi">{p.girisTarihi}</td>
                                                     <td data-label="Çıkış Tarihi">{p.cikisTarihi || '—'}</td>
                                                     <td data-label="TC">{p.tc}</td>
@@ -3920,23 +4135,10 @@ const App = () => {
                                                     {canEdit && (
                                                         <td data-label="İşlemler" style={{ textAlign: 'center' }}>
                                                             <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-                                                                <button
-                                                                    className="btn-icon"
-                                                                    title="Düzenle"
-                                                                    onClick={() => {
-                                                                        setEditingPersonel(p);
-                                                                        setPersonelForm({ tc: p.tc, adSoyad: p.adSoyad, girisTarihi: p.girisTarihi, cikisTarihi: p.cikisTarihi || '', taseron: p.taseron });
-                                                                        setShowPersonelModal(true);
-                                                                    }}
-                                                                >
+                                                                <button className="btn-icon" title="Düzenle" onClick={() => { setEditingPersonel(p); setPersonelForm({ tc: p.tc, adSoyad: p.adSoyad, girisTarihi: p.girisTarihi, cikisTarihi: p.cikisTarihi || '', taseron: p.taseron }); setShowPersonelModal(true); }}>
                                                                     <Edit3 size={14} />
                                                                 </button>
-                                                                <button
-                                                                    className="btn-icon"
-                                                                    title="Sil"
-                                                                    style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}
-                                                                    onClick={() => handleDeletePersonel(p.id)}
-                                                                >
+                                                                <button className="btn-icon" title="Sil" style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={() => handleDeletePersonel(p.id)}>
                                                                     <Trash2 size={14} />
                                                                 </button>
                                                             </div>
@@ -3990,10 +4192,22 @@ const App = () => {
                                     </div>
 
                                     <div className="scrollable-pending-list">
-                                        <div className="table-responsive-wrapper">
+                                        {(() => {
+                                            const pendingReqs = requests.filter(r => r.status === 'pending');
+                                            return (<>
+                                            <TableSelectionBar
+                                                selected={selRequests} allRows={pendingReqs}
+                                                onSelectAll={() => toggleAll(setSelRequests, pendingReqs)}
+                                                onClear={() => setSelRequests(new Set())}
+                                                onDelete={canEdit ? () => handleBulkDelete('requests', selRequests, pendingReqs, 'id', setSelRequests) : undefined}
+                                                onEdit={canEdit ? () => { const row = pendingReqs.find(r => selRequests.has(r.id)); if (row) setEditRow({ row, collection: 'requests' }); } : undefined}
+                                                onHighlight={(color) => handleBulkHighlight('requests', selRequests, color)}
+                                            />
+                                            <div className="table-responsive-wrapper">
                                             <table className="responsive-table col-5">
                                                 <thead>
                                                     <tr>
+                                                        <th className="tsel-th"><input type="checkbox" className="tsel-checkbox" checked={headerChecked(selRequests, pendingReqs)} onChange={() => toggleAll(setSelRequests, pendingReqs)} /></th>
                                                         <th>TARİH</th>
                                                         <th>MALZEME</th>
                                                         <th style={{ textAlign: 'right' }}>MİKTAR</th>
@@ -4002,10 +4216,11 @@ const App = () => {
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {requests.filter(r => r.status === 'pending').length === 0 ? (
-                                                        <tr><td colSpan={canEdit ? 5 : 4} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Bekleyen talep yok.</td></tr>
-                                                    ) : requests.filter(r => r.status === 'pending').map(req => (
-                                                        <tr key={req.id} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, req, 'requests') : undefined}>
+                                                    {pendingReqs.length === 0 ? (
+                                                        <tr><td colSpan={canEdit ? 6 : 5} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Bekleyen talep yok.</td></tr>
+                                                    ) : pendingReqs.map(req => (
+                                                        <tr key={req.id} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, req, 'requests') : undefined} style={hlStyle('requests', req.id)} className={selRequests.has(req.id) ? 'tsel-selected' : ''}>
+                                                            <td className="tsel-td"><input type="checkbox" className="tsel-checkbox" checked={selRequests.has(req.id)} onChange={() => toggleSel(setSelRequests, req.id)} onClick={e => e.stopPropagation()} /></td>
                                                             <td data-label="Tarih">{String(req.date || '').split(',')[0].split(' ')[0]}</td>
                                                             <td data-label="Malzeme">{req.itemName}</td>
                                                             <td data-label="Miktar" style={{ textAlign: 'right' }}>{req.amount} {req.unit}</td>
@@ -4013,20 +4228,8 @@ const App = () => {
                                                             {canEdit && (
                                                                 <td data-label="İşlemler" style={{ textAlign: 'center' }}>
                                                                     <div className="flex gap-2 justify-center">
-                                                                        <button
-                                                                            className="btn-primary"
-                                                                            style={{ background: 'var(--success)', fontSize: '11px', padding: '5px 12px' }}
-                                                                            onClick={() => handleApproveRequest(req)}
-                                                                        >
-                                                                            Onayla
-                                                                        </button>
-                                                                        <button
-                                                                            className="btn-primary"
-                                                                            style={{ background: 'var(--danger)', fontSize: '11px', padding: '5px 12px' }}
-                                                                            onClick={() => handleRejectRequest(req)}
-                                                                        >
-                                                                            Reddet
-                                                                        </button>
+                                                                        <button className="btn-primary" style={{ background: 'var(--success)', fontSize: '11px', padding: '5px 12px' }} onClick={() => handleApproveRequest(req)}>Onayla</button>
+                                                                        <button className="btn-primary" style={{ background: 'var(--danger)', fontSize: '11px', padding: '5px 12px' }} onClick={() => handleRejectRequest(req)}>Reddet</button>
                                                                     </div>
                                                                 </td>
                                                             )}
@@ -4034,7 +4237,9 @@ const App = () => {
                                                     ))}
                                                 </tbody>
                                             </table>
-                                        </div>
+                                            </div>
+                                            </>);
+                                        })()}
                                     </div>
                                 </div>
                             </div>
@@ -4408,6 +4613,24 @@ const App = () => {
                                                     )}
                                                     <input className="fm-input" name="irsaliyeNo" list="irsaliye-datalist" value={inIrsaliyeNo} onChange={e => setInIrsaliyeNo(e.target.value)} placeholder="Örn: IRS-2026-001" autoComplete="off" />
                                                     <datalist id="irsaliye-datalist">{irsaliyeListesi.map(i => <option key={i.id} value={i.no} />)}</datalist>
+                                                </div>
+
+                                                {/* 3b. Plaka */}
+                                                <div className="fm-field">
+                                                    <div className="fm-label-row">
+                                                        <span className="fm-label">Plaka</span>
+                                                        <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>opsiyonel</span>
+                                                    </div>
+                                                    <input className="fm-input" name="plaka" placeholder="Örn: 34 ABC 123" autoComplete="off" />
+                                                </div>
+
+                                                {/* 3c. Şoför */}
+                                                <div className="fm-field">
+                                                    <div className="fm-label-row">
+                                                        <span className="fm-label">Şoför</span>
+                                                        <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>opsiyonel</span>
+                                                    </div>
+                                                    <input className="fm-input" name="sofor" placeholder="Şoför adı..." autoComplete="off" />
                                                 </div>
 
                                                 {/* 4. Malzeme */}
