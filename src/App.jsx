@@ -2622,7 +2622,7 @@ const App = () => {
                     <div>
                         <div style={{ position: 'relative', display: 'inline-block' }}>
                             <div className="sidebar-logo-text">Shintea</div>
-                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.046</span>
+                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.047</span>
                         </div>
                     </div>
                 </div>
@@ -2992,31 +2992,6 @@ const App = () => {
                                 }).slice(0, 20);
                                 return (
                                     <div className="table-card">
-                                        {/* Filtre Butonları */}
-                                        <div className="table-toolbar" style={{ gap: '8px' }}>
-                                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-                                                <button className="stat-mini-btn"
-                                                    onClick={() => setDashModal({ show: true, title: 'Tüm Malzemeler', data: items, type: 'stock' })}>
-                                                    <span className="stat-mini-val">{stats.totalItems}</span>
-                                                    <span className="stat-mini-lbl">Toplam</span>
-                                                </button>
-                                                <button className="stat-mini-btn stat-mini-danger"
-                                                    onClick={() => setDashModal({ show: true, title: 'Kritik Stoktaki Malzemeler', data: items.filter(i => i.quantity <= i.minStock), type: 'stock' })}>
-                                                    <span className="stat-mini-val">{stats.lowStock}</span>
-                                                    <span className="stat-mini-lbl">Kritik</span>
-                                                </button>
-                                                <button className="stat-mini-btn stat-mini-success"
-                                                    onClick={() => { const today = new Date().toLocaleDateString(); const todayIn = movements.filter(m => m.type === 'in' && String(m.date || '').includes(today)); setDashModal({ show: true, title: 'Bugünkü Giriş İşlemleri', data: todayIn, type: 'move', moveType: 'in' }); }}>
-                                                    <span className="stat-mini-val">{stats.todayIn}</span>
-                                                    <span className="stat-mini-lbl">Giriş</span>
-                                                </button>
-                                                <button className="stat-mini-btn stat-mini-warning"
-                                                    onClick={() => { const today = new Date().toLocaleDateString(); const todayOut = movements.filter(m => m.type === 'out' && String(m.date || '').includes(today)); setDashModal({ show: true, title: 'Bugünkü Çıkış İşlemleri', data: todayOut, type: 'move', moveType: 'out' }); }}>
-                                                    <span className="stat-mini-val">{stats.todayOut}</span>
-                                                    <span className="stat-mini-lbl">Çıkış</span>
-                                                </button>
-                                            </div>
-                                        </div>
                                         {/* SON HAREKETLER Başlık */}
                                         <div style={{ padding: '10px 16px 6px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             <span style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.08em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Son Hareketler</span>
