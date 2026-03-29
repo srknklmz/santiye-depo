@@ -1319,9 +1319,10 @@ const App = () => {
             totalItems: items.length,
             lowStock: items.filter(item => item.quantity <= item.minStock).length,
             todayIn: movements.filter(m => m.type === 'in' && String(m.date || '').includes(today)).length,
-            todayOut: movements.filter(m => m.type === 'out' && String(m.date || '').includes(today)).length
+            todayOut: movements.filter(m => m.type === 'out' && String(m.date || '').includes(today)).length,
+            todayZimmet: zimmet.filter(z => String(z.date || z.created_at || '').includes(today)).length
         };
-    }, [items, movements]);
+    }, [items, movements, zimmet]);
 
     const pendingRequestsCount = useMemo(() =>
         requests.filter(r => r.status === 'pending').length,
@@ -2621,7 +2622,7 @@ const App = () => {
                     <div>
                         <div style={{ position: 'relative', display: 'inline-block' }}>
                             <div className="sidebar-logo-text">Shintea</div>
-                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.044</span>
+                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.045</span>
                         </div>
                     </div>
                 </div>
@@ -2639,18 +2640,21 @@ const App = () => {
                             <button className="sidebar-action-btn sidebar-action-success"
                                 onClick={() => { setMovementType('in'); setSelectedItemForMove(null); setShowMoveModal(true); }}>
                                 <ArrowUpRight size={15} /> <span>Giriş Ekle</span>
+                                {stats.todayIn > 0 && <span style={{ marginLeft: 'auto', fontSize: '11px', fontWeight: '700', opacity: 0.85 }}>{stats.todayIn}</span>}
                             </button>
                         )}
                         {pagePerm('action_cikis') === 'edit' && (
                             <button className="sidebar-action-btn sidebar-action-danger"
                                 onClick={() => { setMovementType('out'); setSelectedItemForMove(null); setShowMoveModal(true); }}>
                                 <ArrowDownLeft size={15} /> <span>Çıkış Ekle</span>
+                                {stats.todayOut > 0 && <span style={{ marginLeft: 'auto', fontSize: '11px', fontWeight: '700', opacity: 0.85 }}>{stats.todayOut}</span>}
                             </button>
                         )}
                         {pagePerm('action_zimmet') === 'edit' && (
                             <button className="sidebar-action-btn sidebar-action-purple"
                                 onClick={() => { setShowZimmetModal(true); setSelectedItemForZimmet(null); }}>
                                 <UserCheck size={15} /> <span>Zimmet Ekle</span>
+                                {stats.todayZimmet > 0 && <span style={{ marginLeft: 'auto', fontSize: '11px', fontWeight: '700', opacity: 0.85 }}>{stats.todayZimmet}</span>}
                             </button>
                         )}
                     </div>
@@ -2989,7 +2993,7 @@ const App = () => {
                                 return (
                                     <div className="table-card">
                                         {/* Filtre Butonları */}
-                                        <div className="table-toolbar" style={{ justifyContent: 'space-between', gap: '8px' }}>
+                                        <div className="table-toolbar" style={{ gap: '8px' }}>
                                             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
                                                 <button className="stat-mini-btn"
                                                     onClick={() => setDashModal({ show: true, title: 'Tüm Malzemeler', data: items, type: 'stock' })}>
@@ -3011,18 +3015,6 @@ const App = () => {
                                                     <span className="stat-mini-val">{stats.todayOut}</span>
                                                     <span className="stat-mini-lbl">Çıkış</span>
                                                 </button>
-                                            </div>
-                                            <div style={{ display: 'flex', gap: '8px' }}>
-                                                {[['in', 'Giriş'], ['out', 'Çıkış'], ['zimmet', 'Zimmet']].map(([val, label]) => {
-                                                    const active = dashboardFilters.has(val);
-                                                    return (
-                                                        <button key={val} className="btn-filter-3d" onClick={() => toggleFilter(val)} style={{
-                                                            background: active ? filterBg[val] : 'var(--bg-hover)',
-                                                            color: active ? '#fff' : 'var(--text-muted)',
-                                                            boxShadow: active ? filterShadow[val] : inactiveShadow,
-                                                        }}>{label}</button>
-                                                    );
-                                                })}
                                             </div>
                                         </div>
                                         {/* SON HAREKETLER Başlık */}
