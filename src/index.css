@@ -1273,6 +1273,16 @@ input[type="date"] {
   width: 200px !important;
   border-radius: var(--radius-sm) !important;
 }
+.search-input-full {
+  width: 100% !important;
+  border-radius: 0 !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+}
 
 /* ═══════════════════════════════════════════
    MODALS

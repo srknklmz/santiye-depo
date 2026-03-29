@@ -2683,7 +2683,7 @@ const App = () => {
                     <div>
                         <div style={{ position: 'relative', display: 'inline-block' }}>
                             <div className="sidebar-logo-text">Shintea</div>
-                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.049</span>
+                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.050</span>
                         </div>
                     </div>
                 </div>
@@ -3149,40 +3149,6 @@ const App = () => {
                     )}
                     {activeTab === 'summary' && pagePerm('summary') !== 'none' && (
                         <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
-                            {/* ── COMPACT HEADER ── */}
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0 10px', flexShrink: 0, gap: '12px', flexWrap: 'wrap' }}>
-                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
-                                    <h1 className="summary-title" style={{ fontSize: '18px', margin: 0 }}>Stok Özeti</h1>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                    {/* Mini KPI Chips */}
-                                    {[
-                                        { val: summaryStats.totalProducts, label: 'Toplam', color: 'var(--primary)', bg: '#eff6ff' },
-                                        { val: summaryStats.criticalItems, label: 'Kritik', color: '#dc2626', bg: '#fef2f2' },
-                                        { val: summaryStats.monthlyIns, label: 'Ay Giriş', color: '#16a34a', bg: '#f0fdf4' },
-                                        { val: summaryStats.monthlyOuts, label: 'Ay Çıkış', color: '#d97706', bg: '#fffbeb' },
-                                    ].map(chip => (
-                                        <div key={chip.label} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '20px', background: chip.bg, border: `1px solid ${chip.color}22` }}>
-                                            <span style={{ fontSize: '13px', fontWeight: 800, color: chip.color }}>{chip.val}</span>
-                                            <span style={{ fontSize: '10px', fontWeight: 600, color: chip.color, opacity: 0.75, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{chip.label}</span>
-                                        </div>
-                                    ))}
-                                    <ExportButtons
-                                        data={stockSummary}
-                                        title="Stok Özeti Raporu"
-                                        columns={[
-                                            { key: 'name', label: 'MALZEME' },
-                                            { key: 'category', label: 'KATEGORİ' },
-                                            { key: 'totalReceived', label: 'TOPLAM GİRİŞ' },
-                                            { key: 'totalUsed', label: 'TOPLAM ÇIKIŞ' },
-                                            { key: 'quantity', label: 'BAKİYE' },
-                                            { key: 'unit', label: 'BİRİM' }
-                                        ]}
-                                        filename={`Stok_Ozeti_${new Date().toLocaleDateString('tr-TR')}`}
-                                        options={{ showKpis: true }}
-                                    />
-                                </div>
-                            </div>
 
                             {/* ── MASTER / DETAIL ── */}
                             {(() => {
@@ -3202,36 +3168,72 @@ const App = () => {
                                 }[status] || { label: 'BELİRSİZ', color: '#94a3b8', bg: '#f8fafc', barColor: '#94a3b8' });
 
                                 return (
+                                    <>
+                                    {/* ── HEADER ROW: başlık (sol) + filtreler + chips (sağ) ── */}
+                                    <div style={{ display: 'flex', gap: '14px', alignItems: 'center', padding: '10px 0', flexShrink: 0 }}>
+                                        {/* Sol: başlık — 300px, sol panel ile hizalı */}
+                                        <div style={{ width: '300px', flexShrink: 0 }}>
+                                            <h1 className="summary-title" style={{ fontSize: '18px', margin: 0 }}>Stok Özeti</h1>
+                                        </div>
+                                        {/* Sağ: filtreler + chips + export — sağ panelle hizalı */}
+                                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap', overflow: 'hidden' }}>
+                                            {/* Filtreler: sabit genişlikte container */}
+                                            <div style={{ display: 'flex', gap: '6px', width: '240px', flexShrink: 0 }}>
+                                                <MultiSelectDropdown
+                                                    label="Malzeme"
+                                                    options={allItemNames}
+                                                    selected={summaryFilterNames}
+                                                    onChange={setSummaryFilterNames}
+                                                />
+                                                <MultiSelectDropdown
+                                                    label="Kategori"
+                                                    options={allCategories}
+                                                    selected={summaryFilterCategories}
+                                                    onChange={setSummaryFilterCategories}
+                                                />
+                                            </div>
+                                            <div style={{ width: '1px', height: '20px', background: 'var(--border)', flexShrink: 0 }} />
+                                            {[
+                                                { val: summaryStats.totalProducts, label: 'Toplam', color: 'var(--primary)', bg: '#eff6ff' },
+                                                { val: summaryStats.criticalItems, label: 'Kritik', color: '#dc2626', bg: '#fef2f2' },
+                                                { val: summaryStats.monthlyIns, label: 'Ay Giriş', color: '#16a34a', bg: '#f0fdf4' },
+                                                { val: summaryStats.monthlyOuts, label: 'Ay Çıkış', color: '#d97706', bg: '#fffbeb' },
+                                            ].map(chip => (
+                                                <div key={chip.label} style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '20px', background: chip.bg, border: `1px solid ${chip.color}22`, flexShrink: 0 }}>
+                                                    <span style={{ fontSize: '13px', fontWeight: 800, color: chip.color }}>{chip.val}</span>
+                                                    <span style={{ fontSize: '10px', fontWeight: 600, color: chip.color, opacity: 0.75, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{chip.label}</span>
+                                                </div>
+                                            ))}
+                                            <ExportButtons
+                                                data={stockSummary}
+                                                title="Stok Özeti Raporu"
+                                                columns={[
+                                                    { key: 'name', label: 'MALZEME' },
+                                                    { key: 'category', label: 'KATEGORİ' },
+                                                    { key: 'totalReceived', label: 'TOPLAM GİRİŞ' },
+                                                    { key: 'totalUsed', label: 'TOPLAM ÇIKIŞ' },
+                                                    { key: 'quantity', label: 'BAKİYE' },
+                                                    { key: 'unit', label: 'BİRİM' }
+                                                ]}
+                                                filename={`Stok_Ozeti_${new Date().toLocaleDateString('tr-TR')}`}
+                                                options={{ showKpis: true }}
+                                            />
+                                        </div>
+                                    </div>
+
                                     <div style={{ display: 'flex', gap: '14px', flex: 1, minHeight: 0 }}>
                                         {/* ── SOL: LİSTE ── */}
                                         <div style={{ width: '300px', flexShrink: 0, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                                            {/* Arama + Filtreler */}
-                                            <div style={{ borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0', flexShrink: 0 }}>
-                                                <div className="search-container" style={{ margin: 0, width: '100%', borderRadius: '0', borderLeft: 'none', borderRight: 'none', borderTop: 'none', borderBottom: '1px solid var(--border)' }}>
-                                                    <Search size={13} className="search-icon" />
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Malzeme ara..."
-                                                        className="search-input"
-                                                        value={searchQuery}
-                                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                                        style={{ width: '100%', fontSize: '12px' }}
-                                                    />
-                                                </div>
-                                                <div style={{ display: 'flex', gap: '6px', padding: '8px 10px' }}>
-                                                    <MultiSelectDropdown
-                                                        label="Malzeme"
-                                                        options={allItemNames}
-                                                        selected={summaryFilterNames}
-                                                        onChange={setSummaryFilterNames}
-                                                    />
-                                                    <MultiSelectDropdown
-                                                        label="Kategori"
-                                                        options={allCategories}
-                                                        selected={summaryFilterCategories}
-                                                        onChange={setSummaryFilterCategories}
-                                                    />
-                                                </div>
+                                            {/* Arama — tam genişlik */}
+                                            <div className="search-container" style={{ margin: 0, borderRadius: '0', borderLeft: 'none', borderRight: 'none', borderTop: 'none', borderBottom: '1px solid var(--border)' }}>
+                                                <Search size={13} className="search-icon" />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Malzeme ara..."
+                                                    className="search-input search-input-full"
+                                                    value={searchQuery}
+                                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                                />
                                             </div>
 
                                             {/* Liste */}
@@ -3362,6 +3364,7 @@ const App = () => {
                                             )}
                                         </div>
                                     </div>
+                                    </>
                                 );
                             })()}
                         </div>
