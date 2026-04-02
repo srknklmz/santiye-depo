@@ -33,6 +33,7 @@
         }
     },
     "dependencies": {
+        "exceljs": "^4.4.0",
         "firebase": "^12.11.0",
         "jspdf": "^4.2.0",
         "jspdf-autotable": "^5.0.7",

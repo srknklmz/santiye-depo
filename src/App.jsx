@@ -54,7 +54,6 @@ import { ref, onValue, set, remove, get, update, onDisconnect } from 'firebase/d
 import {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
-    signInAnonymously,
     signOut,
     onAuthStateChanged
 } from 'firebase/auth';
@@ -510,7 +509,15 @@ const MultiSelectDropdown = ({ label, options, selected, onChange }) => {
     const handleToggle = () => {
         if (!open && btnRef.current) {
             const r = btnRef.current.getBoundingClientRect();
-            setDropPos({ top: r.bottom + 4, left: r.left, width: r.width });
+            // transform uygulanmış ancestor, fixed için yeni containing block oluşturur
+            let containerRect = { left: 0, top: 0 };
+            let el = btnRef.current.parentElement;
+            while (el && el !== document.body) {
+                const t = window.getComputedStyle(el).transform;
+                if (t && t !== 'none') { containerRect = el.getBoundingClientRect(); break; }
+                el = el.parentElement;
+            }
+            setDropPos({ top: r.bottom - containerRect.top + 4, left: r.left - containerRect.left, width: r.width });
         }
         setOpen(o => !o);
     };
@@ -529,30 +536,29 @@ const MultiSelectDropdown = ({ label, options, selected, onChange }) => {
             </button>
             {open && (
                 <div ref={dropRef} style={{
-                    position: 'fixed', top: dropPos.top, left: dropPos.left, width: dropPos.width,
-                    zIndex: 9999, background: 'var(--bg-card)', border: '1px solid var(--border)',
-                    borderRadius: '8px', boxShadow: '0 6px 20px rgba(0,0,0,0.14)',
-                    maxHeight: '220px', overflowY: 'auto', padding: '4px 0',
+                    position: 'fixed', top: dropPos.top, left: dropPos.left, width: Math.max(dropPos.width, 200),
+                    zIndex: 9999, background: '#ffffff', border: '1px solid #e2e8f0',
+                    borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+                    maxHeight: '260px', overflowY: 'auto', padding: '4px 0',
                 }}>
                     {selected.size > 0 && (
                         <button onClick={() => { onChange(new Set()); setOpen(false); }} style={{
                             width: '100%', textAlign: 'left', padding: '5px 10px', fontSize: '11px',
-                            color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer',
-                            borderBottom: '1px solid var(--border)', fontWeight: 600,
+                            color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer',
+                            borderBottom: '1px solid #e2e8f0', fontWeight: 600,
                         }}>Temizle</button>
                     )}
                     {options.map(opt => (
                         <label key={opt} style={{
-                            display: 'flex', alignItems: 'center', gap: '8px',
-                            padding: '6px 10px', cursor: 'pointer', fontSize: '12px',
-                            color: 'var(--text-main)',
+                            display: 'grid', gridTemplateColumns: 'auto 1fr', alignItems: 'center', gap: '8px',
+                            padding: '6px 10px', cursor: 'pointer', fontSize: '12px', color: '#1e293b',
                         }}>
                             <input type="checkbox" checked={selected.has(opt)} onChange={() => {
                                 const next = new Set(selected);
                                 if (next.has(opt)) next.delete(opt); else next.add(opt);
                                 onChange(next);
-                            }} style={{ accentColor: 'var(--primary)', cursor: 'pointer' }} />
-                            {opt}
+                            }} style={{ accentColor: '#2563eb', cursor: 'pointer' }} />
+                            <span style={{ color: '#1e293b', fontSize: '12px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{opt}</span>
                         </label>
                     ))}
                 </div>
@@ -837,7 +843,7 @@ const App = () => {
     // ── Auth State ──
     const [authUser, setAuthUser] = useState(null);
     const [userProfile, setUserProfile] = useState({ name: 'Admin', role: 'YÖNETİCİ', status: 'approved', uid: 'local' });
-    const [authLoading, setAuthLoading] = useState(false);
+    const [authLoading, setAuthLoading] = useState(true);
     const [authView, setAuthView] = useState('login');
     const [authError, setAuthError] = useState('');
     const [authSubmitting, setAuthSubmitting] = useState(false);
@@ -966,6 +972,15 @@ const App = () => {
 
     const formatNumber = (num) => Number(num || 0).toLocaleString('tr-TR');
 
+    const parseTrDate = (str) => {
+        if (!str) return null;
+        const s = String(str).trim();
+        const m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+        if (m) return new Date(+m[3], +m[2] - 1, +m[1]);
+        const d = new Date(s);
+        return isNaN(d) ? null : d;
+    };
+
     const parseMovementTime = (movement) => {
         const rawDate = String(movement?.date || '').trim();
         const match = rawDate.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
@@ -1031,8 +1046,8 @@ const App = () => {
                 });
             } else {
                 setAuthUser(null);
-                // Auth geçici devre dışı — anonim giriş yap
-                signInAnonymously(auth).catch(() => setAuthLoading(false));
+                setUserProfile(null);
+                setAuthLoading(false);
             }
         });
 
@@ -1503,7 +1518,7 @@ const App = () => {
             else if (qty > (min > 0 ? min * 5 : 500)) status = 'surplus'; // Extra stock logic
             
             // Inactivity Logic (no movements in last 45 days)
-            const lastMove = itemMovements.length > 0 ? new Date(Math.max(...itemMovements.map(m => new Date(m.date).getTime()))) : null;
+            const lastMove = itemMovements.length > 0 ? new Date(Math.max(...itemMovements.map(m => { const d = parseTrDate(m.date); return d ? d.getTime() : 0; }))) : null;
             const isInactive = lastMove && (Date.now() - lastMove.getTime()) > (45 * 24 * 60 * 60 * 1000);
             if (isInactive) status = 'inactive';
 
@@ -2664,7 +2679,17 @@ const App = () => {
 
     const isFirebaseConfigured = Boolean(db?.app?.options?.apiKey) && !String(db.app.options.apiKey).includes("YOUR_API_KEY");
 
-    // ── Auth Guard Renders (geçici olarak devre dışı) ──
+    // ── Auth Guard Renders ──
+    if (authLoading) return <LoadingScreen />;
+    if (!authUser) {
+        if (authView === 'register') {
+            return <RegisterScreen onRegister={handleRegister} onSwitchToLogin={() => { setAuthView('login'); setAuthError(''); }} error={authError} loading={authSubmitting} />;
+        }
+        return <LoginScreen onLogin={handleLogin} onSwitchToRegister={() => { setAuthView('register'); setAuthError(''); }} error={authError} loading={authSubmitting} />;
+    }
+    if (userProfile && (userProfile.status === 'pending' || userProfile.status === 'rejected')) {
+        return <PendingScreen userName={userProfile.name} userStatus={userProfile.status} onSignOut={() => signOut(auth)} />;
+    }
 
     // ── User Management Modal (Admin) ──
     const pendingUsers = allUsers.filter(u => u.status === 'pending');
@@ -2683,7 +2708,7 @@ const App = () => {
                     <div>
                         <div style={{ position: 'relative', display: 'inline-block' }}>
                             <div className="sidebar-logo-text">Shintea</div>
-                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.050</span>
+                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.051</span>
                         </div>
                     </div>
                 </div>
@@ -3192,32 +3217,26 @@ const App = () => {
                                                     onChange={setSummaryFilterCategories}
                                                 />
                                             </div>
-                                            <div style={{ width: '1px', height: '20px', background: 'var(--border)', flexShrink: 0 }} />
-                                            {[
-                                                { val: summaryStats.totalProducts, label: 'Toplam', color: 'var(--primary)', bg: '#eff6ff' },
-                                                { val: summaryStats.criticalItems, label: 'Kritik', color: '#dc2626', bg: '#fef2f2' },
-                                                { val: summaryStats.monthlyIns, label: 'Ay Giriş', color: '#16a34a', bg: '#f0fdf4' },
-                                                { val: summaryStats.monthlyOuts, label: 'Ay Çıkış', color: '#d97706', bg: '#fffbeb' },
-                                            ].map(chip => (
-                                                <div key={chip.label} style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '20px', background: chip.bg, border: `1px solid ${chip.color}22`, flexShrink: 0 }}>
-                                                    <span style={{ fontSize: '13px', fontWeight: 800, color: chip.color }}>{chip.val}</span>
-                                                    <span style={{ fontSize: '10px', fontWeight: 600, color: chip.color, opacity: 0.75, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{chip.label}</span>
-                                                </div>
-                                            ))}
-                                            <ExportButtons
-                                                data={stockSummary}
-                                                title="Stok Özeti Raporu"
-                                                columns={[
-                                                    { key: 'name', label: 'MALZEME' },
-                                                    { key: 'category', label: 'KATEGORİ' },
-                                                    { key: 'totalReceived', label: 'TOPLAM GİRİŞ' },
-                                                    { key: 'totalUsed', label: 'TOPLAM ÇIKIŞ' },
-                                                    { key: 'quantity', label: 'BAKİYE' },
-                                                    { key: 'unit', label: 'BİRİM' }
-                                                ]}
-                                                filename={`Stok_Ozeti_${new Date().toLocaleDateString('tr-TR')}`}
-                                                options={{ showKpis: true }}
-                                            />
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '20px', background: '#f1f5f9', border: '1px solid #e2e8f0', flexShrink: 0 }}>
+                                                <span style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a' }}>{summaryStats.totalProducts}</span>
+                                                <span style={{ fontSize: '10px', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Malzeme</span>
+                                            </div>
+                                            <div style={{ marginLeft: 'auto', flexShrink: 0 }}>
+                                                <ExportButtons
+                                                    data={stockSummary}
+                                                    title="Stok Özeti Raporu"
+                                                    columns={[
+                                                        { key: 'name', label: 'MALZEME' },
+                                                        { key: 'category', label: 'KATEGORİ' },
+                                                        { key: 'totalReceived', label: 'TOPLAM GİRİŞ' },
+                                                        { key: 'totalUsed', label: 'TOPLAM ÇIKIŞ' },
+                                                        { key: 'quantity', label: 'BAKİYE' },
+                                                        { key: 'unit', label: 'BİRİM' }
+                                                    ]}
+                                                    filename={`Stok_Ozeti_${new Date().toLocaleDateString('tr-TR')}`}
+                                                    options={{ showKpis: true }}
+                                                />
+                                            </div>
                                         </div>
                                     </div>
 
@@ -3250,22 +3269,22 @@ const App = () => {
                                                             onContextMenu={isAdmin ? (e) => handleCtxMenu(e, row, 'items') : undefined}
                                                             style={{
                                                                 width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center',
-                                                                gap: '10px', padding: '9px 12px', borderBottom: '1px solid var(--border)',
-                                                                background: isSel ? 'var(--accent)' : 'transparent',
+                                                                gap: '10px', padding: '9px 12px',
+                                                                background: isSel ? '#1e293b' : 'transparent',
                                                                 cursor: 'pointer', border: 'none', borderBottom: '1px solid var(--border)',
                                                                 transition: 'background 0.12s',
                                                             }}
                                                             onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = 'var(--bg-hover)'; }}
-                                                            onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = 'transparent'; }}
+                                                            onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = isSel ? '#1e293b' : 'transparent'; }}
                                                         >
-                                                            <div style={{ width: '3px', alignSelf: 'stretch', borderRadius: '2px', background: sm.barColor, flexShrink: 0 }} />
+                                                            <div style={{ width: '3px', alignSelf: 'stretch', borderRadius: '2px', background: isSel ? '#94a3b8' : sm.barColor, flexShrink: 0 }} />
                                                             <div style={{ flex: 1, minWidth: 0 }}>
-                                                                <div style={{ fontSize: '12px', fontWeight: 600, color: isSel ? '#fff' : 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.name}</div>
-                                                                <div style={{ fontSize: '10px', color: isSel ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)', marginTop: '1px' }}>{row.category || '—'}</div>
+                                                                <div style={{ fontSize: '12px', fontWeight: 600, color: isSel ? '#f1f5f9' : 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.name}</div>
+                                                                <div style={{ fontSize: '10px', color: isSel ? '#94a3b8' : 'var(--text-muted)', marginTop: '1px' }}>{row.category || '—'}</div>
                                                             </div>
                                                             <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                                                                <div style={{ fontSize: '13px', fontWeight: 800, color: isSel ? '#fff' : sm.color }}>{formatNumber(row.quantity)}</div>
-                                                                <div style={{ fontSize: '10px', color: isSel ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)' }}>{row.unit}</div>
+                                                                <div style={{ fontSize: '13px', fontWeight: 800, color: isSel ? '#e2e8f0' : sm.color }}>{formatNumber(row.quantity)}</div>
+                                                                <div style={{ fontSize: '10px', color: isSel ? '#94a3b8' : 'var(--text-muted)' }}>{row.unit}</div>
                                                             </div>
                                                         </button>
                                                     );
@@ -3354,6 +3373,74 @@ const App = () => {
                                                                 <div style={{ fontSize: '13px', fontWeight: 600, color: sm.color, marginTop: '4px' }}>{sm.label}</div>
                                                             </div>
                                                         </div>
+
+                                                        {/* Kasım 1'den Bugüne Grafik */}
+                                                        {(() => {
+                                                            const today = new Date(); today.setHours(23,59,59,999);
+                                                            const from = new Date(2025, 10, 1); from.setHours(0,0,0,0); // Kasım 1, 2025
+                                                            const totalDays = Math.round((today - from) / (1000 * 60 * 60 * 24)) + 1;
+                                                            const days = Array.from({ length: totalDays }, (_, i) => {
+                                                                const d = new Date(from); d.setDate(d.getDate() + i);
+                                                                return d;
+                                                            });
+                                                            const lastIdx = totalDays - 1;
+                                                            // Gün bazında giriş/çıkış
+                                                            const dayMap = {};
+                                                            (selRow.movements || []).forEach(m => {
+                                                                const d = parseTrDate(m.date);
+                                                                if (!d || d < from || d > today) return;
+                                                                const key = d.toISOString().split('T')[0];
+                                                                if (!dayMap[key]) dayMap[key] = 0;
+                                                                dayMap[key] += m.type === 'in' ? (Number(m.amount) || 0) : -(Number(m.amount) || 0);
+                                                            });
+                                                            // Kasım 1 öncesindeki stok = mevcut stok - dönem içi toplam değişim
+                                                            const periodChange = Object.values(dayMap).reduce((s, v) => s + v, 0);
+                                                            let running = selRow.quantity - periodChange;
+                                                            const points = days.map(d => {
+                                                                const key = d.toISOString().split('T')[0];
+                                                                running += (dayMap[key] || 0);
+                                                                return { date: d, val: running };
+                                                            });
+                                                            const vals = points.map(p => p.val);
+                                                            const minV = Math.min(...vals);
+                                                            const maxV = Math.max(...vals);
+                                                            const range = maxV - minV || 1;
+                                                            const W = 600, H = 80, PAD = 8;
+                                                            const toX = i => PAD + (i / lastIdx) * (W - PAD * 2);
+                                                            const toY = v => H - PAD - ((v - minV) / range) * (H - PAD * 2);
+                                                            const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${toX(i).toFixed(1)},${toY(p.val).toFixed(1)}`).join(' ');
+                                                            const areaD = `${pathD} L${toX(lastIdx).toFixed(1)},${H} L${toX(0).toFixed(1)},${H} Z`;
+                                                            const hasData = (selRow.movements || []).some(m => { const d = parseTrDate(m.date); return d && d >= from && d <= today; });
+                                                            return (
+                                                                <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', padding: '16px 20px' }}>
+                                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                                                        <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Kasım'dan Bugüne Stok Değişimi</span>
+                                                                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{periodChange >= 0 ? '+' : ''}{formatNumber(periodChange)} {selRow.unit}</span>
+                                                                    </div>
+                                                                    {!hasData ? (
+                                                                        <div style={{ textAlign: 'center', padding: '20px', fontSize: '12px', color: 'var(--text-muted)' }}>Bu dönemde hareket yok</div>
+                                                                    ) : (
+                                                                        <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: '80px', display: 'block' }}>
+                                                                            <defs>
+                                                                                <linearGradient id={`grad-${selRow.id}`} x1="0" y1="0" x2="0" y2="1">
+                                                                                    <stop offset="0%" stopColor={sm.barColor} stopOpacity="0.25" />
+                                                                                    <stop offset="100%" stopColor={sm.barColor} stopOpacity="0" />
+                                                                                </linearGradient>
+                                                                            </defs>
+                                                                            <path d={areaD} fill={`url(#grad-${selRow.id})`} />
+                                                                            <path d={pathD} fill="none" stroke={sm.barColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                                            {/* İlk ve son değer etiketleri */}
+                                                                            <text x={toX(0)} y={toY(points[0].val) - 5} fontSize="9" fill="var(--text-muted)" textAnchor="middle">{formatNumber(points[0].val)}</text>
+                                                                            <text x={toX(lastIdx)} y={toY(points[lastIdx].val) - 5} fontSize="9" fill={sm.barColor} textAnchor="middle" fontWeight="700">{formatNumber(points[lastIdx].val)}</text>
+                                                                        </svg>
+                                                                    )}
+                                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '10px', color: 'var(--text-muted)' }}>
+                                                                        <span>{from.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}</span>
+                                                                        <span>{today.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}</span>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })()}
                                                     </div>
                                                 );
                                             })() : (
