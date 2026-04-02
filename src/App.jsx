@@ -274,10 +274,12 @@ const EDIT_CONFIGS = {
         path: (r) => `zimmet/${r.id}`,
         fields: [
             { key: 'date', label: 'Tarih', type: 'text' },
-            { key: 'itemName', label: 'Malzeme', type: 'text' },
+            { key: 'time', label: 'Saat', type: 'text' },
+            { key: 'itemName', label: 'Malzeme', type: 'select-dynamic', optionsKey: 'malzeme' },
+            { key: 'kisi', label: 'Kişi', type: 'select-addable', optionsKey: 'kisi' },
+            { key: 'ekip', label: 'Ekip', type: 'select-addable', optionsKey: 'ekip' },
             { key: 'amount', label: 'Miktar', type: 'number' },
-            { key: 'unit', label: 'Birim', type: 'text' },
-            { key: 'person', label: 'Kişi/Ekip', type: 'text' },
+            { key: 'unit', label: 'Birim', type: 'select', options: ['ADET', 'TORBA', 'METRE', 'PALET', 'M3', 'TON', 'KG', 'LT', 'KUTU', 'PAKET', 'RULO', 'ÇİFT', 'TAKIM'] },
         ],
     },
     requests: {
@@ -389,30 +391,70 @@ const EditRowModal = ({ ctx, onSave, onClose }) => {
     const cfg = EDIT_CONFIGS[ctx.collection];
     const inputStyle = { width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '13px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' };
 
+    const renderField = (f) => {
+        const dynOpts = (ctx.dynamicOptions && ctx.dynamicOptions[f.optionsKey]) || [];
+        const opts = f.options || dynOpts;
+
+        if (f.type === 'select') {
+            return (
+                <select value={form[f.key] || ''} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} style={inputStyle}>
+                    {opts.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+            );
+        }
+
+        if (f.type === 'select-addable') {
+            const listId = `dlst-${f.key}`;
+            return (
+                <>
+                    <input
+                        type="text"
+                        value={form[f.key] || ''}
+                        onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
+                        list={listId}
+                        style={inputStyle}
+                        placeholder="Seçin veya yeni yazın..."
+                        autoComplete="off"
+                    />
+                    <datalist id={listId}>
+                        {opts.map(o => <option key={o} value={o} />)}
+                    </datalist>
+                </>
+            );
+        }
+
+        if (f.type === 'select-dynamic') {
+            return (
+                <select value={form[f.key] || ''} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} style={inputStyle}>
+                    <option value="">— Seçin —</option>
+                    {opts.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+            );
+        }
+
+        return (
+            <input type={f.type} value={form[f.key] || ''} onChange={e => setForm(p => ({ ...p, [f.key]: f.type === 'number' ? Number(e.target.value) : e.target.value }))} style={inputStyle} />
+        );
+    };
+
     return createPortal(
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 99998, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
             <div style={{ background: 'white', borderRadius: '12px', padding: '24px', width: '420px', maxWidth: '95vw', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
                     <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#111827' }}>{cfg.label} Düzenle</h3>
-                    <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#9ca3af', lineHeight: 1 }}>×</button>
+                    <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#9ca3af', lineHeight: 1 }}>×</button>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {cfg.fields.map(f => (
                         <div key={f.key}>
                             <label style={{ fontSize: '11px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '4px' }}>{f.label}</label>
-                            {f.type === 'select' ? (
-                                <select value={form[f.key] || ''} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} style={inputStyle}>
-                                    {f.options.map(o => <option key={o} value={o}>{o}</option>)}
-                                </select>
-                            ) : (
-                                <input type={f.type} value={form[f.key] || ''} onChange={e => setForm(p => ({ ...p, [f.key]: f.type === 'number' ? Number(e.target.value) : e.target.value }))} style={inputStyle} />
-                            )}
+                            {renderField(f)}
                         </div>
                     ))}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '20px' }}>
-                    <button onClick={onClose} style={{ padding: '7px 16px', borderRadius: '6px', border: '1px solid #e2e8f0', background: '#f8fafc', color: '#6b7280', fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit' }}>İptal</button>
-                    <button onClick={() => onSave(form)} style={{ padding: '7px 16px', borderRadius: '6px', border: 'none', background: '#4A90D9', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>Kaydet</button>
+                    <button type="button" onClick={onClose} style={{ padding: '7px 16px', borderRadius: '6px', border: '1px solid #e2e8f0', background: '#f8fafc', color: '#6b7280', fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit' }}>İptal</button>
+                    <button type="button" onClick={() => onSave(form)} style={{ padding: '7px 16px', borderRadius: '6px', border: 'none', background: '#4A90D9', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>Kaydet</button>
                 </div>
             </div>
         </div>,
@@ -780,6 +822,12 @@ const App = () => {
     const [zimmetType, setZimmetType] = useState('verildi');
     const [selectedItemForZimmet, setSelectedItemForZimmet] = useState(null);
     const [zimmetView, setZimmetView] = useState('active'); // 'active' or 'history'
+    const [zimmetFilterMalzeme, setZimmetFilterMalzeme] = useState('');
+    const [zimmetFilterKisi, setZimmetFilterKisi] = useState('');
+    const [zimmetFilterEkip, setZimmetFilterEkip] = useState('');
+    const [zimmetFilterTarih, setZimmetFilterTarih] = useState('');
+    const [zimmetKisiInput, setZimmetKisiInput] = useState('');
+    const [zimmetEkipInput, setZimmetEkipInput] = useState('');
     // ── Sevkiyat State ──
     const [sevkiyat, setSevkiyat] = useState([]);
     const [sevkiyatLoading, setSevkiyatLoading] = useState(false);
@@ -900,16 +948,33 @@ const App = () => {
         setCtxMenu(null);
     };
 
+    const getZimmetDynOpts = () => ({
+        malzeme: items.map(i => i.name).sort((a, b) => a.localeCompare(b, 'tr')),
+        kisi: [...new Set(zimmet.filter(z => z.kisi).map(z => z.kisi))].sort((a, b) => a.localeCompare(b, 'tr')),
+        ekip: [...new Set(zimmet.filter(z => z.ekip).map(z => z.ekip))].sort((a, b) => a.localeCompare(b, 'tr')),
+    });
+
     const handleCtxEdit = () => {
         if (!ctxMenu) return;
-        setEditRow({ row: ctxMenu.row, collection: ctxMenu.collection });
+        const extra = ctxMenu.collection === 'zimmet' ? { dynamicOptions: getZimmetDynOpts() } : {};
+        setEditRow({ row: ctxMenu.row, collection: ctxMenu.collection, ...extra });
         setCtxMenu(null);
     };
 
     const handleEditSave = (formData) => {
         if (!editRow) return;
         const cfg = EDIT_CONFIGS[editRow.collection];
-        update(ref(db, cfg.path(editRow.row)), formData);
+        let data = { ...formData };
+        if (editRow.collection === 'zimmet') {
+            // sync itemId if itemName changed
+            if (data.itemName && data.itemName !== editRow.row.itemName) {
+                const match = items.find(i => i.name === data.itemName);
+                if (match) data.itemId = match.id;
+            }
+            // keep person field in sync for legacy display
+            data.person = [data.kisi, data.ekip].filter(Boolean).join(' / ');
+        }
+        update(ref(db, cfg.path(editRow.row)), data);
         setEditRow(null);
     };
 
@@ -1116,7 +1181,7 @@ const App = () => {
         const zimmetRef = ref(db, 'zimmet');
         const unsub = onValue(zimmetRef, (snap) => {
             const data = snap.val();
-            setZimmet(data ? Object.values(data).sort((a, b) => (b.updated_at || b.created_at || b.id || 0) - (a.updated_at || a.created_at || a.id || 0)) : []);
+            setZimmet(data ? Object.values(data).sort((a, b) => (Number(b.id)||0) - (Number(a.id)||0)) : []);
         });
         return () => unsub();
     }, []);
@@ -1400,13 +1465,18 @@ const App = () => {
 
     // ── Stats ──
     const stats = useMemo(() => {
-        const today = new Date().toLocaleDateString();
+        const today = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD"
+        const todayShort = new Date().toLocaleDateString('tr-TR'); // "2.04.2026"
+        const isToday = (date) => {
+            const d = String(date || '');
+            return d.startsWith(today) || d.startsWith(todayShort);
+        };
         return {
             totalItems: items.length,
             lowStock: items.filter(item => item.quantity <= item.minStock).length,
-            todayIn: movements.filter(m => m.type === 'in' && String(m.date || '').includes(today)).length,
-            todayOut: movements.filter(m => m.type === 'out' && String(m.date || '').includes(today)).length,
-            todayZimmet: zimmet.filter(z => String(z.date || z.created_at || '').includes(today)).length
+            todayIn: movements.filter(m => m.type === 'in' && isToday(m.date)).length,
+            todayOut: movements.filter(m => m.type === 'out' && isToday(m.date)).length,
+            todayZimmet: zimmet.filter(z => isToday(z.date)).length
         };
     }, [items, movements, zimmet]);
 
@@ -1558,14 +1628,41 @@ const App = () => {
     const summaryStats = useMemo(() => {
         const totalProducts = items.length;
         const criticalItems = items.filter(i => i.minStock > 0 && i.quantity <= i.minStock).length;
-        
+
         const firstDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
         const thisMonthMovements = movements.filter(m => new Date(m.date) >= firstDayOfMonth);
         const monthlyIns = thisMonthMovements.filter(m => m.type === 'in').length;
         const monthlyOuts = thisMonthMovements.filter(m => m.type === 'out').length;
 
-        return { totalProducts, criticalItems, monthlyIns, monthlyOuts };
-    }, [items, movements]);
+        // Parasal değer hesabı
+        const totalAlinan = movements
+            .filter(m => m.type === 'in')
+            .reduce((sum, m) => sum + (Number(m.toplamFiyat) || (Number(m.amount) || 0) * (Number(m.birimFiyat) || 0)), 0);
+
+        // Çıkışlar için: çıkış yapılan malzemenin avgPrice'ı × miktar
+        const avgPriceMap = {};
+        items.forEach(i => { avgPriceMap[String(i.id)] = Number(i.avgPrice) || 0; });
+        const totalCikis = movements
+            .filter(m => m.type === 'out')
+            .reduce((sum, m) => {
+                const price = Number(m.birimFiyat) || avgPriceMap[String(m.itemId)] || 0;
+                return sum + price * (Number(m.amount) || 0);
+            }, 0);
+
+        const totalKalan = totalAlinan - totalCikis;
+
+        // Zimmet değeri: aktif zimmet kayıtlarının avgPrice × miktar
+        const totalZimmetDeger = zimmet
+            .filter(z => z.status === 'zimmette' || !z.status || z.status === 'verildi')
+            .reduce((sum, z) => {
+                const price = avgPriceMap[String(z.itemId)] || 0;
+                return sum + price * (Number(z.amount) || 0);
+            }, 0);
+
+        const totalDepoDeger = Math.max(0, totalKalan - totalZimmetDeger);
+
+        return { totalProducts, criticalItems, monthlyIns, monthlyOuts, totalAlinan, totalCikis, totalKalan, totalZimmetDeger, totalDepoDeger };
+    }, [items, movements, zimmet]);
 
     const priceAnalysis = useMemo(() => {
         return items.map(item => {
@@ -1688,8 +1785,8 @@ const App = () => {
                 const recipient = rawRecipient === '__NEW__' ? '' : (rawRecipient || '');
                 const itemId = String(selectedItemForMove.id);
                 const displayDateOut = isBackdated
-                    ? new Date(actionDate + 'T12:00:00').toLocaleString('tr-TR')
-                    : new Date().toLocaleString();
+                    ? actionDate
+                    : new Date().toISOString().split('T')[0];
 
                 const moveBaseData = {
                     itemId: Number(itemId), itemName: selectedItemForMove.name,
@@ -1806,23 +1903,24 @@ const App = () => {
         e.preventDefault();
         setIsSaving(true);
         const formData = new FormData(e.target);
-        const person = formData.get('person');
+        const kisi = zimmetKisiInput.trim();
+        const ekip = zimmetEkipInput.trim();
+        const person = [kisi, ekip].filter(Boolean).join(' / ');
         const note = formData.get('note');
         const amount = Number(formData.get('amount') || 1);
         const unit = formData.get('unit') || 'Adet';
         const itemId = String(selectedItemForZimmet.id);
         const actionDate = formData.get('actionDate');
+        const actionTime = formData.get('actionTime') || '00:00';
         const timestamp = Date.now();
 
         // Tarih kontrolü
         const today = new Date().toISOString().split('T')[0];
         const isBackdated = actionDate < today;
-        const dateStr = isBackdated
-            ? new Date(actionDate + 'T12:00:00').toLocaleString('tr-TR')
-            : new Date().toLocaleString('tr-TR');
+        const dateStr = `${actionDate}`;
+        const timeStr = actionTime;
 
         if (isBackdated) {
-            // Geçmiş tarihli → onaya gönder
             const pendingId = String(timestamp);
             const pendingData = {
                 id: Number(pendingId),
@@ -1830,11 +1928,9 @@ const App = () => {
                 data: {
                     itemId: Number(itemId),
                     itemName: selectedItemForZimmet.name,
-                    person,
-                    note,
-                    amount,
-                    unit,
-                    date: dateStr,
+                    kisi, ekip, person,
+                    note, amount, unit,
+                    date: dateStr, time: timeStr,
                 },
                 requestedBy: userProfile.name,
                 requestedByUid: authUser.uid,
@@ -1845,6 +1941,8 @@ const App = () => {
                 .then(() => {
                     setShowZimmetModal(false);
                     setSelectedItemForZimmet(null);
+                    setZimmetKisiInput('');
+                    setZimmetEkipInput('');
                     showToast('Geçmiş tarihli zimmet yönetici onayına gönderildi.', 'success');
                 })
                 .catch(err => alert("Hata: " + err.message))
@@ -1852,19 +1950,17 @@ const App = () => {
             return;
         }
 
-        // Bugünün tarihi → doğrudan kaydet
         const zimmetId = String(timestamp);
         const zimmetData = {
             id: Number(zimmetId),
             itemId: Number(itemId),
             itemName: selectedItemForZimmet.name,
-            person,
-            note,
-            amount,
-            unit,
+            kisi, ekip, person,
+            note, amount, unit,
             type: 'verildi',
             status: 'zimmette',
             date: dateStr,
+            time: timeStr,
             created_at: timestamp,
             updated_at: timestamp
         };
@@ -1872,33 +1968,65 @@ const App = () => {
             .then(() => {
                 setShowZimmetModal(false);
                 setSelectedItemForZimmet(null);
+                setZimmetKisiInput('');
+                setZimmetEkipInput('');
             })
             .catch(err => alert("Hata: " + err.message))
             .finally(() => setIsSaving(false));
     };
 
     const handleReturnZimmet = (z) => {
-        setIsSaving(true);
-        const dateStr = new Date().toLocaleString('tr-TR');
+        const now = new Date();
+        const dateStr = now.toISOString().split('T')[0];
+        const timeStr = now.toTimeString().slice(0, 5);
         const timestamp = Date.now();
 
-        const updates = {};
-        // 1. Mevcut kaydı kapat (aktif listesinden düşmesi için)
-        updates[`zimmet/${z.id}/status`] = 'closed';
-        updates[`zimmet/${z.id}/returned_at`] = dateStr;
-        updates[`zimmet/${z.id}/updated_at`] = timestamp;
+        let returnAmount = z.amount;
 
-        // 2. Yeni bir "iade" hareket satırı oluştur
-        const returnId = timestamp + 1; // Çakışma olmaması için +1
+        if (z.amount > 1) {
+            const input = window.prompt(
+                `"${z.itemName}" — ${z.amount} ${z.unit || 'adet'} zimmetli.\nKaç adet geri alındı?`,
+                String(z.amount)
+            );
+            if (input === null) return; // iptal
+            const parsed = Number(input);
+            if (!parsed || parsed < 1 || parsed > z.amount) {
+                alert(`Geçersiz miktar. 1 ile ${z.amount} arasında olmalı.`);
+                return;
+            }
+            returnAmount = parsed;
+        }
+
+        setIsSaving(true);
+        const updates = {};
+        const remaining = z.amount - returnAmount;
+
+        if (remaining <= 0) {
+            // Tamamı iade — kaydı kapat
+            updates[`zimmet/${z.id}/status`] = 'closed';
+            updates[`zimmet/${z.id}/returned_at`] = dateStr;
+            updates[`zimmet/${z.id}/updated_at`] = timestamp;
+        } else {
+            // Kısmi iade — orijinal kaydın miktarını güncelle
+            updates[`zimmet/${z.id}/amount`] = remaining;
+            updates[`zimmet/${z.id}/updated_at`] = timestamp;
+        }
+
+        // İade hareketi oluştur
+        const returnId = timestamp + 1;
         updates[`zimmet/${returnId}`] = {
             id: returnId,
             itemId: z.itemId,
             itemName: z.itemName,
+            kisi: z.kisi || '',
+            ekip: z.ekip || '',
             person: z.person,
-            amount: z.amount,
+            amount: returnAmount,
+            unit: z.unit || '',
             type: 'geri_alindi',
             status: 'completed',
             date: dateStr,
+            time: timeStr,
             created_at: timestamp,
             updated_at: timestamp
         };
@@ -2708,7 +2836,7 @@ const App = () => {
                     <div>
                         <div style={{ position: 'relative', display: 'inline-block' }}>
                             <div className="sidebar-logo-text">Shintea</div>
-                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.051</span>
+                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.052</span>
                         </div>
                     </div>
                 </div>
@@ -3095,7 +3223,7 @@ const App = () => {
                                                         allSelected={dashAllSelected}
                                                         onSelectAll={() => selectAllTbl('dash', combined.map(m => `${m.category}-${m.id}`))}
                                                         onDelete={() => openBulkDel('dash_mixed', dashSelRows)}
-                                                        onEdit={() => { if (dashSelRows.length === 1) { const m = dashSelRows[0]; setEditRow({ row: m, collection: m.category === 'zimmet' ? 'zimmet' : 'movements' }); } }}
+                                                        onEdit={() => { if (dashSelRows.length === 1) { const m = dashSelRows[0]; const col = m.category === 'zimmet' ? 'zimmet' : 'movements'; setEditRow({ row: m, collection: col, ...(col === 'zimmet' ? { dynamicOptions: getZimmetDynOpts() } : {}) }); } }}
                                                         onHighlight={() => openHLPicker('dash', dashSelKeys)}
                                                     />
                                                 </div>
@@ -3194,49 +3322,70 @@ const App = () => {
 
                                 return (
                                     <>
-                                    {/* ── HEADER ROW: başlık (sol) + filtreler + chips (sağ) ── */}
-                                    <div style={{ display: 'flex', gap: '14px', alignItems: 'center', padding: '10px 0', flexShrink: 0 }}>
-                                        {/* Sol: başlık — 300px, sol panel ile hizalı */}
-                                        <div style={{ width: '300px', flexShrink: 0 }}>
-                                            <h1 className="summary-title" style={{ fontSize: '18px', margin: 0 }}>Stok Özeti</h1>
+                                    {/* ── HEADER ROW: tek satır ── */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 0', flexShrink: 0, flexWrap: 'nowrap' }}>
+                                        {/* Başlık + sayaç */}
+                                        <h1 className="summary-title" style={{ fontSize: '18px', margin: 0, flexShrink: 0 }}>Stok Özeti</h1>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '20px', background: '#f1f5f9', border: '1px solid #e2e8f0', flexShrink: 0 }}>
+                                            <span style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a' }}>{summaryStats.totalProducts}</span>
+                                            <span style={{ fontSize: '10px', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Malzeme</span>
                                         </div>
-                                        {/* Sağ: filtreler + chips + export — sağ panelle hizalı */}
-                                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap', overflow: 'hidden' }}>
-                                            {/* Filtreler: sabit genişlikte container */}
-                                            <div style={{ display: 'flex', gap: '6px', width: '240px', flexShrink: 0 }}>
-                                                <MultiSelectDropdown
-                                                    label="Malzeme"
-                                                    options={allItemNames}
-                                                    selected={summaryFilterNames}
-                                                    onChange={setSummaryFilterNames}
-                                                />
-                                                <MultiSelectDropdown
-                                                    label="Kategori"
-                                                    options={allCategories}
-                                                    selected={summaryFilterCategories}
-                                                    onChange={setSummaryFilterCategories}
-                                                />
+                                        {/* Filtreler */}
+                                        <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                                            <MultiSelectDropdown
+                                                label="Malzeme"
+                                                options={allItemNames}
+                                                selected={summaryFilterNames}
+                                                onChange={setSummaryFilterNames}
+                                            />
+                                            <MultiSelectDropdown
+                                                label="Kategori"
+                                                options={allCategories}
+                                                selected={summaryFilterCategories}
+                                                onChange={setSummaryFilterCategories}
+                                            />
+                                        </div>
+                                        {/* Ayraç */}
+                                        <div style={{ width: '1px', background: '#e2e8f0', alignSelf: 'stretch', margin: '2px 4px', flexShrink: 0 }} />
+                                        {/* Stok değerleri */}
+                                        {[
+                                            { lbl: 'Toplam Alınan', val: summaryStats.totalAlinan },
+                                            { lbl: 'Çıkış Yapılan', val: summaryStats.totalCikis },
+                                            { lbl: 'Kalan — Depo', val: summaryStats.totalDepoDeger },
+                                            { lbl: 'Kalan — Zimmet', val: summaryStats.totalZimmetDeger },
+                                        ].map((item, i) => (
+                                            <React.Fragment key={i}>
+                                                {i > 0 && <div style={{ width: '1px', background: '#e2e8f0', alignSelf: 'stretch', margin: '2px 0', flexShrink: 0 }} />}
+                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0 12px', flexShrink: 0 }}>
+                                                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap', marginBottom: '3px' }}>{item.lbl}</span>
+                                                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap' }}>₺ {item.val > 0 ? item.val.toLocaleString('tr-TR', { maximumFractionDigits: 0 }) : '—'}</span>
+                                                </div>
+                                            </React.Fragment>
+                                        ))}
+                                        {/* Stok Değeri — gradient toplam */}
+                                        <div style={{ width: '1px', background: '#e2e8f0', alignSelf: 'stretch', margin: '2px 0', flexShrink: 0 }} />
+                                        <div style={{ display: 'flex', alignItems: 'center', padding: '0 8px', flexShrink: 0 }}>
+                                            <div style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', borderRadius: '8px', padding: '5px 14px', textAlign: 'center' }}>
+                                                <div style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '2px', whiteSpace: 'nowrap' }}>Stok Değeri</div>
+                                                <div style={{ fontSize: '13px', fontWeight: 800, color: 'white', whiteSpace: 'nowrap' }}>₺ {(summaryStats.totalDepoDeger + summaryStats.totalZimmetDeger) > 0 ? (summaryStats.totalDepoDeger + summaryStats.totalZimmetDeger).toLocaleString('tr-TR', { maximumFractionDigits: 0 }) : '—'}</div>
                                             </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '20px', background: '#f1f5f9', border: '1px solid #e2e8f0', flexShrink: 0 }}>
-                                                <span style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a' }}>{summaryStats.totalProducts}</span>
-                                                <span style={{ fontSize: '10px', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Malzeme</span>
-                                            </div>
-                                            <div style={{ marginLeft: 'auto', flexShrink: 0 }}>
-                                                <ExportButtons
-                                                    data={stockSummary}
-                                                    title="Stok Özeti Raporu"
-                                                    columns={[
-                                                        { key: 'name', label: 'MALZEME' },
-                                                        { key: 'category', label: 'KATEGORİ' },
-                                                        { key: 'totalReceived', label: 'TOPLAM GİRİŞ' },
-                                                        { key: 'totalUsed', label: 'TOPLAM ÇIKIŞ' },
-                                                        { key: 'quantity', label: 'BAKİYE' },
-                                                        { key: 'unit', label: 'BİRİM' }
-                                                    ]}
-                                                    filename={`Stok_Ozeti_${new Date().toLocaleDateString('tr-TR')}`}
-                                                    options={{ showKpis: true }}
-                                                />
-                                            </div>
+                                        </div>
+                                        {/* Export */}
+                                        <div style={{ marginLeft: 'auto', flexShrink: 0 }}>
+                                            <ExportButtons
+                                                data={stockSummary}
+                                                title="Stok Özeti Raporu"
+                                                columns={[
+                                                    { key: 'name', label: 'MALZEME' },
+                                                    { key: 'category', label: 'KATEGORİ' },
+                                                    { key: 'totalReceived', label: 'TOPLAM GİRİŞ' },
+                                                    { key: 'totalUsed', label: 'TOPLAM ÇIKIŞ' },
+                                                    { key: 'quantity', label: 'BAKİYE' },
+                                                    { key: 'unit', label: 'BİRİM' }
+                                                ]}
+                                                filename={`Stok_Ozeti_${new Date().toLocaleDateString('tr-TR')}`}
+                                                options={{ showKpis: true }}
+                                            />
                                         </div>
                                     </div>
 
@@ -3465,158 +3614,155 @@ const App = () => {
                             <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '6px' }}>Bu sayfayı görüntüleme yetkiniz bulunmuyor. Yöneticinizle iletişime geçin.</div>
                         </div>
                     )}
-                    {activeTab === 'zimmet' && pagePerm('zimmet') !== 'none' && (
+                    {activeTab === 'zimmet' && pagePerm('zimmet') !== 'none' && (() => {
+                        // Kişi ve Ekip listeleri (mevcut kayıtlardan)
+                        const allKisi = [...new Set(zimmet.map(z => z.kisi).filter(Boolean))].sort((a,b) => a.localeCompare(b,'tr'));
+                        const allEkip = [...new Set(zimmet.map(z => z.ekip).filter(Boolean))].sort((a,b) => a.localeCompare(b,'tr'));
+                        const allMalzeme = [...new Set(zimmet.map(z => z.itemName).filter(Boolean))].sort((a,b) => a.localeCompare(b,'tr'));
+
+                        const hasFilter = zimmetFilterMalzeme || zimmetFilterKisi || zimmetFilterEkip || zimmetFilterTarih;
+                        const zimFiltered = zimmet.filter(z => {
+                            if (zimmetView === 'active' && z.status !== 'zimmette') return false;
+                            if (zimmetFilterMalzeme && (z.itemName||'') !== zimmetFilterMalzeme) return false;
+                            if (zimmetFilterKisi && (z.kisi||'') !== zimmetFilterKisi) return false;
+                            if (zimmetFilterEkip && (z.ekip||'') !== zimmetFilterEkip) return false;
+                            if (zimmetFilterTarih && (z.date||'') !== zimmetFilterTarih) return false;
+                            return true;
+                        }).sort((a,b) => (Number(b.id)||0) - (Number(a.id)||0));
+
+                        const zimSelKeys = tblSelKeys('zimmet');
+                        const zimSelRows = zimFiltered.filter(z => zimSelKeys.includes(String(z.id)));
+                        const zimAllSel = zimFiltered.length > 0 && zimFiltered.every(z => isRowSel('zimmet', z.id));
+
+                        const filterSelectStyle = { fontSize: '12px', padding: '5px 10px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', outline: 'none', cursor: 'pointer', height: '32px', flexShrink: 0, maxWidth: '180px', minWidth: '120px' };
+
+                        return (
                         <div className="table-card animate-fade" style={{ minHeight: '400px' }}>
                             <div className="table-toolbar">
                                 <div className="flex align-center gap-3">
                                     <span className="section-title"><UserCheck size={17} /> Zimmet Yönetimi</span>
                                     <div className="tab-pill-container" style={{ marginLeft: '12px', background: '#f1f5f9', padding: '4px', borderRadius: '8px', display: 'flex', gap: '4px' }}>
-                                        <button
-                                            className={zimmetView === 'active' ? 'tab-pill active' : 'tab-pill'}
-                                            onClick={() => setZimmetView('active')}
-                                            style={{ padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', border: 'none', cursor: 'pointer', background: zimmetView === 'active' ? 'white' : 'transparent', color: zimmetView === 'active' ? '#4f46e5' : '#64748b', boxShadow: zimmetView === 'active' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}
-                                        >
-                                            Aktif Zimmetler
-                                        </button>
-                                        <button
-                                            className={zimmetView === 'history' ? 'tab-pill active' : 'tab-pill'}
-                                            onClick={() => setZimmetView('history')}
-                                            style={{ padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', border: 'none', cursor: 'pointer', background: zimmetView === 'history' ? 'white' : 'transparent', color: zimmetView === 'history' ? '#4f46e5' : '#64748b', boxShadow: zimmetView === 'history' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}
-                                        >
-                                            Zimmet Geçmişi
-                                        </button>
+                                        <button onClick={() => setZimmetView('active')} style={{ padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', border: 'none', cursor: 'pointer', background: zimmetView === 'active' ? 'white' : 'transparent', color: zimmetView === 'active' ? '#4f46e5' : '#64748b', boxShadow: zimmetView === 'active' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>Aktif Zimmetler</button>
+                                        <button onClick={() => setZimmetView('history')} style={{ padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', border: 'none', cursor: 'pointer', background: zimmetView === 'history' ? 'white' : 'transparent', color: zimmetView === 'history' ? '#4f46e5' : '#64748b', boxShadow: zimmetView === 'history' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>Zimmet Geçmişi</button>
                                     </div>
                                 </div>
                                 <div className="table-toolbar-right">
                                     <ExportButtons
-                                        data={zimmet.filter(z =>
-                                            (zimmetView === 'active' ? z.status === 'zimmette' : true) &&
-                                            (z.itemName.toLowerCase().includes(searchQuery.toLowerCase()) || z.person.toLowerCase().includes(searchQuery.toLowerCase()))
-                                        )}
+                                        data={zimFiltered}
                                         title={zimmetView === 'active' ? "Aktif Zimmet Listesi" : "Zimmet Hareketleri"}
-                                        columns={zimmetView === 'active' ? [
+                                        columns={[
                                             { key: 'itemName', label: 'MALZEME' },
-                                            { key: 'person', label: 'KIŞI/EKIP' },
-                                            { key: 'amount', label: 'MIKTAR' },
-                                            { key: 'date', label: 'TARİH' }
-                                        ] : [
-                                            { key: 'itemName', label: 'MALZEME' },
-                                            { key: 'person', label: 'KIŞI/EKIP' },
-                                            { key: 'amount', label: 'MIKTAR' },
+                                            { key: 'kisi', label: 'KİŞİ' },
+                                            { key: 'ekip', label: 'EKİP' },
+                                            { key: 'amount', label: 'MİKTAR' },
+                                            { key: 'unit', label: 'BİRİM' },
                                             { key: 'date', label: 'TARİH' },
-                                            { key: 'type', label: 'İŞLEM' }
+                                            { key: 'time', label: 'SAAT' },
+                                            { key: 'type', label: 'TÜR' }
                                         ]}
                                         filename={zimmetView === 'active' ? "Aktif_Zimmet" : "Zimmet_Gecmisi"}
                                     />
-                                    <div className="search-container">
-                                        <Search size={15} className="search-icon" />
-                                        <input
-                                            type="text"
-                                            placeholder="Malzeme veya kişi ara..."
-                                            className="search-input"
-                                            value={searchQuery}
-                                            onChange={(e) => setSearchQuery(e.target.value)}
-                                        />
-                                    </div>
                                 </div>
                             </div>
-                            {(() => {
-                                const zimFiltered = zimmet.filter(z =>
-                                    (zimmetView === 'active' ? z.status === 'zimmette' : true) &&
-                                    (z.itemName.toLowerCase().includes(searchQuery.toLowerCase()) || z.person.toLowerCase().includes(searchQuery.toLowerCase()))
-                                ).sort((a, b) => (b.updated_at || b.created_at || b.id || 0) - (a.updated_at || a.created_at || a.id || 0));
-                                const zimSelKeys = tblSelKeys('zimmet');
-                                const zimSelRows = zimFiltered.filter(z => zimSelKeys.includes(String(z.id)));
-                                const zimAllSel = zimFiltered.length > 0 && zimFiltered.every(z => isRowSel('zimmet', z.id));
-                                return isAdmin && tblSelCount('zimmet') > 0 ? (
-                                    <TableActionBar
-                                        count={tblSelCount('zimmet')}
-                                        totalCount={zimFiltered.length}
-                                        allSelected={zimAllSel}
-                                        onSelectAll={() => selectAllTbl('zimmet', zimFiltered.map(z => String(z.id)))}
-                                        onDelete={() => openBulkDel('zimmet', zimSelRows)}
-                                        onEdit={() => { if (zimSelRows.length === 1) setEditRow({ row: zimSelRows[0], collection: 'zimmet' }); }}
-                                        onHighlight={() => openHLPicker('zimmet', zimSelKeys)}
-                                    />
-                                ) : null;
-                            })()}
+
+                            {/* Filtreler — tek satır */}
+                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', padding: '0 0 12px 0', flexWrap: 'nowrap', overflowX: 'auto' }}>
+                                <select style={filterSelectStyle} value={zimmetFilterMalzeme} onChange={e => setZimmetFilterMalzeme(e.target.value)}>
+                                    <option value="">Tüm Malzemeler</option>
+                                    {allMalzeme.map(k => <option key={k} value={k}>{k}</option>)}
+                                </select>
+                                <select style={filterSelectStyle} value={zimmetFilterKisi} onChange={e => setZimmetFilterKisi(e.target.value)}>
+                                    <option value="">Tüm Kişiler</option>
+                                    {allKisi.map(k => <option key={k} value={k}>{k}</option>)}
+                                </select>
+                                <select style={filterSelectStyle} value={zimmetFilterEkip} onChange={e => setZimmetFilterEkip(e.target.value)}>
+                                    <option value="">Tüm Ekipler</option>
+                                    {allEkip.map(k => <option key={k} value={k}>{k}</option>)}
+                                </select>
+                                <input type="date" style={{ ...filterSelectStyle, minWidth: '130px' }} value={zimmetFilterTarih} onChange={e => setZimmetFilterTarih(e.target.value)} />
+                                {hasFilter && (
+                                    <button onClick={() => { setZimmetFilterMalzeme(''); setZimmetFilterKisi(''); setZimmetFilterEkip(''); setZimmetFilterTarih(''); }} style={{ fontSize: '11px', padding: '5px 10px', borderRadius: '6px', border: '1px solid #fecaca', background: '#fff5f5', color: '#dc2626', cursor: 'pointer', fontWeight: '600', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                        <X size={11} style={{ marginRight: '3px' }} /> Temizle
+                                    </button>
+                                )}
+                            </div>
+
+                            {isAdmin && tblSelCount('zimmet') > 0 && (
+                                <TableActionBar
+                                    count={tblSelCount('zimmet')}
+                                    totalCount={zimFiltered.length}
+                                    allSelected={zimAllSel}
+                                    onSelectAll={() => selectAllTbl('zimmet', zimFiltered.map(z => String(z.id)))}
+                                    onDelete={() => openBulkDel('zimmet', zimSelRows)}
+                                    onEdit={() => { if (zimSelRows.length === 1) setEditRow({ row: zimSelRows[0], collection: 'zimmet', dynamicOptions: getZimmetDynOpts() }); }}
+                                    onHighlight={() => openHLPicker('zimmet', zimSelKeys)}
+                                />
+                            )}
+
                             <div className="table-responsive-wrapper" style={{ overflowX: 'auto' }}>
                                 <table className="responsive-table" style={{ borderCollapse: 'collapse' }}>
                                     <colgroup>
                                         <col style={{ width: '36px' }} />
-                                        <col className="col-tarih" />
-                                        <col className="col-malzeme" />
-                                        <col className="col-firma" />
-                                        <col className="col-miktar" />
-                                        <col className="col-islem" />
+                                        <col style={{ width: '90px' }} />
+                                        <col style={{ width: '65px' }} />
+                                        <col />
+                                        <col style={{ width: '140px' }} />
+                                        <col style={{ width: '140px' }} />
+                                        <col style={{ width: '70px', textAlign: 'right' }} />
+                                        <col style={{ width: '60px' }} />
+                                        <col style={{ width: '130px' }} />
                                     </colgroup>
                                     <thead>
                                         <tr>
                                             <th style={{ ...CB_TH, border: '1px solid var(--border)' }}></th>
-                                            <th style={{ border: '1px solid var(--border)' }}>İŞLEM TARİHİ</th>
+                                            <th style={{ border: '1px solid var(--border)' }}>TARİH</th>
+                                            <th style={{ border: '1px solid var(--border)' }}>SAAT</th>
                                             <th style={{ border: '1px solid var(--border)' }}>MALZEME</th>
-                                            <th style={{ border: '1px solid var(--border)' }}>KİŞİ / EKİP</th>
+                                            <th style={{ border: '1px solid var(--border)' }}>KİŞİ</th>
+                                            <th style={{ border: '1px solid var(--border)' }}>EKİP</th>
                                             <th style={{ textAlign: 'right', border: '1px solid var(--border)' }}>MİKTAR</th>
+                                            <th style={{ border: '1px solid var(--border)' }}>BİRİM</th>
                                             <th style={{ border: '1px solid var(--border)' }}>{zimmetView === 'active' ? 'İŞLEM' : 'TÜR'}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {(() => {
-                                            const filtered = zimmet.filter(z =>
-                                                (zimmetView === 'active' ? z.status === 'zimmette' : true) &&
-                                                (z.itemName.toLowerCase().includes(searchQuery.toLowerCase()) || z.person.toLowerCase().includes(searchQuery.toLowerCase()))
-                                            ).sort((a, b) => (b.updated_at || b.created_at || b.id || 0) - (a.updated_at || a.created_at || a.id || 0));
-
-                                            if (filtered.length === 0) {
-                                                return <tr><td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>{zimmetView === 'active' ? 'Aktif zimmet kaydı bulunamadı.' : 'Henüz bir hareket kaydı yok.'}</td></tr>;
-                                            }
-
-                                            return filtered.map(z => (
-                                                <tr key={z.id} style={{ ...hlRowStyle('zimmet', z.id) }} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, z, 'zimmet') : undefined}>
-                                                    <td style={{ ...CB_TD, border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
-                                                        <input type="checkbox" style={CB_STYLE} checked={isRowSel('zimmet', z.id)} onChange={() => toggleSel('zimmet', String(z.id))} />
-                                                    </td>
-                                                    <td data-label="İşlem Tarihi" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{z.date}</td>
-                                                    <td data-label="Malzeme" style={{ fontWeight: '600', border: '1px solid var(--border)' }}>{z.itemName}</td>
-                                                    <td data-label="Kişi / Ekip" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{z.person}</td>
-                                                    <td data-label="Miktar" style={{ textAlign: 'right', whiteSpace: 'nowrap', fontWeight: '600', border: '1px solid var(--border)' }}>{z.amount}</td>
-                                                    <td data-label={zimmetView === 'active' ? "İşlem" : "Tür"} style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>
-                                                        {zimmetView === 'active' ? (
-                                                            pagePerm('zimmet') === 'edit' ? (
-                                                                <button
-                                                                    className="btn-ghost"
-                                                                    style={{ color: '#4f46e5', fontWeight: '600', padding: '6px 12px', borderRadius: '6px', background: '#f5f3ff', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-                                                                    onClick={() => handleReturnZimmet(z)}
-                                                                >
-                                                                    <RotateCcw size={14} /> Geri Alındı
-                                                                </button>
-                                                            ) : (
-                                                                <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                                                    <Eye size={13} /> Zimmette
-                                                                </span>
-                                                            )
+                                        {zimFiltered.length === 0 ? (
+                                            <tr><td colSpan="9" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>{zimmetView === 'active' ? 'Aktif zimmet kaydı bulunamadı.' : 'Henüz bir hareket kaydı yok.'}</td></tr>
+                                        ) : zimFiltered.map(z => (
+                                            <tr key={z.id} style={{ ...hlRowStyle('zimmet', z.id) }} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, z, 'zimmet') : undefined}>
+                                                <td style={{ ...CB_TD, border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
+                                                    <input type="checkbox" style={CB_STYLE} checked={isRowSel('zimmet', z.id)} onChange={() => toggleSel('zimmet', String(z.id))} />
+                                                </td>
+                                                <td data-label="Tarih" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)', fontSize: '12px' }}>{z.date || '—'}</td>
+                                                <td data-label="Saat" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)', fontSize: '12px', color: 'var(--text-muted)' }}>{z.time || '—'}</td>
+                                                <td data-label="Malzeme" style={{ fontWeight: '600', border: '1px solid var(--border)' }}>{z.itemName}</td>
+                                                <td data-label="Kişi" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)', fontSize: '12px' }}>{z.kisi || z.person || '—'}</td>
+                                                <td data-label="Ekip" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)', fontSize: '12px', color: '#4f46e5' }}>{z.ekip || '—'}</td>
+                                                <td data-label="Miktar" style={{ textAlign: 'right', whiteSpace: 'nowrap', fontWeight: '600', border: '1px solid var(--border)' }}>{z.amount}</td>
+                                                <td data-label="Birim" style={{ border: '1px solid var(--border)', fontSize: '12px', color: 'var(--text-muted)' }}>{z.unit || '—'}</td>
+                                                <td data-label={zimmetView === 'active' ? 'İşlem' : 'Tür'} style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>
+                                                    {zimmetView === 'active' ? (
+                                                        pagePerm('zimmet') === 'edit' ? (
+                                                            <button className="btn-ghost" style={{ color: '#4f46e5', fontWeight: '600', padding: '6px 12px', borderRadius: '6px', background: '#f5f3ff', display: 'inline-flex', alignItems: 'center', gap: '5px' }} onClick={() => handleReturnZimmet(z)}>
+                                                                <RotateCcw size={14} /> Geri Alındı
+                                                            </button>
                                                         ) : (
-                                                            <span style={{
-                                                                padding: '4px 10px',
-                                                                borderRadius: '20px',
-                                                                fontSize: '11px',
-                                                                fontWeight: '700',
-                                                                background: z.type === 'verildi' ? '#eff6ff' : '#f0fdf4',
-                                                                color: z.type === 'verildi' ? '#2563eb' : '#16a34a',
-                                                                border: `1px solid ${z.type === 'verildi' ? '#dbeafe' : '#dcfce7'}`
-                                                            }}>
-                                                                {z.type === 'verildi' ? 'ZİMMET VERİLDİ' : 'GERİ ALINDI'}
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            ));
-                                        })()}
+                                                            <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Eye size={13} /> Zimmette</span>
+                                                        )
+                                                    ) : (
+                                                        <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700', background: z.type === 'verildi' ? '#eff6ff' : '#f0fdf4', color: z.type === 'verildi' ? '#2563eb' : '#16a34a', border: `1px solid ${z.type === 'verildi' ? '#dbeafe' : '#dcfce7'}` }}>
+                                                            {z.type === 'verildi' ? 'ZİMMET VERİLDİ' : 'GERİ ALINDI'}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
                                     </tbody>
                                 </table>
                             </div>
                         </div>
-                    )}
+                        );
+                    })()}
 
                     {/* ── PRICE TAB ── */}
                     {activeTab === 'price' && pagePerm('price') === 'none' && (
@@ -3854,7 +4000,7 @@ const App = () => {
                                             allSelected={movAllSel}
                                             onSelectAll={() => selectAllTbl('movements', movementsFiltered.map(m => `${m.category}-${m.id}`))}
                                             onDelete={() => openBulkDel('movements_mixed', movSelRows)}
-                                            onEdit={() => { if (movSelRows.length === 1) { const m = movSelRows[0]; setEditRow({ row: m, collection: m.category === 'zimmet' ? 'zimmet' : 'movements' }); } }}
+                                            onEdit={() => { if (movSelRows.length === 1) { const m = movSelRows[0]; const col = m.category === 'zimmet' ? 'zimmet' : 'movements'; setEditRow({ row: m, collection: col, ...(col === 'zimmet' ? { dynamicOptions: getZimmetDynOpts() } : {}) }); } }}
                                             onHighlight={() => openHLPicker('movements', movSelKeys)}
                                         />
                                     ) : null;
@@ -3865,6 +4011,7 @@ const App = () => {
                                             <table className="responsive-table" style={{ borderCollapse: 'collapse' }}>
                                                 <colgroup>
                                                     <col style={{ width: '36px' }} />
+                                                    <col style={{ width: '72px' }} />
                                                     <col className="col-tarih" />
                                                     <col className="col-malzeme" />
                                                     <col className="col-kategori" />
@@ -3876,6 +4023,7 @@ const App = () => {
                                                 <thead>
                                                     <tr>
                                                         <th style={{ ...CB_TH, border: '1px solid var(--border)' }}></th>
+                                                        <th style={{ border: '1px solid var(--border)', whiteSpace: 'nowrap' }}>İŞLEM</th>
                                                         <th style={{ border: '1px solid var(--border)' }}>TARİH</th>
                                                         <th style={{ border: '1px solid var(--border)' }}>MALZEME</th>
                                                         <th style={{ border: '1px solid var(--border)' }}>KATEGORİ</th>
@@ -3887,19 +4035,26 @@ const App = () => {
                                                 </thead>
                                                 <tbody>
                                                     {movementsFiltered.length === 0 ? (
-                                                        <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Kayıt bulunamadı.</td></tr>
+                                                        <tr><td colSpan="9" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Kayıt bulunamadı.</td></tr>
                                                     ) : movementsFiltered.map((m) => {
+                                                        const isZimmet = m.category === 'zimmet';
                                                         const isIn = m.normalizedType === 'in';
-                                                        const tipColor = isIn ? 'var(--success)' : 'var(--danger)';
+                                                        const tipColor = isZimmet ? '#7c3aed' : isIn ? 'var(--success)' : 'var(--danger)';
+                                                        const islemLabel = isZimmet ? 'ZİMMET' : isIn ? 'GİRİŞ' : 'ÇIKIŞ';
+                                                        const islemBg = isZimmet ? '#ede9fe' : isIn ? '#dcfce7' : '#fee2e2';
+                                                        const islemColor = isZimmet ? '#6d28d9' : isIn ? '#166534' : '#991b1b';
                                                         const miktar = isIn ? `+${formatNumber(m.amount)}` : `−${formatNumber(m.amount)}`;
                                                         const kisi = isIn ? (m.firmaAdi || m.recipient || '—') : (m.recipient || m.firmaAdi || '—');
                                                         const detay = isIn ? (m.irsaliyeNo || '—') : (m.kullanimAlani || m.note || '—');
                                                         const tarih = String(m.date || '—').split(',')[0].split(' ')[0];
                                                         const rowKey = `${m.category}-${m.id}`;
                                                         return (
-                                                            <tr key={m.id} style={{ borderLeft: `4px solid ${tipColor}`, ...hlRowStyle('movements', rowKey) }} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, m, 'movements') : undefined}>
+                                                            <tr key={m.id} style={{ ...hlRowStyle('movements', rowKey) }} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, m, 'movements') : undefined}>
                                                                 <td style={{ ...CB_TD, border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
                                                                     <input type="checkbox" style={CB_STYLE} checked={isRowSel('movements', rowKey)} onChange={() => toggleSel('movements', rowKey)} />
+                                                                </td>
+                                                                <td style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)', padding: '4px 8px' }}>
+                                                                    <span style={{ display: 'inline-block', padding: '2px 7px', borderRadius: '4px', fontSize: '11px', fontWeight: '700', background: islemBg, color: islemColor, letterSpacing: '0.03em' }}>{islemLabel}</span>
                                                                 </td>
                                                                 <td style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{tarih}</td>
                                                                 <td style={{ border: '1px solid var(--border)' }}>{m.itemName || '—'}</td>
@@ -5612,30 +5767,38 @@ const App = () => {
                     })()}
 
                     {/* Zimmet Modal */}
-                    {showZimmetModal && pagePerm('action_zimmet') === 'edit' && (
+                    {showZimmetModal && pagePerm('action_zimmet') === 'edit' && (() => {
+                        const nowDate = new Date().toISOString().split('T')[0];
+                        const nowTime = new Date().toTimeString().slice(0, 5);
+                        const existingKisi = [...new Set(zimmet.map(z => z.kisi).filter(Boolean))].sort((a,b) => a.localeCompare(b,'tr'));
+                        const existingEkip = [...new Set(zimmet.map(z => z.ekip).filter(Boolean))].sort((a,b) => a.localeCompare(b,'tr'));
+                        return (
                         <div className="modal-overlay">
                             <div className="fm-modal">
-                                {/* Sol Panel */}
                                 <div className="fm-panel" style={{ background: 'linear-gradient(160deg, #a78bfa 0%, #6d28d9 100%)' }}>
-                                    <div className="fm-panel-icon">
-                                        <UserCheck size={30} />
-                                    </div>
+                                    <div className="fm-panel-icon"><UserCheck size={30} /></div>
                                     <div className="fm-panel-title">Malzeme Zimmet</div>
                                     <div className="fm-panel-desc">Malzemeyi kişi veya ekibe zimmetleyin</div>
                                 </div>
-
-                                {/* Sağ Gövde */}
                                 <div className="fm-body">
                                     <div className="fm-close-row">
-                                        <button className="btn-icon" onClick={() => setShowZimmetModal(false)}><X size={16} /></button>
+                                        <button className="btn-icon" onClick={() => { setShowZimmetModal(false); setZimmetKisiInput(''); setZimmetEkipInput(''); }}><X size={16} /></button>
                                     </div>
                                     <form onSubmit={handleZimmet} className="fm-form">
 
-                                        <div className="fm-field">
-                                            <div className="fm-label-row"><span className="fm-label">İşlem Tarihi</span></div>
-                                            <input className="fm-input" name="actionDate" type="date" defaultValue={new Date().toISOString().split('T')[0]} required />
+                                        {/* Tarih + Saat */}
+                                        <div className="fm-grid-2">
+                                            <div>
+                                                <div className="fm-label-row"><span className="fm-label">Tarih</span></div>
+                                                <input className="fm-input" name="actionDate" type="date" defaultValue={nowDate} required />
+                                            </div>
+                                            <div>
+                                                <div className="fm-label-row"><span className="fm-label">Saat</span></div>
+                                                <input className="fm-input" name="actionTime" type="time" defaultValue={nowTime} required />
+                                            </div>
                                         </div>
 
+                                        {/* Malzeme */}
                                         <div className="fm-field">
                                             <div className="fm-label-row"><span className="fm-label">Malzeme</span></div>
                                             <select className="fm-input" name="itemId" required value={selectedItemForZimmet?.id || ''} onChange={e => setSelectedItemForZimmet(items.find(i => String(i.id) === e.target.value))}>
@@ -5644,11 +5807,31 @@ const App = () => {
                                             </select>
                                         </div>
 
+                                        {/* Kişi */}
                                         <div className="fm-field">
-                                            <div className="fm-label-row"><span className="fm-label">Kişi / Ekip</span></div>
-                                            <input className="fm-input" name="person" required placeholder="Örn: Ahmet Yılmaz / Tesisat Ekibi" />
+                                            <div className="fm-label-row"><span className="fm-label">Kişi</span><span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>opsiyonel</span></div>
+                                            <div style={{ display: 'flex', gap: '6px' }}>
+                                                <select className="fm-input" style={{ flex: 1 }} value={zimmetKisiInput} onChange={e => setZimmetKisiInput(e.target.value)}>
+                                                    <option value="">— Seç veya yaz —</option>
+                                                    {existingKisi.map(k => <option key={k} value={k}>{k}</option>)}
+                                                </select>
+                                                <input className="fm-input" style={{ flex: 1 }} placeholder="Yeni kişi..." value={zimmetKisiInput} onChange={e => setZimmetKisiInput(e.target.value)} />
+                                            </div>
                                         </div>
 
+                                        {/* Ekip */}
+                                        <div className="fm-field">
+                                            <div className="fm-label-row"><span className="fm-label">Ekip</span><span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>opsiyonel</span></div>
+                                            <div style={{ display: 'flex', gap: '6px' }}>
+                                                <select className="fm-input" style={{ flex: 1 }} value={zimmetEkipInput} onChange={e => setZimmetEkipInput(e.target.value)}>
+                                                    <option value="">— Seç veya yaz —</option>
+                                                    {existingEkip.map(k => <option key={k} value={k}>{k}</option>)}
+                                                </select>
+                                                <input className="fm-input" style={{ flex: 1 }} placeholder="Yeni ekip..." value={zimmetEkipInput} onChange={e => setZimmetEkipInput(e.target.value)} />
+                                            </div>
+                                        </div>
+
+                                        {/* Miktar + Birim */}
                                         <div className="fm-grid-2">
                                             <div>
                                                 <div className="fm-label-row"><span className="fm-label">Miktar</span></div>
@@ -5662,19 +5845,15 @@ const App = () => {
                                             </div>
                                         </div>
 
+                                        {/* Not */}
                                         <div className="fm-field">
                                             <div className="fm-label-row"><span className="fm-label">Not / Açıklama</span><span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>opsiyonel</span></div>
                                             <input className="fm-input" name="note" placeholder="Örn: Geçici kullanım için" />
                                         </div>
 
                                         <div className="fm-footer">
-                                            <button type="button" className="fm-btn-cancel" onClick={() => setShowZimmetModal(false)}>İptal</button>
-                                            <button
-                                                type="submit"
-                                                className="fm-btn-submit"
-                                                disabled={isSaving || !selectedItemForZimmet}
-                                                style={{ background: 'linear-gradient(135deg, #a78bfa, #6d28d9)' }}
-                                            >
+                                            <button type="button" className="fm-btn-cancel" onClick={() => { setShowZimmetModal(false); setZimmetKisiInput(''); setZimmetEkipInput(''); }}>İptal</button>
+                                            <button type="submit" className="fm-btn-submit" disabled={isSaving || !selectedItemForZimmet || (!zimmetKisiInput.trim() && !zimmetEkipInput.trim())} style={{ background: 'linear-gradient(135deg, #a78bfa, #6d28d9)' }}>
                                                 {isSaving ? 'İşleniyor...' : '✓ Zimmeti Kaydet'}
                                             </button>
                                         </div>
@@ -5682,7 +5861,8 @@ const App = () => {
                                 </div>
                             </div>
                         </div>
-                    )}
+                        );
+                    })()}
 
                     {/* Personel Add/Edit Modal */}
                     {showPersonelModal && (
