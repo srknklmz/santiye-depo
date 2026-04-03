@@ -824,8 +824,9 @@ const App = () => {
     // ── Zimmet State ──
     const [transfers, setTransfers] = useState([]);
     const [showTransferModal, setShowTransferModal] = useState(false);
-    const [transferForm, setTransferForm] = useState({ itemId: '', fromDepo: '', toDepo: '', amount: '', note: '' });
+    const [transferForm, setTransferForm] = useState({ fromDepo: '', toDepo: '', note: '', rows: [{ itemId: '', amount: '' }] });
     const [inDepo, setInDepo] = useState(DEFAULT_DEPO);
+    const [inDepoLocked, setInDepoLocked] = useState(false);
 
     const [zimmet, setZimmet] = useState([]);
     const [showZimmetModal, setShowZimmetModal] = useState(false);
@@ -853,6 +854,13 @@ const App = () => {
     const [purchaseFormId, setPurchaseFormId] = useState(String(Date.now()));
     const [isQuickAdd, setIsQuickAdd] = useState(false);
     const [isNewRecipient, setIsNewRecipient] = useState(false);
+    // ── Multi-Row State (Giriş/Çıkış/Zimmet çoklu malzeme) ──
+    const emptyInRow = () => ({ malzemeAdi: '', miktar: '', birim: 'Adet', fiyat: '', kategori: '' });
+    const emptyOutRow = () => ({ itemId: '', miktar: '', birim: 'Adet', verilenBirim: '' });
+    const emptyZimmetRow = () => ({ itemId: '', miktar: '1', birim: 'Adet' });
+    const [multiInRows, setMultiInRows] = useState([emptyInRow()]);
+    const [multiOutRows, setMultiOutRows] = useState([emptyOutRow()]);
+    const [multiZimmetRows, setMultiZimmetRows] = useState([emptyZimmetRow()]);
     // ── Giriş Form State ──
     const [inMalzemeAdi, setInMalzemeAdi] = useState('');
     const [inFirmaAdi, setInFirmaAdi] = useState('');
@@ -1685,14 +1693,14 @@ const App = () => {
     }, [items, movements, zimmet]);
 
     // depoSummary: her (itemId, depo) çifti için net miktar hesapla
-    // movements.depo yoksa DEFAULT_DEPO olarak say
+    // Büyük Depo + Orta Depo + Küçük Depo + Zimmet = toplam stok
     const depoSummary = useMemo(() => {
         // { itemId: { depoName: netQty } }
         const map = {};
         const ensure = (itemId, depo) => {
             const k = String(itemId);
             if (!map[k]) map[k] = {};
-            if (!map[k][depo]) map[k][depo] = 0;
+            if (map[k][depo] === undefined) map[k][depo] = 0;
         };
         // Giriş hareketleri
         movements.filter(m => m.type === 'in').forEach(m => {
@@ -1700,7 +1708,7 @@ const App = () => {
             ensure(m.itemId, depo);
             map[String(m.itemId)][depo] += Number(m.amount) || 0;
         });
-        // Çıkış hareketleri — Büyük Depo'dan çıkar (eski kayıtlar)
+        // Çıkış hareketleri
         movements.filter(m => m.type === 'out').forEach(m => {
             const depo = m.depo || DEFAULT_DEPO;
             ensure(m.itemId, depo);
@@ -1716,8 +1724,15 @@ const App = () => {
             map[String(t.itemId)][from] -= qty;
             map[String(t.itemId)][to]   += qty;
         });
-        return map; // { itemId: { depoName: qty } }
-    }, [movements, transfers]);
+        // Aktif zimmet: depodan düş (zimmet kaydında depo yoksa DEFAULT_DEPO)
+        // Böylece: Büyük Depo + Orta Depo + Küçük Depo + Zimmet = toplam stok
+        zimmet.filter(z => z.status === 'zimmette' || z.status === 'verildi' || !z.status).forEach(z => {
+            const depo = z.depo || DEFAULT_DEPO;
+            ensure(z.itemId, depo);
+            map[String(z.itemId)][depo] -= Number(z.amount) || 0;
+        });
+        return map; // { itemId: { depoName: netQty (zimmet hariç) } }
+    }, [movements, transfers, zimmet]);
 
     const priceAnalysis = useMemo(() => {
         return items.map(item => {
@@ -1733,32 +1748,44 @@ const App = () => {
     // ── Depo Transfer Handler ──
     const handleTransfer = async (e) => {
         e.preventDefault();
-        const { itemId, fromDepo, toDepo, amount, note } = transferForm;
-        if (!itemId || !fromDepo || !toDepo || !amount) return;
+        const { fromDepo, toDepo, note, rows } = transferForm;
+        if (!fromDepo || !toDepo) return;
         if (fromDepo === toDepo) { alert('Kaynak ve hedef depo aynı olamaz.'); return; }
-        const qty = Number(amount);
-        if (qty <= 0) { alert('Miktar 0\'dan büyük olmalıdır.'); return; }
-        // Kontrol: kaynak depoda yeterli stok var mı?
-        const srcQty = (depoSummary[String(itemId)] || {})[fromDepo] || 0;
-        if (qty > srcQty) { alert(`${fromDepo} deposunda yeterli stok yok. Mevcut: ${srcQty}`); return; }
+        const validRows = rows.filter(r => r.itemId && Number(r.amount) > 0);
+        if (validRows.length === 0) { alert('En az bir malzeme ve miktar giriniz.'); return; }
+        // Stok kontrolü
+        for (const r of validRows) {
+            const srcQty = (depoSummary[String(r.itemId)] || {})[fromDepo] || 0;
+            const qty = Number(r.amount);
+            const itemName = items.find(i => String(i.id) === String(r.itemId))?.name || r.itemId;
+            if (qty > srcQty) {
+                alert(`"${itemName}" için ${fromDepo} deposunda yeterli stok yok.\nMevcut: ${srcQty}`);
+                return;
+            }
+        }
         setIsSaving(true);
         try {
-            const id = String(Date.now());
-            const item = items.find(i => String(i.id) === String(itemId));
-            await set(ref(db, `transfers/${id}`), {
-                id: Number(id),
-                itemId: Number(itemId),
-                itemName: item?.name || '',
-                fromDepo,
-                toDepo,
-                amount: qty,
-                note: note || '',
-                date: new Date().toISOString().split('T')[0],
-                createdBy: userProfile.name,
+            const batchUpdates = {};
+            const date = new Date().toISOString().split('T')[0];
+            validRows.forEach((r, idx) => {
+                const id = String(Date.now() + idx);
+                const item = items.find(i => String(i.id) === String(r.itemId));
+                batchUpdates[`transfers/${id}`] = {
+                    id: Number(id),
+                    itemId: Number(r.itemId),
+                    itemName: item?.name || '',
+                    fromDepo,
+                    toDepo,
+                    amount: Number(r.amount),
+                    note: note || '',
+                    date,
+                    createdBy: userProfile.name,
+                };
             });
-            setTransferForm({ itemId: '', fromDepo: '', toDepo: '', amount: '', note: '' });
+            await update(ref(db), batchUpdates);
+            setTransferForm({ fromDepo: '', toDepo: '', note: '', rows: [{ itemId: '', amount: '' }] });
             setShowTransferModal(false);
-            showToast(`${qty} adet transfer edildi: ${fromDepo} → ${toDepo}`, 'success');
+            showToast(`${validRows.length} malzeme transfer edildi: ${fromDepo} → ${toDepo}`, 'success');
         } catch (err) {
             alert('Transfer başarısız: ' + err.message);
         } finally {
@@ -1824,7 +1851,6 @@ const App = () => {
         setIsSaving(true);
         const formData = new FormData(e.target);
         const actionDate = formData.get('actionDate');
-        const unit = formData.get('unit') || 'Adet';
         const irsaliyeNo = formData.get('irsaliyeNo') || '';
 
         // Tarih — DD.MM.YYYY (saat yok)
@@ -1835,52 +1861,53 @@ const App = () => {
 
         try {
             if (movementType === 'in') {
-                const malzemeAdi = inMalzemeAdi.trim();
-                const malzemeTuru = formData.get('malzemeTuru') || 'Genel';
+                // ── Çoklu Giriş ──
                 const firmaAdi = inFirmaAdi.trim();
                 const teslimAlan = formData.get('teslimAlan') || '';
-                const amount = parseFloat(formData.get('amount') || 0);
-                if (!malzemeAdi) { setIsSaving(false); return; }
-
-                // Malzeme bul ya da yeni oluştur
-                let item = items.find(i => i.name.toLowerCase() === malzemeAdi.toLowerCase());
-                if (!item) {
-                    const newId = Date.now();
-                    item = { id: newId, name: malzemeAdi, unit, category: malzemeTuru, quantity: 0, minStock: 0 };
-                    await set(ref(db, `items/${newId}`), item);
-                }
-                const itemId = String(item.id);
-
-                const price = Number(formData.get('price')) || 0;
                 const depo = inDepo || DEFAULT_DEPO;
-                const moveBaseData = {
-                    itemId: Number(item.id),
-                    itemName: item.name,
-                    malzemeTuru,
-                    firmaAdi,
-                    teslimAlan,
-                    amount,
-                    unit,
-                    irsaliyeNo,
-                    price,
-                    depo,
-                    type: 'in',
-                    date: displayDate,
-                };
+                const validRows = multiInRows.filter(r => r.malzemeAdi.trim() && parseFloat(r.miktar) > 0);
+                if (validRows.length === 0) { setIsSaving(false); return; }
 
+                for (let idx = 0; idx < validRows.length; idx++) {
+                    const row = validRows[idx];
+                    const malzemeAdi = row.malzemeAdi.trim();
+                    const amount = parseFloat(row.miktar);
+                    const unit = row.birim || 'Adet';
+                    const price = Number(row.fiyat) || 0;
+                    const malzemeTuru = row.kategori || 'Genel';
+
+                    // Malzeme bul ya da yeni oluştur
+                    let item = items.find(i => i.name.toLowerCase() === malzemeAdi.toLowerCase());
+                    if (!item) {
+                        const newId = Date.now() + idx;
+                        item = { id: newId, name: malzemeAdi, unit, category: malzemeTuru, quantity: 0, minStock: 0 };
+                        await set(ref(db, `items/${newId}`), item);
+                    }
+                    const itemId = String(item.id);
+
+                    const moveBaseData = {
+                        itemId: Number(item.id), itemName: item.name,
+                        malzemeTuru, firmaAdi, teslimAlan, amount, unit,
+                        irsaliyeNo, price, depo, type: 'in', date: displayDate,
+                    };
+
+                    if (isBackdated) {
+                        const pendingId = String(Date.now() + idx + 1);
+                        await set(ref(db, `pendingActions/${pendingId}`), {
+                            id: Number(pendingId), actionType: 'movement', movementType: 'in',
+                            data: moveBaseData,
+                            requestedBy: userProfile.name, requestedByUid: authUser.uid,
+                            requestedAt: new Date().toLocaleString('tr-TR'), status: 'pending'
+                        });
+                    } else {
+                        const moveId = String(Date.now() + idx + 1);
+                        await set(ref(db, `items/${itemId}/quantity`), Math.max(0, (item.quantity || 0) + amount));
+                        await set(ref(db, `movements/${moveId}`), { id: Number(moveId), ...moveBaseData });
+                    }
+                }
                 if (isBackdated) {
-                    const pendingId = String(Date.now() + 1);
-                    await set(ref(db, `pendingActions/${pendingId}`), {
-                        id: Number(pendingId), actionType: 'movement', movementType: 'in',
-                        data: moveBaseData,
-                        requestedBy: userProfile.name, requestedByUid: authUser.uid,
-                        requestedAt: new Date().toLocaleString('tr-TR'), status: 'pending'
-                    });
-                    showToast('Geçmiş tarihli işlem yönetici onayına gönderildi.', 'success');
+                    showToast(`${validRows.length} malzeme yönetici onayına gönderildi.`, 'success');
                 } else {
-                    const moveId = String(Date.now() + 1);
-                    await set(ref(db, `items/${itemId}/quantity`), Math.max(0, (item.quantity || 0) + amount));
-                    await set(ref(db, `movements/${moveId}`), { id: Number(moveId), ...moveBaseData });
                     triggerCloudBackup();
                 }
                 setShowMoveModal(false);
@@ -1888,54 +1915,62 @@ const App = () => {
                 setInFirmaAdi('');
                 setInIrsaliyeNo('');
                 setInDepo(DEFAULT_DEPO);
+                setInDepoLocked(false);
+                setMultiInRows([emptyInRow()]);
                 setShowAddMalzemeAdi(false); setShowAddMalzemeTuru(false);
                 setShowAddBirim(false); setShowAddFirma(false); setShowAddIrsaliye(false);
 
             } else {
-                // ── Çıkış ──
-                const amount = Number(formData.get('amount'));
-                const verilenBirim = formData.get('verilenBirim') || '';
+                // ── Çoklu Çıkış ──
                 const kullanimAlani = formData.get('kullanimAlani') || '';
                 const rawRecipient = formData.get('recipient');
                 const recipient = rawRecipient === '__NEW__' ? '' : (rawRecipient || '');
-                const itemId = String(selectedItemForMove.id);
-                const displayDateOut = isBackdated
-                    ? actionDate
-                    : new Date().toISOString().split('T')[0];
+                const displayDateOut = isBackdated ? actionDate : new Date().toISOString().split('T')[0];
 
-                const outDepo = selectedItemForMove.defaultDepo || DEFAULT_DEPO;
-                const moveBaseData = {
-                    itemId: Number(itemId), itemName: selectedItemForMove.name,
-                    amount, unit, verilenBirim, recipient, kullanimAlani,
-                    note: kullanimAlani, type: 'out', date: displayDateOut,
-                    depo: outDepo,
-                };
+                const validRows = multiOutRows.filter(r => r.itemId && parseFloat(r.miktar) > 0);
+                if (validRows.length === 0) { setIsSaving(false); return; }
 
+                for (let idx = 0; idx < validRows.length; idx++) {
+                    const row = validRows[idx];
+                    const selItem = items.find(i => String(i.id) === String(row.itemId));
+                    if (!selItem) continue;
+                    const amount = Number(row.miktar);
+                    const unit = row.birim || selItem.unit || 'Adet';
+                    const verilenBirim = row.verilenBirim || '';
+                    const itemId = String(selItem.id);
+                    const outDepo = selItem.defaultDepo || DEFAULT_DEPO;
+
+                    const moveBaseData = {
+                        itemId: Number(itemId), itemName: selItem.name,
+                        amount, unit, verilenBirim, recipient, kullanimAlani,
+                        note: kullanimAlani, type: 'out', date: displayDateOut,
+                        depo: outDepo,
+                    };
+
+                    if (isBackdated) {
+                        const pendingId = String(Date.now() + idx);
+                        await set(ref(db, `pendingActions/${pendingId}`), {
+                            id: Number(pendingId), actionType: 'movement', movementType: 'out',
+                            data: moveBaseData,
+                            requestedBy: userProfile.name, requestedByUid: authUser.uid,
+                            requestedAt: new Date().toLocaleString('tr-TR'), status: 'pending'
+                        });
+                    } else {
+                        const newQty = selItem.quantity - amount;
+                        const moveId = String(Date.now() + idx);
+                        await set(ref(db, `items/${itemId}/quantity`), Math.max(0, newQty));
+                        await set(ref(db, `movements/${moveId}`), { id: Number(moveId), ...moveBaseData });
+                    }
+                }
                 if (isBackdated) {
-                    const pendingId = String(Date.now());
-                    await set(ref(db, `pendingActions/${pendingId}`), {
-                        id: Number(pendingId), actionType: 'movement', movementType: 'out',
-                        data: moveBaseData,
-                        requestedBy: userProfile.name, requestedByUid: authUser.uid,
-                        requestedAt: new Date().toLocaleString('tr-TR'), status: 'pending'
-                    });
-                    showToast('Geçmiş tarihli işlem yönetici onayına gönderildi.', 'success');
+                    showToast(`${validRows.length} malzeme yönetici onayına gönderildi.`, 'success');
                 } else {
-                    const newQty = selectedItemForMove.quantity - amount;
-                    const moveId = String(Date.now());
-                    const timeout = new Promise((_, reject) =>
-                        setTimeout(() => reject(new Error("Zaman aşımı.")), 10000)
-                    );
-                    await Promise.race([
-                        set(ref(db, `items/${itemId}/quantity`), Math.max(0, newQty))
-                            .then(() => set(ref(db, `movements/${moveId}`), { id: Number(moveId), ...moveBaseData })),
-                        timeout
-                    ]);
                     triggerCloudBackup();
                 }
                 setShowMoveModal(false);
                 setSelectedItemForMove(null);
                 setIsNewRecipient(false);
+                setMultiOutRows([emptyOutRow()]);
                 setShowAddMalzemeAdi(false); setShowAddMalzemeTuru(false);
                 setShowAddBirim(false); setShowAddFirma(false); setShowAddIrsaliye(false);
             }
@@ -2016,7 +2051,7 @@ const App = () => {
         }
     };
 
-    const handleZimmet = (e) => {
+    const handleZimmet = async (e) => {
         e.preventDefault();
         setIsSaving(true);
         const formData = new FormData(e.target);
@@ -2024,9 +2059,6 @@ const App = () => {
         const ekip = zimmetEkipInput.trim();
         const person = [kisi, ekip].filter(Boolean).join(' / ');
         const note = formData.get('note');
-        const amount = Number(formData.get('amount') || 1);
-        const unit = formData.get('unit') || 'Adet';
-        const itemId = String(selectedItemForZimmet.id);
         const actionDate = formData.get('actionDate');
         const actionTime = formData.get('actionTime') || '00:00';
         const timestamp = Date.now();
@@ -2037,59 +2069,58 @@ const App = () => {
         const dateStr = `${actionDate}`;
         const timeStr = actionTime;
 
-        if (isBackdated) {
-            const pendingId = String(timestamp);
-            const pendingData = {
-                id: Number(pendingId),
-                actionType: 'zimmet',
-                data: {
-                    itemId: Number(itemId),
-                    itemName: selectedItemForZimmet.name,
-                    kisi, ekip, person,
-                    note, amount, unit,
-                    date: dateStr, time: timeStr,
-                },
-                requestedBy: userProfile.name,
-                requestedByUid: authUser.uid,
-                requestedAt: new Date().toLocaleString('tr-TR'),
-                status: 'pending'
-            };
-            set(ref(db, `pendingActions/${pendingId}`), pendingData)
-                .then(() => {
-                    setShowZimmetModal(false);
-                    setSelectedItemForZimmet(null);
-                    setZimmetKisiInput('');
-                    setZimmetEkipInput('');
-                    showToast('Geçmiş tarihli zimmet yönetici onayına gönderildi.', 'success');
-                })
-                .catch(err => alert("Hata: " + err.message))
-                .finally(() => setIsSaving(false));
-            return;
-        }
+        const validRows = multiZimmetRows.filter(r => r.itemId && Number(r.miktar) > 0);
+        if (validRows.length === 0) { setIsSaving(false); return; }
 
-        const zimmetId = String(timestamp);
-        const zimmetData = {
-            id: Number(zimmetId),
-            itemId: Number(itemId),
-            itemName: selectedItemForZimmet.name,
-            kisi, ekip, person,
-            note, amount, unit,
-            type: 'verildi',
-            status: 'zimmette',
-            date: dateStr,
-            time: timeStr,
-            created_at: timestamp,
-            updated_at: timestamp
-        };
-        set(ref(db, `zimmet/${zimmetId}`), zimmetData)
-            .then(() => {
-                setShowZimmetModal(false);
-                setSelectedItemForZimmet(null);
-                setZimmetKisiInput('');
-                setZimmetEkipInput('');
-            })
-            .catch(err => alert("Hata: " + err.message))
-            .finally(() => setIsSaving(false));
+        try {
+            for (let idx = 0; idx < validRows.length; idx++) {
+                const row = validRows[idx];
+                const selItem = items.find(i => String(i.id) === String(row.itemId));
+                if (!selItem) continue;
+                const amount = Number(row.miktar || 1);
+                const unit = row.birim || 'Adet';
+                const itemId = String(selItem.id);
+
+                if (isBackdated) {
+                    const pendingId = String(timestamp + idx);
+                    const pendingData = {
+                        id: Number(pendingId),
+                        actionType: 'zimmet',
+                        data: {
+                            itemId: Number(itemId), itemName: selItem.name,
+                            kisi, ekip, person, note, amount, unit,
+                            date: dateStr, time: timeStr,
+                        },
+                        requestedBy: userProfile.name, requestedByUid: authUser.uid,
+                        requestedAt: new Date().toLocaleString('tr-TR'), status: 'pending'
+                    };
+                    await set(ref(db, `pendingActions/${pendingId}`), pendingData);
+                } else {
+                    const zimmetId = String(timestamp + idx);
+                    const zimmetData = {
+                        id: Number(zimmetId),
+                        itemId: Number(itemId), itemName: selItem.name,
+                        kisi, ekip, person, note, amount, unit,
+                        type: 'verildi', status: 'zimmette',
+                        date: dateStr, time: timeStr,
+                        created_at: timestamp, updated_at: timestamp
+                    };
+                    await set(ref(db, `zimmet/${zimmetId}`), zimmetData);
+                }
+            }
+            if (isBackdated) {
+                showToast(`${validRows.length} malzeme zimmet onayına gönderildi.`, 'success');
+            }
+            setShowZimmetModal(false);
+            setSelectedItemForZimmet(null);
+            setZimmetKisiInput('');
+            setZimmetEkipInput('');
+            setMultiZimmetRows([emptyZimmetRow()]);
+        } catch (err) {
+            alert("Hata: " + err.message);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleReturnZimmet = (z) => {
@@ -2953,7 +2984,7 @@ const App = () => {
                     <div>
                         <div style={{ position: 'relative', display: 'inline-block' }}>
                             <div className="sidebar-logo-text">Shintea</div>
-                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.054</span>
+                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.055</span>
                         </div>
                     </div>
                 </div>
@@ -3764,21 +3795,63 @@ const App = () => {
                         </div>
                     )}
                     {activeTab === 'depo' && pagePerm('depo') !== 'none' && (() => {
-                        // Her depo için malzeme bazlı stok özeti
+                        // Aktif zimmet miktarları (item bazında)
+                        const zimmetQtyMap = {};
+                        zimmet.filter(z => z.status === 'zimmette').forEach(z => {
+                            const k = String(z.itemId);
+                            zimmetQtyMap[k] = (zimmetQtyMap[k] || 0) + (Number(z.amount) || 0);
+                        });
+
+                        // Her depo + zimmet için malzeme bazlı stok özeti
                         const depoItems = items.map(item => {
                             const itemDepoMap = depoSummary[String(item.id)] || {};
                             return {
                                 ...item,
                                 depoQtys: DEPOLAR.reduce((acc, d) => { acc[d] = Math.max(0, itemDepoMap[d] || 0); return acc; }, {}),
+                                zimmetQty: zimmetQtyMap[String(item.id)] || 0,
                             };
-                        }).filter(item => DEPOLAR.some(d => item.depoQtys[d] > 0));
+                        }).filter(item => DEPOLAR.some(d => item.depoQtys[d] > 0) || item.zimmetQty > 0)
+                          .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
 
+                        // avgPriceMap: değer hesabı için
+                        const avgPriceMapDepo = {};
+                        items.forEach(i => { avgPriceMapDepo[String(i.id)] = Number(i.avgPrice) || 0; });
+
+                        // Aktif zimmet filtresi — summaryStats ile birebir aynı
+                        const activeZimmetFilter = z => z.status === 'zimmette' || z.status === 'verildi' || !z.status;
+
+                        // Depo kartları değerleri:
+                        // alinan − çıkış − transfer ± − zimmetDeducted = net depo değeri
+                        // Böylece: sum(depoVal) + zimmetVal = totalKalan = Stok Değeri ✓
                         const depoTotals = DEPOLAR.map(depo => {
                             const totalQty = depoItems.reduce((s, i) => s + (i.depoQtys[depo] || 0), 0);
-                            const totalVal = depoItems.reduce((s, i) => s + (i.depoQtys[depo] || 0) * (Number(i.avgPrice) || 0), 0);
                             const itemCount = depoItems.filter(i => i.depoQtys[depo] > 0).length;
-                            return { depo, totalQty, totalVal, itemCount };
+                            const alinan = movements
+                                .filter(m => m.type === 'in' && (m.depo || DEFAULT_DEPO) === depo)
+                                .reduce((s, m) => s + (Number(m.toplamFiyat) || (Number(m.amount) || 0) * (Number(m.birimFiyat) || 0)), 0);
+                            const cikis = movements
+                                .filter(m => m.type === 'out' && (m.depo || DEFAULT_DEPO) === depo)
+                                .reduce((s, m) => {
+                                    const p = Number(m.birimFiyat) || avgPriceMapDepo[String(m.itemId)] || 0;
+                                    return s + p * (Number(m.amount) || 0);
+                                }, 0);
+                            const transferCikis = transfers.filter(t => t.fromDepo === depo).reduce((s, t) => s + (avgPriceMapDepo[String(t.itemId)] || 0) * (Number(t.amount) || 0), 0);
+                            const transferGiris = transfers.filter(t => t.toDepo === depo).reduce((s, t) => s + (avgPriceMapDepo[String(t.itemId)] || 0) * (Number(t.amount) || 0), 0);
+                            // Bu depodan zimmetlenen değeri düş
+                            const zimmetDeducted = zimmet
+                                .filter(z => activeZimmetFilter(z) && (z.depo || DEFAULT_DEPO) === depo)
+                                .reduce((s, z) => s + (avgPriceMapDepo[String(z.itemId)] || 0) * (Number(z.amount) || 0), 0);
+                            const totalVal = Math.max(0, alinan - cikis - transferCikis + transferGiris - zimmetDeducted);
+                            return { depo, totalQty, totalVal, itemCount, isZimmet: false };
                         });
+
+                        // Zimmet kartı değeri: summaryStats.totalZimmetDeger ile aynı yöntem
+                        // → depo kartları toplamı + zimmetTotalVal = Stok Değeri ✓
+                        const zimmetTotalVal = summaryStats.totalZimmetDeger;
+                        const zimmetItemCount = Object.keys(zimmetQtyMap).length;
+                        const zimmetTotalQty = Object.values(zimmetQtyMap).reduce((s, v) => s + v, 0);
+
+                        const allCols = [...depoTotals, { depo: 'Zimmet', totalQty: zimmetTotalQty, totalVal: zimmetTotalVal, itemCount: zimmetItemCount, isZimmet: true }];
 
                         const formatCur = (v) => v > 0 ? `₺ ${v.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}` : '—';
 
@@ -3798,39 +3871,62 @@ const App = () => {
                                     )}
                                 </div>
 
-                                {/* 3-column depo grid */}
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px', flexShrink: 0 }}>
-                                    {depoTotals.map(dt => (
-                                        <div key={dt.depo} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px 20px' }}>
-                                            <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>{dt.depo}</div>
-                                            <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-main)', marginBottom: '4px' }}>{formatCur(dt.totalVal)}</div>
-                                            <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-                                                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{dt.itemCount} malzeme</span>
-                                                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{dt.totalQty.toLocaleString('tr-TR')} adet toplam</span>
+                                {/* 4-column özet kartlar (3 depo + zimmet) */}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', flexShrink: 0 }}>
+                                    {allCols.map(dt => (
+                                        <div key={dt.depo} style={{
+                                            background: 'var(--bg-card)',
+                                            border: `1px solid ${dt.isZimmet ? '#e9d5ff' : 'var(--border)'}`,
+                                            borderRadius: '12px', padding: '16px 20px',
+                                            borderLeft: `4px solid ${dt.isZimmet ? '#8b5cf6' : '#3b82f6'}`,
+                                        }}>
+                                            <div style={{ fontSize: '11px', fontWeight: 700, color: dt.isZimmet ? '#8b5cf6' : '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>{dt.depo}</div>
+                                            <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-main)', marginBottom: '4px' }}>{formatCur(dt.totalVal)}</div>
+                                            <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                                                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{dt.itemCount} malzeme</span>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
 
-                                {/* Per-item table */}
+                                {/* Toplam doğrulama satırı */}
+                                {(() => {
+                                    const grandTotal = allCols.reduce((s, c) => s + c.totalVal, 0);
+                                    const stokDegeri = summaryStats.totalDepoDeger + summaryStats.totalZimmetDeger;
+                                    return (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 2px', flexShrink: 0 }}>
+                                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Depo + Zimmet toplamı:</span>
+                                            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-main)' }}>{formatCur(grandTotal)}</span>
+                                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '8px' }}>Stok Değeri:</span>
+                                            <span style={{ fontSize: '13px', fontWeight: 700, color: Math.abs(grandTotal - stokDegeri) < 1 ? '#10b981' : '#f59e0b' }}>{formatCur(stokDegeri)}</span>
+                                        </div>
+                                    );
+                                })()}
+
+                                {/* Per-item table (3 depo + zimmet sütunu) */}
                                 <div style={{ flex: 1, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                                    <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', fontWeight: 700, fontSize: '13px', color: 'var(--text-muted)', display: 'flex', gap: 0 }}>
+                                    {/* Başlık satırı */}
+                                    <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', fontWeight: 700, fontSize: '11px', color: 'var(--text-muted)', display: 'flex', textTransform: 'uppercase', letterSpacing: '0.05em', background: 'var(--bg-main)' }}>
                                         <span style={{ flex: 3 }}>Malzeme</span>
                                         {DEPOLAR.map(d => <span key={d} style={{ flex: 2, textAlign: 'right' }}>{d}</span>)}
+                                        <span style={{ flex: 2, textAlign: 'right', color: '#8b5cf6' }}>Zimmet</span>
                                     </div>
                                     <div style={{ overflowY: 'auto', flex: 1 }}>
                                         {depoItems.length === 0 ? (
                                             <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
-                                                Henüz depo kaydı yok. Giriş yaparken depo seçin veya backfill çalıştırın.
+                                                Henüz kayıt yok. Giriş yaparken depo seçin veya backfill çalıştırın.
                                             </div>
                                         ) : depoItems.map(item => (
                                             <div key={item.id} style={{ display: 'flex', gap: 0, padding: '9px 16px', borderBottom: '1px solid var(--border)', fontSize: '13px', alignItems: 'center' }}>
-                                                <span style={{ flex: 3, fontWeight: 500, color: 'var(--text-main)' }}>{item.name}</span>
+                                                <span style={{ flex: 3, fontWeight: 500, color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: '8px' }}>{item.name}</span>
                                                 {DEPOLAR.map(d => (
                                                     <span key={d} style={{ flex: 2, textAlign: 'right', color: item.depoQtys[d] > 0 ? 'var(--text-main)' : '#cbd5e1', fontWeight: item.depoQtys[d] > 0 ? 600 : 400 }}>
                                                         {item.depoQtys[d] > 0 ? `${item.depoQtys[d].toLocaleString('tr-TR')} ${item.unit || ''}` : '—'}
                                                     </span>
                                                 ))}
+                                                <span style={{ flex: 2, textAlign: 'right', color: item.zimmetQty > 0 ? '#8b5cf6' : '#cbd5e1', fontWeight: item.zimmetQty > 0 ? 700 : 400 }}>
+                                                    {item.zimmetQty > 0 ? `${item.zimmetQty.toLocaleString('tr-TR')} ${item.unit || ''}` : '—'}
+                                                </span>
                                             </div>
                                         ))}
                                     </div>
@@ -5605,33 +5701,29 @@ const App = () => {
 
                     {/* Transfer Modal */}
                     {showTransferModal && canEdit && (
-                        <div className="modal-overlay" onClick={() => setShowTransferModal(false)}>
-                            <div className="modal-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '420px', width: '100%' }}>
+                        <div className="modal-overlay" onClick={() => { setShowTransferModal(false); setTransferForm({ fromDepo: '', toDepo: '', note: '', rows: [{ itemId: '', amount: '' }] }); }}>
+                            <div className="modal-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '560px', width: '100%' }}>
                                 <div className="modal-header">
                                     <span className="modal-title"><RotateCcw size={16} style={{ marginRight: 6 }} />Depo Transfer</span>
-                                    <button className="btn-icon" onClick={() => setShowTransferModal(false)}><X size={16} /></button>
+                                    <button className="btn-icon" onClick={() => { setShowTransferModal(false); setTransferForm({ fromDepo: '', toDepo: '', note: '', rows: [{ itemId: '', amount: '' }] }); }}><X size={16} /></button>
                                 </div>
                                 <form onSubmit={handleTransfer}>
-                                    <div className="mb-2">
-                                        <label className="label">Malzeme</label>
-                                        <select
-                                            value={transferForm.itemId}
-                                            onChange={e => setTransferForm(f => ({ ...f, itemId: e.target.value }))}
-                                            required
-                                            style={{ width: '100%' }}
-                                        >
-                                            <option value="">— Seçin —</option>
-                                            {[...items].sort((a,b) => a.name.localeCompare(b.name,'tr')).map(i => (
-                                                <option key={i.id} value={i.id}>{i.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '10px' }} className="mb-2">
+                                    {/* Depo seçimi */}
+                                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '16px' }}>
                                         <div style={{ flex: 1 }}>
                                             <label className="label">Kaynak Depo</label>
                                             <select
                                                 value={transferForm.fromDepo}
-                                                onChange={e => setTransferForm(f => ({ ...f, fromDepo: e.target.value }))}
+                                                onChange={e => setTransferForm(f => {
+                                                    const newFrom = e.target.value;
+                                                    // Seçili malzeme yeni depoda stoğu yoksa temizle
+                                                    const cleanedRows = f.rows.map(r => {
+                                                        if (!r.itemId) return r;
+                                                        const qty = Math.max(0, (depoSummary[String(r.itemId)] || {})[newFrom] || 0);
+                                                        return qty > 0 ? r : { ...r, itemId: '', amount: '' };
+                                                    });
+                                                    return { ...f, fromDepo: newFrom, toDepo: f.toDepo === newFrom ? '' : f.toDepo, rows: cleanedRows };
+                                                })}
                                                 required
                                                 style={{ width: '100%' }}
                                             >
@@ -5639,6 +5731,7 @@ const App = () => {
                                                 {DEPOLAR.map(d => <option key={d} value={d}>{d}</option>)}
                                             </select>
                                         </div>
+                                        <div style={{ paddingTop: '18px', color: '#94a3b8', flexShrink: 0 }}>→</div>
                                         <div style={{ flex: 1 }}>
                                             <label className="label">Hedef Depo</label>
                                             <select
@@ -5652,26 +5745,81 @@ const App = () => {
                                             </select>
                                         </div>
                                     </div>
-                                    {transferForm.itemId && transferForm.fromDepo && (
-                                        <div className="mb-2" style={{ fontSize: '12px', color: '#64748b', padding: '6px 10px', background: '#f8fafc', borderRadius: '6px' }}>
-                                            {transferForm.fromDepo} mevcut stok:{' '}
-                                            <strong>{Math.max(0, (depoSummary[String(transferForm.itemId)] || {})[transferForm.fromDepo] || 0)}</strong>
-                                            {' '}{items.find(i => String(i.id) === String(transferForm.itemId))?.unit || ''}
+
+                                    {/* Malzeme satırları */}
+                                    <div style={{ marginBottom: '10px' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 80px 28px', gap: '6px', marginBottom: '6px' }}>
+                                            <span className="label" style={{ margin: 0 }}>Malzeme</span>
+                                            <span className="label" style={{ margin: 0 }}>Miktar</span>
+                                            <span className="label" style={{ margin: 0, fontSize: '10px', color: '#94a3b8' }}>Mevcut</span>
+                                            <span />
                                         </div>
-                                    )}
-                                    <div className="mb-2">
-                                        <label className="label">Miktar</label>
-                                        <input
-                                            type="number"
-                                            min="0.01"
-                                            step="0.01"
-                                            placeholder="0"
-                                            value={transferForm.amount}
-                                            onChange={e => setTransferForm(f => ({ ...f, amount: e.target.value }))}
-                                            required
-                                            style={{ width: '100%' }}
-                                        />
+                                        {transferForm.rows.map((row, idx) => {
+                                            const srcQty = row.itemId && transferForm.fromDepo
+                                                ? Math.max(0, (depoSummary[String(row.itemId)] || {})[transferForm.fromDepo] || 0)
+                                                : null;
+                                            const rowItem = row.itemId ? items.find(i => String(i.id) === String(row.itemId)) : null;
+                                            const overLimit = srcQty !== null && Number(row.amount) > srcQty;
+                                            return (
+                                                <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 120px 80px 28px', gap: '6px', marginBottom: '6px', alignItems: 'center' }}>
+                                                    <select
+                                                        value={row.itemId}
+                                                        onChange={e => setTransferForm(f => {
+                                                            const rows = [...f.rows];
+                                                            rows[idx] = { ...rows[idx], itemId: e.target.value };
+                                                            return { ...f, rows };
+                                                        })}
+                                                        style={{ width: '100%', fontSize: '13px' }}
+                                                    >
+                                                        <option value="">— Malzeme seçin —</option>
+                                                        {[...items]
+                                                            .map(i => ({ ...i, srcQty: transferForm.fromDepo ? Math.max(0, (depoSummary[String(i.id)] || {})[transferForm.fromDepo] || 0) : null }))
+                                                            .filter(i => !transferForm.fromDepo || i.srcQty > 0)
+                                                            .sort((a,b) => a.name.localeCompare(b.name,'tr'))
+                                                            .map(i => (
+                                                                <option key={i.id} value={i.id}>
+                                                                    {i.name}{i.srcQty !== null ? `  —  ${i.srcQty} ${i.unit || ''}` : ''}
+                                                                </option>
+                                                            ))}
+                                                    </select>
+                                                    <input
+                                                        type="number"
+                                                        min="0.01"
+                                                        step="0.01"
+                                                        placeholder="0"
+                                                        value={row.amount}
+                                                        onChange={e => setTransferForm(f => {
+                                                            const rows = [...f.rows];
+                                                            rows[idx] = { ...rows[idx], amount: e.target.value };
+                                                            return { ...f, rows };
+                                                        })}
+                                                        style={{ width: '100%', fontSize: '13px', borderColor: overLimit ? '#ef4444' : undefined }}
+                                                    />
+                                                    <span style={{ fontSize: '11px', color: overLimit ? '#ef4444' : '#64748b', whiteSpace: 'nowrap', textAlign: 'center' }}>
+                                                        {srcQty !== null ? `${srcQty} ${rowItem?.unit || ''}` : '—'}
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        className="btn-icon"
+                                                        style={{ color: '#ef4444', opacity: transferForm.rows.length === 1 ? 0.3 : 1 }}
+                                                        disabled={transferForm.rows.length === 1}
+                                                        onClick={() => setTransferForm(f => ({ ...f, rows: f.rows.filter((_, i) => i !== idx) }))}
+                                                    >
+                                                        <X size={14} />
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                        <button
+                                            type="button"
+                                            onClick={() => setTransferForm(f => ({ ...f, rows: [...f.rows, { itemId: '', amount: '' }] }))}
+                                            style={{ fontSize: '12px', color: 'var(--primary)', background: 'none', border: '1px dashed var(--primary)', borderRadius: '6px', padding: '5px 12px', cursor: 'pointer', width: '100%', marginTop: '2px' }}
+                                        >
+                                            + Malzeme Ekle
+                                        </button>
                                     </div>
+
+                                    {/* Not */}
                                     <div className="mb-2">
                                         <label className="label">Not <span style={{ fontWeight: 400, color: '#94a3b8' }}>(opsiyonel)</span></label>
                                         <input
@@ -5682,8 +5830,9 @@ const App = () => {
                                             style={{ width: '100%' }}
                                         />
                                     </div>
-                                    <button type="submit" className="btn-primary" disabled={isSaving} style={{ width: '100%', marginTop: '12px', justifyContent: 'center' }}>
-                                        {isSaving ? 'Kaydediliyor...' : 'Transfer Et'}
+
+                                    <button type="submit" className="btn-primary" disabled={isSaving} style={{ width: '100%', marginTop: '8px', justifyContent: 'center' }}>
+                                        {isSaving ? 'Kaydediliyor...' : `Transfer Et (${transferForm.rows.filter(r => r.itemId && Number(r.amount) > 0).length} malzeme)`}
                                     </button>
                                 </form>
                             </div>
@@ -5771,10 +5920,11 @@ const App = () => {
                             : 'linear-gradient(160deg, #f87171 0%, #dc2626 100%)';
                         const closeModal = () => {
                             setShowMoveModal(false); setIsQuickAdd(false); setIsNewRecipient(false);
-                            setInIrsaliyeNo(''); setInDepo(DEFAULT_DEPO); setShowAddMalzemeAdi(false); setShowAddMalzemeTuru(false);
+                            setInIrsaliyeNo(''); setInDepo(DEFAULT_DEPO); setInDepoLocked(false); setShowAddMalzemeAdi(false); setShowAddMalzemeTuru(false);
                             setShowAddBirim(false); setShowAddFirma(false); setShowAddIrsaliye(false);
                             setShowAddVerilenBirim(false); setShowAddKullanimAlani(false); setShowAddRecipient(false);
                             setNewVerilenBirimInput(''); setNewKullanimAlaniInput(''); setNewRecipientInput('');
+                            setMultiInRows([emptyInRow()]); setMultiOutRows([emptyOutRow()]);
                         };
                         return (
                             <div className="modal-overlay">
@@ -5849,11 +5999,11 @@ const App = () => {
                                                         <datalist id="irsaliye-datalist">{irsaliyeListesi.map(i => <option key={i.id} value={i.no} />)}</datalist>
                                                     </div>
 
-                                                    {/* 4. Malzeme */}
+                                                    {/* 4. Çoklu Malzeme Satırları */}
                                                     <div className="fm-field">
                                                         <div className="fm-label-row">
-                                                            <span className="fm-label">Malzeme</span>
-                                                            <button type="button" className="fm-add-chip" onClick={() => setShowAddMalzemeAdi(v => !v)}>+ Yeni Ekle</button>
+                                                            <span className="fm-label">Malzemeler</span>
+                                                            <button type="button" className="fm-add-chip" onClick={() => setMultiInRows(prev => [...prev, emptyInRow()])}>+ Satır Ekle</button>
                                                         </div>
                                                         {showAddMalzemeAdi && (
                                                             <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
@@ -5865,48 +6015,36 @@ const App = () => {
                                                                 <button type="button" className="btn-icon" onClick={() => setShowAddMalzemeAdi(false)}><X size={14} /></button>
                                                             </div>
                                                         )}
-                                                        <input className="fm-input" list="malzeme-datalist" value={inMalzemeAdi} onChange={e => setInMalzemeAdi(e.target.value)} placeholder="Malzeme adı yazın veya seçin..." required autoComplete="off" />
+                                                        <div className="fm-multi-rows">
+                                                            {multiInRows.map((row, ri) => (
+                                                                <div key={ri} className="fm-multi-row">
+                                                                    <div className="fm-multi-row-num">{ri + 1}</div>
+                                                                    <div className="fm-multi-row-fields">
+                                                                        <div className="fm-multi-row-main">
+                                                                            <input className="fm-input" list="malzeme-datalist" value={row.malzemeAdi} onChange={e => { const v = e.target.value; setMultiInRows(prev => prev.map((r, i) => i === ri ? { ...r, malzemeAdi: v } : r)); }} placeholder="Malzeme adı..." autoComplete="off" style={{ flex: 3 }} />
+                                                                            <input className="fm-input" type="number" value={row.miktar} onChange={e => setMultiInRows(prev => prev.map((r, i) => i === ri ? { ...r, miktar: e.target.value } : r))} placeholder="Miktar" min="0.01" step="0.01" style={{ flex: 1 }} />
+                                                                            <select className="fm-input" value={row.birim} onChange={e => setMultiInRows(prev => prev.map((r, i) => i === ri ? { ...r, birim: e.target.value } : r))} style={{ flex: 1 }}>
+                                                                                {birimlerList.map(b => <option key={b}>{b}</option>)}
+                                                                            </select>
+                                                                            <div style={{ position: 'relative', flex: 1 }}>
+                                                                                <input className="fm-input" type="number" value={row.fiyat} onChange={e => setMultiInRows(prev => prev.map((r, i) => i === ri ? { ...r, fiyat: e.target.value } : r))} placeholder="Fiyat" min="0" step="0.01" style={{ paddingRight: '24px' }} />
+                                                                                <span style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', fontSize: '11px', color: 'var(--text-muted)', pointerEvents: 'none' }}>₺</span>
+                                                                            </div>
+                                                                        </div>
+                                                                        {multiInRows.length > 1 && (
+                                                                            <button type="button" className="fm-multi-row-remove" onClick={() => setMultiInRows(prev => prev.filter((_, i) => i !== ri))} title="Satırı sil">
+                                                                                <X size={14} />
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
                                                         <datalist id="malzeme-datalist">{sortedItems.map(i => <option key={i.id} value={i.name} />)}</datalist>
+                                                        <button type="button" className="fm-add-chip" onClick={() => setShowAddMalzemeAdi(v => !v)} style={{ marginTop: '6px' }}>+ Yeni Malzeme Tanımla</button>
                                                     </div>
 
-                                                    {/* 5. Miktar */}
-                                                    <div className="fm-field">
-                                                        <div className="fm-label-row"><span className="fm-label">Miktar</span></div>
-                                                        <input className="fm-input" name="amount" type="number" required min="0.01" step="0.01" placeholder="0.00" />
-                                                    </div>
-
-                                                    {/* 6. Birim */}
-                                                    <div className="fm-field">
-                                                        <div className="fm-label-row">
-                                                            <span className="fm-label">Birim</span>
-                                                            <button type="button" className="fm-add-chip" onClick={() => setShowAddBirim(v => !v)}>+ Ekle</button>
-                                                        </div>
-                                                        {showAddBirim && (
-                                                            <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
-                                                                <input className="fm-input" value={newBirimInput} onChange={e => setNewBirimInput(e.target.value)} placeholder="Yeni birim..." style={{ flex: 1 }} />
-                                                                <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
-                                                                    onClick={async () => { if (!newBirimInput.trim()) return; const id = String(Date.now()); await set(ref(db, `birimler/${id}`), { id, name: newBirimInput.trim() }); setNewBirimInput(''); setShowAddBirim(false); }}>
-                                                                    Kaydet
-                                                                </button>
-                                                                <button type="button" className="btn-icon" onClick={() => setShowAddBirim(false)}><X size={14} /></button>
-                                                            </div>
-                                                        )}
-                                                        <select name="unit" className="fm-input">{birimlerList.map(b => <option key={b}>{b}</option>)}</select>
-                                                    </div>
-
-                                                    {/* 7. Birim Fiyat */}
-                                                    <div className="fm-field">
-                                                        <div className="fm-label-row">
-                                                            <span className="fm-label">Birim Fiyat</span>
-                                                            <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>opsiyonel</span>
-                                                        </div>
-                                                        <div style={{ position: 'relative' }}>
-                                                            <input className="fm-input" name="price" type="number" min="0" step="0.01" placeholder="0.00" style={{ paddingRight: '32px' }} />
-                                                            <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '12px', color: 'var(--text-muted)', pointerEvents: 'none' }}>₺</span>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* 8. Teslim Alan */}
+                                                    {/* 5. Teslim Alan */}
                                                     <div className="fm-field">
                                                         <div className="fm-label-row">
                                                             <span className="fm-label">Teslim Alan</span>
@@ -5928,39 +6066,18 @@ const App = () => {
                                                         </select>
                                                     </div>
 
-                                                    {/* 9. Depo */}
+                                                    {/* 6. Depo */}
                                                     <div className="fm-field">
-                                                        <div className="fm-label-row"><span className="fm-label">Depo</span></div>
-                                                        <select className="fm-input" value={inDepo} onChange={e => setInDepo(e.target.value)} required>
-                                                            {DEPOLAR.map(d => <option key={d} value={d}>{d}</option>)}
-                                                        </select>
-                                                    </div>
-
-                                                     {/* 10. Malzeme Türü / Kategori */}
-                                                     <div className="fm-field">
                                                         <div className="fm-label-row">
-                                                            <span className="fm-label">Malzeme Kategorisi</span>
-                                                            <button type="button" className="fm-add-chip" onClick={() => setShowAddMalzemeTuru(v => !v)}>+ Ekle</button>
+                                                            <span className="fm-label">Depo</span>
                                                         </div>
-                                                        {showAddMalzemeTuru && (
-                                                            <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
-                                                                <input className="fm-input" value={newMalzemeTuruInput} onChange={e => setNewMalzemeTuruInput(e.target.value)} placeholder="Yeni kategori adı..." style={{ flex: 1 }} />
-                                                                <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
-                                                                    onClick={async () => { 
-                                                                        if (!newMalzemeTuruInput.trim()) return; 
-                                                                        const id = String(Date.now()); 
-                                                                        await set(ref(db, `malzemeTurleri/${id}`), newMalzemeTuruInput.trim()); 
-                                                                        setNewMalzemeTuruInput(''); 
-                                                                        setShowAddMalzemeTuru(false); 
-                                                                    }}>
-                                                                    Kaydet
-                                                                </button>
-                                                                <button type="button" className="btn-icon" onClick={() => setShowAddMalzemeTuru(false)}><X size={14} /></button>
-                                                            </div>
-                                                        )}
-                                                        <select name="malzemeTuru" className="fm-input">
-                                                            <option value="">Genel</option>
-                                                            {malzemeTurleri.map(t => <option key={t} value={t}>{t}</option>)}
+                                                        <select
+                                                            className="fm-input"
+                                                            value={inDepo}
+                                                            onChange={e => setInDepo(e.target.value)}
+                                                            required
+                                                        >
+                                                            {DEPOLAR.map(d => <option key={d} value={d}>{d}</option>)}
                                                         </select>
                                                     </div>
                                                 </>
@@ -5971,11 +6088,11 @@ const App = () => {
                                                         <div className="fm-label-row"><span className="fm-label">Tarih</span></div>
                                                         <input className="fm-input" name="actionDate" type="date" defaultValue={new Date().toISOString().split('T')[0]} required />
                                                     </div>
-                                                    {/* Malzeme */}
+                                                    {/* Çoklu Malzeme Satırları */}
                                                     <div className="fm-field">
                                                         <div className="fm-label-row">
-                                                            <span className="fm-label">Malzeme</span>
-                                                            <button type="button" className="fm-add-chip" onClick={() => setShowAddMalzemeAdi(v => !v)}>+ Yeni Ekle</button>
+                                                            <span className="fm-label">Malzemeler</span>
+                                                            <button type="button" className="fm-add-chip" onClick={() => setMultiOutRows(prev => [...prev, emptyOutRow()])}>+ Satır Ekle</button>
                                                         </div>
                                                         {showAddMalzemeAdi && (
                                                             <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
@@ -5986,7 +6103,6 @@ const App = () => {
                                                                         const id = Date.now();
                                                                         const newItem = { id: Number(id), name: newMalzemeAdiInput.trim(), unit: 'Adet', category: 'Genel', quantity: 0, minStock: 0 };
                                                                         await set(ref(db, `items/${id}`), newItem);
-                                                                        setSelectedItemForMove(newItem);
                                                                         setNewMalzemeAdiInput('');
                                                                         setShowAddMalzemeAdi(false);
                                                                     }}>
@@ -5995,37 +6111,34 @@ const App = () => {
                                                                 <button type="button" className="btn-icon" onClick={() => setShowAddMalzemeAdi(false)}><X size={14} /></button>
                                                             </div>
                                                         )}
-                                                        <select className="fm-input" name="itemId" required value={selectedItemForMove?.id || ''} onChange={e => setSelectedItemForMove(items.find(i => String(i.id) === String(e.target.value)))}>
-                                                            <option value="" disabled>— Seçin —</option>
-                                                            {sortedItems.map(i => <option key={i.id} value={i.id}>{i.name} (Stok: {i.quantity})</option>)}
-                                                        </select>
-                                                    </div>
-
-                                                    {/* Miktar */}
-                                                    <div className="fm-field">
-                                                        <div className="fm-label-row"><span className="fm-label">Miktar</span></div>
-                                                        <input className="fm-input" name="amount" type="number" required min="0.01" step="0.01" placeholder="0.00" />
-                                                    </div>
-
-                                                    {/* Birim */}
-                                                    <div className="fm-field">
-                                                        <div className="fm-label-row">
-                                                            <span className="fm-label">Birim</span>
-                                                            <button type="button" className="fm-add-chip" onClick={() => setShowAddBirim(v => !v)}>+ Ekle</button>
+                                                        <div className="fm-multi-rows">
+                                                            {multiOutRows.map((row, ri) => {
+                                                                const selItem = items.find(i => String(i.id) === String(row.itemId));
+                                                                return (
+                                                                <div key={ri} className="fm-multi-row">
+                                                                    <div className="fm-multi-row-num">{ri + 1}</div>
+                                                                    <div className="fm-multi-row-fields">
+                                                                        <div className="fm-multi-row-main">
+                                                                            <select className="fm-input" value={row.itemId} onChange={e => setMultiOutRows(prev => prev.map((r, i) => i === ri ? { ...r, itemId: e.target.value, birim: items.find(it => String(it.id) === e.target.value)?.unit || 'Adet' } : r))} style={{ flex: 3 }}>
+                                                                                <option value="" disabled>— Malzeme Seç —</option>
+                                                                                {sortedItems.map(it => <option key={it.id} value={it.id}>{it.name} (Stok: {it.quantity})</option>)}
+                                                                            </select>
+                                                                            <input className="fm-input" type="number" value={row.miktar} onChange={e => setMultiOutRows(prev => prev.map((r, i) => i === ri ? { ...r, miktar: e.target.value } : r))} placeholder="Miktar" min="0.01" step="0.01" style={{ flex: 1 }} />
+                                                                            <select className="fm-input" value={row.birim} onChange={e => setMultiOutRows(prev => prev.map((r, i) => i === ri ? { ...r, birim: e.target.value } : r))} style={{ flex: 1 }}>
+                                                                                {birimlerList.map(b => <option key={b}>{b}</option>)}
+                                                                            </select>
+                                                                        </div>
+                                                                        {multiOutRows.length > 1 && (
+                                                                            <button type="button" className="fm-multi-row-remove" onClick={() => setMultiOutRows(prev => prev.filter((_, i) => i !== ri))} title="Satırı sil">
+                                                                                <X size={14} />
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                                );
+                                                            })}
                                                         </div>
-                                                        {showAddBirim && (
-                                                            <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
-                                                                <input className="fm-input" value={newBirimInput} onChange={e => setNewBirimInput(e.target.value)} placeholder="Yeni birim..." style={{ flex: 1 }} />
-                                                                <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
-                                                                    onClick={async () => { if (!newBirimInput.trim()) return; const id = String(Date.now()); await set(ref(db, `birimler/${id}`), { id, name: newBirimInput.trim() }); setNewBirimInput(''); setShowAddBirim(false); }}>
-                                                                    Kaydet
-                                                                </button>
-                                                                <button type="button" className="btn-icon" onClick={() => setShowAddBirim(false)}><X size={14} /></button>
-                                                            </div>
-                                                        )}
-                                                        <select className="fm-input" name="unit" defaultValue={selectedItemForMove?.unit || 'Adet'}>
-                                                            {birimlerList.map(b => <option key={b}>{b}</option>)}
-                                                        </select>
+                                                        <button type="button" className="fm-add-chip" onClick={() => setShowAddMalzemeAdi(v => !v)} style={{ marginTop: '6px' }}>+ Yeni Malzeme Tanımla</button>
                                                     </div>
 
                                                     {/* Verilen Birim */}
@@ -6107,7 +6220,7 @@ const App = () => {
                                                 <button
                                                     type="submit"
                                                     className="fm-btn-submit"
-                                                    disabled={isSaving || (movementType === 'out' && !selectedItemForMove) || (movementType === 'in' && !inMalzemeAdi.trim())}
+                                                    disabled={isSaving || (movementType === 'out' && !multiOutRows.some(r => r.itemId && parseFloat(r.miktar) > 0)) || (movementType === 'in' && !multiInRows.some(r => r.malzemeAdi.trim() && parseFloat(r.miktar) > 0))}
                                                     style={{ background: isIn ? 'linear-gradient(135deg, #34d399, #059669)' : 'linear-gradient(135deg, #f87171, #dc2626)' }}
                                                 >
                                                     {isSaving ? 'İşleniyor...' : (isIn ? '↑ Girişi Tamamla' : '↓ Çıkışı Tamamla')}
@@ -6152,15 +6265,6 @@ const App = () => {
                                             </div>
                                         </div>
 
-                                        {/* Malzeme */}
-                                        <div className="fm-field">
-                                            <div className="fm-label-row"><span className="fm-label">Malzeme</span></div>
-                                            <select className="fm-input" name="itemId" required value={selectedItemForZimmet?.id || ''} onChange={e => setSelectedItemForZimmet(items.find(i => String(i.id) === e.target.value))}>
-                                                <option value="" disabled>— Seçin —</option>
-                                                {sortedItems.map(i => <option key={i.id} value={i.id}>{i.name} (Stok: {i.quantity})</option>)}
-                                            </select>
-                                        </div>
-
                                         {/* Kişi */}
                                         <div className="fm-field">
                                             <div className="fm-label-row"><span className="fm-label">Kişi</span><span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>opsiyonel</span></div>
@@ -6185,17 +6289,35 @@ const App = () => {
                                             </div>
                                         </div>
 
-                                        {/* Miktar + Birim */}
-                                        <div className="fm-grid-2">
-                                            <div>
-                                                <div className="fm-label-row"><span className="fm-label">Miktar</span></div>
-                                                <input className="fm-input" name="amount" type="number" defaultValue="1" min="1" required />
+                                        {/* Çoklu Malzeme Satırları */}
+                                        <div className="fm-field">
+                                            <div className="fm-label-row">
+                                                <span className="fm-label">Malzemeler</span>
+                                                <button type="button" className="fm-add-chip" onClick={() => setMultiZimmetRows(prev => [...prev, emptyZimmetRow()])}>+ Satır Ekle</button>
                                             </div>
-                                            <div>
-                                                <div className="fm-label-row"><span className="fm-label">Birim</span></div>
-                                                <select className="fm-input" name="unit" defaultValue={selectedItemForZimmet?.unit || 'Adet'}>
-                                                    <option>Adet</option><option>Torba</option><option>Metre</option><option>Palet</option><option>M3</option><option>Ton</option><option>Kg</option><option>Lt</option>
-                                                </select>
+                                            <div className="fm-multi-rows">
+                                                {multiZimmetRows.map((row, ri) => (
+                                                    <div key={ri} className="fm-multi-row">
+                                                        <div className="fm-multi-row-num">{ri + 1}</div>
+                                                        <div className="fm-multi-row-fields">
+                                                            <div className="fm-multi-row-main">
+                                                                <select className="fm-input" value={row.itemId} onChange={e => setMultiZimmetRows(prev => prev.map((r, i) => i === ri ? { ...r, itemId: e.target.value, birim: items.find(it => String(it.id) === e.target.value)?.unit || 'Adet' } : r))} style={{ flex: 3 }}>
+                                                                    <option value="" disabled>— Malzeme Seç —</option>
+                                                                    {sortedItems.map(it => <option key={it.id} value={it.id}>{it.name} (Stok: {it.quantity})</option>)}
+                                                                </select>
+                                                                <input className="fm-input" type="number" value={row.miktar} onChange={e => setMultiZimmetRows(prev => prev.map((r, i) => i === ri ? { ...r, miktar: e.target.value } : r))} placeholder="Miktar" min="1" style={{ flex: 1 }} />
+                                                                <select className="fm-input" value={row.birim} onChange={e => setMultiZimmetRows(prev => prev.map((r, i) => i === ri ? { ...r, birim: e.target.value } : r))} style={{ flex: 1 }}>
+                                                                    <option>Adet</option><option>Torba</option><option>Metre</option><option>Palet</option><option>M3</option><option>Ton</option><option>Kg</option><option>Lt</option>
+                                                                </select>
+                                                            </div>
+                                                            {multiZimmetRows.length > 1 && (
+                                                                <button type="button" className="fm-multi-row-remove" onClick={() => setMultiZimmetRows(prev => prev.filter((_, i) => i !== ri))} title="Satırı sil">
+                                                                    <X size={14} />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ))}
                                             </div>
                                         </div>
 
@@ -6206,9 +6328,9 @@ const App = () => {
                                         </div>
 
                                         <div className="fm-footer">
-                                            <button type="button" className="fm-btn-cancel" onClick={() => { setShowZimmetModal(false); setZimmetKisiInput(''); setZimmetEkipInput(''); }}>İptal</button>
-                                            <button type="submit" className="fm-btn-submit" disabled={isSaving || !selectedItemForZimmet || (!zimmetKisiInput.trim() && !zimmetEkipInput.trim())} style={{ background: 'linear-gradient(135deg, #a78bfa, #6d28d9)' }}>
-                                                {isSaving ? 'İşleniyor...' : '✓ Zimmeti Kaydet'}
+                                            <button type="button" className="fm-btn-cancel" onClick={() => { setShowZimmetModal(false); setZimmetKisiInput(''); setZimmetEkipInput(''); setMultiZimmetRows([emptyZimmetRow()]); }}>İptal</button>
+                                            <button type="submit" className="fm-btn-submit" disabled={isSaving || !multiZimmetRows.some(r => r.itemId && Number(r.miktar) > 0) || (!zimmetKisiInput.trim() && !zimmetEkipInput.trim())} style={{ background: 'linear-gradient(135deg, #a78bfa, #6d28d9)' }}>
+                                                {isSaving ? 'İşleniyor...' : `✓ ${multiZimmetRows.filter(r => r.itemId).length > 1 ? multiZimmetRows.filter(r => r.itemId).length + ' Malzeme ' : ''}Zimmeti Kaydet`}
                                             </button>
                                         </div>
                                     </form>
