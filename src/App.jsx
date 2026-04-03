@@ -86,10 +86,15 @@ const ROLE_COLORS = {
     viewer: { bg: '#f1f5f9', color: '#475569' },
 };
 
+// ─── Depo Sistemi ────────────────────────────────────────────────────────────
+const DEPOLAR = ['Büyük Depo', 'Orta Depo', 'Küçük Depo'];
+const DEFAULT_DEPO = 'Büyük Depo';
+
 // Sayfa tanımları — sayfa izin sistemi için
 const PAGE_DEFS = [
     { key: 'dashboard', label: 'Panel', icon: '🏠' },
     { key: 'summary', label: 'Stok Özeti', icon: '📦' },
+    { key: 'depo', label: 'Depo', icon: '🏭' },
     { key: 'price', label: 'Fiyat Analizi', icon: '📈' },
     { key: 'movements', label: 'Tüm Hareketler', icon: '🔄' },
     { key: 'irsaliyeler', label: 'İrsaliyeler', icon: '📄' },
@@ -817,6 +822,11 @@ const App = () => {
     const [editingPersonel, setEditingPersonel] = useState(null);
     const [personelForm, setPersonelForm] = useState({ tc: '', adSoyad: '', girisTarihi: '', cikisTarihi: '', taseron: '' });
     // ── Zimmet State ──
+    const [transfers, setTransfers] = useState([]);
+    const [showTransferModal, setShowTransferModal] = useState(false);
+    const [transferForm, setTransferForm] = useState({ itemId: '', fromDepo: '', toDepo: '', amount: '', note: '' });
+    const [inDepo, setInDepo] = useState(DEFAULT_DEPO);
+
     const [zimmet, setZimmet] = useState([]);
     const [showZimmetModal, setShowZimmetModal] = useState(false);
     const [zimmetType, setZimmetType] = useState('verildi');
@@ -1172,6 +1182,16 @@ const App = () => {
         const unsub = onValue(requestsRef, (snap) => {
             const data = snap.val();
             setRequests(data ? Object.values(data).sort((a, b) => b.id - a.id) : []);
+        });
+        return () => unsub();
+    }, []);
+
+    // ── Transfers Effect ──
+    useEffect(() => {
+        const transfersRef = ref(db, 'transfers');
+        const unsub = onValue(transfersRef, (snap) => {
+            const data = snap.val();
+            setTransfers(data ? Object.values(data).sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0)) : []);
         });
         return () => unsub();
     }, []);
@@ -1664,6 +1684,41 @@ const App = () => {
         return { totalProducts, criticalItems, monthlyIns, monthlyOuts, totalAlinan, totalCikis, totalKalan, totalZimmetDeger, totalDepoDeger };
     }, [items, movements, zimmet]);
 
+    // depoSummary: her (itemId, depo) çifti için net miktar hesapla
+    // movements.depo yoksa DEFAULT_DEPO olarak say
+    const depoSummary = useMemo(() => {
+        // { itemId: { depoName: netQty } }
+        const map = {};
+        const ensure = (itemId, depo) => {
+            const k = String(itemId);
+            if (!map[k]) map[k] = {};
+            if (!map[k][depo]) map[k][depo] = 0;
+        };
+        // Giriş hareketleri
+        movements.filter(m => m.type === 'in').forEach(m => {
+            const depo = m.depo || DEFAULT_DEPO;
+            ensure(m.itemId, depo);
+            map[String(m.itemId)][depo] += Number(m.amount) || 0;
+        });
+        // Çıkış hareketleri — Büyük Depo'dan çıkar (eski kayıtlar)
+        movements.filter(m => m.type === 'out').forEach(m => {
+            const depo = m.depo || DEFAULT_DEPO;
+            ensure(m.itemId, depo);
+            map[String(m.itemId)][depo] -= Number(m.amount) || 0;
+        });
+        // Transfer hareketleri
+        transfers.forEach(t => {
+            const from = t.fromDepo || DEFAULT_DEPO;
+            const to   = t.toDepo   || DEFAULT_DEPO;
+            const qty  = Number(t.amount) || 0;
+            ensure(t.itemId, from);
+            ensure(t.itemId, to);
+            map[String(t.itemId)][from] -= qty;
+            map[String(t.itemId)][to]   += qty;
+        });
+        return map; // { itemId: { depoName: qty } }
+    }, [movements, transfers]);
+
     const priceAnalysis = useMemo(() => {
         return items.map(item => {
             const itemInMovements = movements.filter(m => Number(m.itemId) === Number(item.id) && m.type === 'in');
@@ -1674,6 +1729,63 @@ const App = () => {
             return { ...item, totalQtyReceived, totalSpent, avgPrice, kategori };
         }).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'tr'));
     }, [items, movements]);
+
+    // ── Depo Transfer Handler ──
+    const handleTransfer = async (e) => {
+        e.preventDefault();
+        const { itemId, fromDepo, toDepo, amount, note } = transferForm;
+        if (!itemId || !fromDepo || !toDepo || !amount) return;
+        if (fromDepo === toDepo) { alert('Kaynak ve hedef depo aynı olamaz.'); return; }
+        const qty = Number(amount);
+        if (qty <= 0) { alert('Miktar 0\'dan büyük olmalıdır.'); return; }
+        // Kontrol: kaynak depoda yeterli stok var mı?
+        const srcQty = (depoSummary[String(itemId)] || {})[fromDepo] || 0;
+        if (qty > srcQty) { alert(`${fromDepo} deposunda yeterli stok yok. Mevcut: ${srcQty}`); return; }
+        setIsSaving(true);
+        try {
+            const id = String(Date.now());
+            const item = items.find(i => String(i.id) === String(itemId));
+            await set(ref(db, `transfers/${id}`), {
+                id: Number(id),
+                itemId: Number(itemId),
+                itemName: item?.name || '',
+                fromDepo,
+                toDepo,
+                amount: qty,
+                note: note || '',
+                date: new Date().toISOString().split('T')[0],
+                createdBy: userProfile.name,
+            });
+            setTransferForm({ itemId: '', fromDepo: '', toDepo: '', amount: '', note: '' });
+            setShowTransferModal(false);
+            showToast(`${qty} adet transfer edildi: ${fromDepo} → ${toDepo}`, 'success');
+        } catch (err) {
+            alert('Transfer başarısız: ' + err.message);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    // ── Backfill Depo Handler (eski kayıtlara DEFAULT_DEPO atar) ──
+    const handleBackfillDepo = async () => {
+        if (!window.confirm(`Depo alanı olmayan tüm giriş/çıkış hareketlerine "${DEFAULT_DEPO}" atanacak. Devam edilsin mi?`)) return;
+        setIsSaving(true);
+        try {
+            const batchUpdates = {};
+            movements.forEach(m => {
+                if (!m.depo) batchUpdates[`movements/${m.id}/depo`] = DEFAULT_DEPO;
+            });
+            if (Object.keys(batchUpdates).length === 0) {
+                alert('Tüm hareketlerde zaten depo bilgisi mevcut.'); setIsSaving(false); return;
+            }
+            await update(ref(db), batchUpdates);
+            showToast(`${Object.keys(batchUpdates).length} kayıt güncellendi.`, 'success');
+        } catch (err) {
+            alert('Backfill başarısız: ' + err.message);
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     // ── Data Handlers ──
     const handleAddItem = (e) => {
@@ -1740,6 +1852,7 @@ const App = () => {
                 const itemId = String(item.id);
 
                 const price = Number(formData.get('price')) || 0;
+                const depo = inDepo || DEFAULT_DEPO;
                 const moveBaseData = {
                     itemId: Number(item.id),
                     itemName: item.name,
@@ -1750,6 +1863,7 @@ const App = () => {
                     unit,
                     irsaliyeNo,
                     price,
+                    depo,
                     type: 'in',
                     date: displayDate,
                 };
@@ -1773,6 +1887,7 @@ const App = () => {
                 setInMalzemeAdi('');
                 setInFirmaAdi('');
                 setInIrsaliyeNo('');
+                setInDepo(DEFAULT_DEPO);
                 setShowAddMalzemeAdi(false); setShowAddMalzemeTuru(false);
                 setShowAddBirim(false); setShowAddFirma(false); setShowAddIrsaliye(false);
 
@@ -1788,10 +1903,12 @@ const App = () => {
                     ? actionDate
                     : new Date().toISOString().split('T')[0];
 
+                const outDepo = selectedItemForMove.defaultDepo || DEFAULT_DEPO;
                 const moveBaseData = {
                     itemId: Number(itemId), itemName: selectedItemForMove.name,
                     amount, unit, verilenBirim, recipient, kullanimAlani,
                     note: kullanimAlani, type: 'out', date: displayDateOut,
+                    depo: outDepo,
                 };
 
                 if (isBackdated) {
@@ -2836,7 +2953,7 @@ const App = () => {
                     <div>
                         <div style={{ position: 'relative', display: 'inline-block' }}>
                             <div className="sidebar-logo-text">Shintea</div>
-                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.052</span>
+                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.054</span>
                         </div>
                     </div>
                 </div>
@@ -2892,6 +3009,15 @@ const App = () => {
                         >
                             <BarChart2 size={17} /> Stok Özeti
                             {pagePerm('summary') === 'view' && <Eye size={12} style={{ marginLeft: 'auto', opacity: 0.5 }} />}
+                        </button>
+                    )}
+                    {pagePerm('depo') !== 'none' && (
+                        <button
+                            className={`nav-item${activeTab === 'depo' ? ' active' : ''}`}
+                            onClick={() => { setActiveTab('depo'); setMobileSidebarOpen(false); }}
+                        >
+                            <Package size={17} /> Depo
+                            {pagePerm('depo') === 'view' && <Eye size={12} style={{ marginLeft: 'auto', opacity: 0.5 }} />}
                         </button>
                     )}
                     {pagePerm('price') !== 'none' && (
@@ -3481,6 +3607,30 @@ const App = () => {
                                                             </div>
                                                         </div>
 
+                                                        {/* Depo Dağılımı */}
+                                                        {(() => {
+                                                            const itemDepoData = depoSummary[String(selRow.id)] || {};
+                                                            const hasDepoData = DEPOLAR.some(d => (itemDepoData[d] || 0) > 0);
+                                                            if (!hasDepoData) return null;
+                                                            return (
+                                                                <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', padding: '14px 20px' }}>
+                                                                    <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>Depo Dağılımı</div>
+                                                                    <div style={{ display: 'flex', gap: '16px' }}>
+                                                                        {DEPOLAR.map(d => {
+                                                                            const qty = Math.max(0, itemDepoData[d] || 0);
+                                                                            return (
+                                                                                <div key={d} style={{ flex: 1, textAlign: 'center', padding: '10px', background: qty > 0 ? 'var(--bg-hover)' : 'transparent', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                                                                                    <div style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4px' }}>{d}</div>
+                                                                                    <div style={{ fontSize: '18px', fontWeight: 800, color: qty > 0 ? 'var(--text-main)' : '#cbd5e1' }}>{qty > 0 ? formatNumber(qty) : '—'}</div>
+                                                                                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{selRow.unit}</div>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })()}
+
                                                         {/* İstatistik Kartları */}
                                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
                                                             {[
@@ -3605,6 +3755,89 @@ const App = () => {
                             })()}
                         </div>
                     )}
+
+                    {/* ── DEPO TAB ── */}
+                    {activeTab === 'depo' && pagePerm('depo') === 'none' && (
+                        <div className="table-card animate-fade" style={{ padding: '60px 20px', textAlign: 'center' }}>
+                            <Shield size={36} style={{ color: '#cbd5e1', marginBottom: '14px' }} />
+                            <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-main)' }}>Erişim Yetkiniz Yok</div>
+                        </div>
+                    )}
+                    {activeTab === 'depo' && pagePerm('depo') !== 'none' && (() => {
+                        // Her depo için malzeme bazlı stok özeti
+                        const depoItems = items.map(item => {
+                            const itemDepoMap = depoSummary[String(item.id)] || {};
+                            return {
+                                ...item,
+                                depoQtys: DEPOLAR.reduce((acc, d) => { acc[d] = Math.max(0, itemDepoMap[d] || 0); return acc; }, {}),
+                            };
+                        }).filter(item => DEPOLAR.some(d => item.depoQtys[d] > 0));
+
+                        const depoTotals = DEPOLAR.map(depo => {
+                            const totalQty = depoItems.reduce((s, i) => s + (i.depoQtys[depo] || 0), 0);
+                            const totalVal = depoItems.reduce((s, i) => s + (i.depoQtys[depo] || 0) * (Number(i.avgPrice) || 0), 0);
+                            const itemCount = depoItems.filter(i => i.depoQtys[depo] > 0).length;
+                            return { depo, totalQty, totalVal, itemCount };
+                        });
+
+                        const formatCur = (v) => v > 0 ? `₺ ${v.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}` : '—';
+
+                        return (
+                            <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)', overflow: 'hidden', gap: '14px' }}>
+                                {/* Header */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+                                    <h1 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text-main)', margin: 0 }}>Depo</h1>
+                                    {canEdit && (
+                                        <button
+                                            className="btn-primary"
+                                            style={{ marginLeft: 'auto', padding: '7px 14px', fontSize: '13px' }}
+                                            onClick={() => setShowTransferModal(true)}
+                                        >
+                                            <RotateCcw size={14} /> Transfer
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* 3-column depo grid */}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px', flexShrink: 0 }}>
+                                    {depoTotals.map(dt => (
+                                        <div key={dt.depo} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px 20px' }}>
+                                            <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>{dt.depo}</div>
+                                            <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-main)', marginBottom: '4px' }}>{formatCur(dt.totalVal)}</div>
+                                            <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                                                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{dt.itemCount} malzeme</span>
+                                                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{dt.totalQty.toLocaleString('tr-TR')} adet toplam</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Per-item table */}
+                                <div style={{ flex: 1, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                                    <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', fontWeight: 700, fontSize: '13px', color: 'var(--text-muted)', display: 'flex', gap: 0 }}>
+                                        <span style={{ flex: 3 }}>Malzeme</span>
+                                        {DEPOLAR.map(d => <span key={d} style={{ flex: 2, textAlign: 'right' }}>{d}</span>)}
+                                    </div>
+                                    <div style={{ overflowY: 'auto', flex: 1 }}>
+                                        {depoItems.length === 0 ? (
+                                            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+                                                Henüz depo kaydı yok. Giriş yaparken depo seçin veya backfill çalıştırın.
+                                            </div>
+                                        ) : depoItems.map(item => (
+                                            <div key={item.id} style={{ display: 'flex', gap: 0, padding: '9px 16px', borderBottom: '1px solid var(--border)', fontSize: '13px', alignItems: 'center' }}>
+                                                <span style={{ flex: 3, fontWeight: 500, color: 'var(--text-main)' }}>{item.name}</span>
+                                                {DEPOLAR.map(d => (
+                                                    <span key={d} style={{ flex: 2, textAlign: 'right', color: item.depoQtys[d] > 0 ? 'var(--text-main)' : '#cbd5e1', fontWeight: item.depoQtys[d] > 0 ? 600 : 400 }}>
+                                                        {item.depoQtys[d] > 0 ? `${item.depoQtys[d].toLocaleString('tr-TR')} ${item.unit || ''}` : '—'}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()}
 
                     {/* ── ZİMMET TAB ── */}
                     {activeTab === 'zimmet' && pagePerm('zimmet') === 'none' && (
@@ -5339,10 +5572,123 @@ const App = () => {
                                     <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept=".json" onChange={restoreData} />
                                 </div>
                             </div>
+
+                            {/* Depo Backfill Kartı */}
+                            {isAdmin && (
+                                <div className="card" style={{ marginTop: '16px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                                        <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb' }}>
+                                            <Package size={16} />
+                                        </div>
+                                        <div>
+                                            <div style={{ fontWeight: '600', fontSize: '14px', color: 'var(--text-main)' }}>Depo Backfill</div>
+                                            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Eski hareketlere "{DEFAULT_DEPO}" ata</div>
+                                        </div>
+                                    </div>
+                                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px', lineHeight: '1.6' }}>
+                                        Depo bilgisi olmayan giriş/çıkış kayıtlarına <strong>{DEFAULT_DEPO}</strong> atanır. Bu işlem idempotent'tir — zaten depo bilgisi olan kayıtlar etkilenmez.
+                                    </p>
+                                    <button
+                                        className="btn-primary"
+                                        style={{ width: '100%', justifyContent: 'center', padding: '10px', background: '#2563eb' }}
+                                        onClick={handleBackfillDepo}
+                                        disabled={isSaving}
+                                    >
+                                        <RotateCcw size={15} /> Depo Backfill Çalıştır
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
 
                     {/* ── MODALS (Global) ── */}
+
+                    {/* Transfer Modal */}
+                    {showTransferModal && canEdit && (
+                        <div className="modal-overlay" onClick={() => setShowTransferModal(false)}>
+                            <div className="modal-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '420px', width: '100%' }}>
+                                <div className="modal-header">
+                                    <span className="modal-title"><RotateCcw size={16} style={{ marginRight: 6 }} />Depo Transfer</span>
+                                    <button className="btn-icon" onClick={() => setShowTransferModal(false)}><X size={16} /></button>
+                                </div>
+                                <form onSubmit={handleTransfer}>
+                                    <div className="mb-2">
+                                        <label className="label">Malzeme</label>
+                                        <select
+                                            value={transferForm.itemId}
+                                            onChange={e => setTransferForm(f => ({ ...f, itemId: e.target.value }))}
+                                            required
+                                            style={{ width: '100%' }}
+                                        >
+                                            <option value="">— Seçin —</option>
+                                            {[...items].sort((a,b) => a.name.localeCompare(b.name,'tr')).map(i => (
+                                                <option key={i.id} value={i.id}>{i.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '10px' }} className="mb-2">
+                                        <div style={{ flex: 1 }}>
+                                            <label className="label">Kaynak Depo</label>
+                                            <select
+                                                value={transferForm.fromDepo}
+                                                onChange={e => setTransferForm(f => ({ ...f, fromDepo: e.target.value }))}
+                                                required
+                                                style={{ width: '100%' }}
+                                            >
+                                                <option value="">— Seçin —</option>
+                                                {DEPOLAR.map(d => <option key={d} value={d}>{d}</option>)}
+                                            </select>
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <label className="label">Hedef Depo</label>
+                                            <select
+                                                value={transferForm.toDepo}
+                                                onChange={e => setTransferForm(f => ({ ...f, toDepo: e.target.value }))}
+                                                required
+                                                style={{ width: '100%' }}
+                                            >
+                                                <option value="">— Seçin —</option>
+                                                {DEPOLAR.filter(d => d !== transferForm.fromDepo).map(d => <option key={d} value={d}>{d}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    {transferForm.itemId && transferForm.fromDepo && (
+                                        <div className="mb-2" style={{ fontSize: '12px', color: '#64748b', padding: '6px 10px', background: '#f8fafc', borderRadius: '6px' }}>
+                                            {transferForm.fromDepo} mevcut stok:{' '}
+                                            <strong>{Math.max(0, (depoSummary[String(transferForm.itemId)] || {})[transferForm.fromDepo] || 0)}</strong>
+                                            {' '}{items.find(i => String(i.id) === String(transferForm.itemId))?.unit || ''}
+                                        </div>
+                                    )}
+                                    <div className="mb-2">
+                                        <label className="label">Miktar</label>
+                                        <input
+                                            type="number"
+                                            min="0.01"
+                                            step="0.01"
+                                            placeholder="0"
+                                            value={transferForm.amount}
+                                            onChange={e => setTransferForm(f => ({ ...f, amount: e.target.value }))}
+                                            required
+                                            style={{ width: '100%' }}
+                                        />
+                                    </div>
+                                    <div className="mb-2">
+                                        <label className="label">Not <span style={{ fontWeight: 400, color: '#94a3b8' }}>(opsiyonel)</span></label>
+                                        <input
+                                            type="text"
+                                            placeholder="Transfer nedeni..."
+                                            value={transferForm.note}
+                                            onChange={e => setTransferForm(f => ({ ...f, note: e.target.value }))}
+                                            style={{ width: '100%' }}
+                                        />
+                                    </div>
+                                    <button type="submit" className="btn-primary" disabled={isSaving} style={{ width: '100%', marginTop: '12px', justifyContent: 'center' }}>
+                                        {isSaving ? 'Kaydediliyor...' : 'Transfer Et'}
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Excel Export Modal */}
                     {showExportModal && (
@@ -5425,7 +5771,7 @@ const App = () => {
                             : 'linear-gradient(160deg, #f87171 0%, #dc2626 100%)';
                         const closeModal = () => {
                             setShowMoveModal(false); setIsQuickAdd(false); setIsNewRecipient(false);
-                            setInIrsaliyeNo(''); setShowAddMalzemeAdi(false); setShowAddMalzemeTuru(false);
+                            setInIrsaliyeNo(''); setInDepo(DEFAULT_DEPO); setShowAddMalzemeAdi(false); setShowAddMalzemeTuru(false);
                             setShowAddBirim(false); setShowAddFirma(false); setShowAddIrsaliye(false);
                             setShowAddVerilenBirim(false); setShowAddKullanimAlani(false); setShowAddRecipient(false);
                             setNewVerilenBirimInput(''); setNewKullanimAlaniInput(''); setNewRecipientInput('');
@@ -5582,7 +5928,15 @@ const App = () => {
                                                         </select>
                                                     </div>
 
-                                                     {/* 9. Malzeme Türü / Kategori */}
+                                                    {/* 9. Depo */}
+                                                    <div className="fm-field">
+                                                        <div className="fm-label-row"><span className="fm-label">Depo</span></div>
+                                                        <select className="fm-input" value={inDepo} onChange={e => setInDepo(e.target.value)} required>
+                                                            {DEPOLAR.map(d => <option key={d} value={d}>{d}</option>)}
+                                                        </select>
+                                                    </div>
+
+                                                     {/* 10. Malzeme Türü / Kategori */}
                                                      <div className="fm-field">
                                                         <div className="fm-label-row">
                                                             <span className="fm-label">Malzeme Kategorisi</span>
