@@ -28,12 +28,8 @@ import {
     Eye,
     Clock,
     Menu,
-    ClipboardList,
-    ShoppingCart,
     CheckCheck,
     XCircle,
-    Send,
-    Truck,
     RotateCcw,
     Check,
     UserPlus,
@@ -287,34 +283,13 @@ const EDIT_CONFIGS = {
             { key: 'unit', label: 'Birim', type: 'select', options: ['ADET', 'TORBA', 'METRE', 'PALET', 'M3', 'TON', 'KG', 'LT', 'KUTU', 'PAKET', 'RULO', 'ÇİFT', 'TAKIM'] },
         ],
     },
-    requests: {
-        label: 'Malzeme Talebi',
-        path: (r) => `requests/${r.id}`,
-        fields: [
-            { key: 'date', label: 'Tarih', type: 'text' },
-            { key: 'itemName', label: 'Malzeme', type: 'text' },
-            { key: 'amount', label: 'Miktar', type: 'number' },
-            { key: 'unit', label: 'Birim', type: 'text' },
-            { key: 'requestedBy', label: 'Talep Eden', type: 'text' },
-            { key: 'note', label: 'Not', type: 'text' },
-        ],
-    },
     items: {
         label: 'Malzeme',
-        path: (r) => `items/${r.id}`,
+        path: (r) => `items/${r._key || r.id}`,
         fields: [
             { key: 'name', label: 'Malzeme Adı', type: 'text' },
             { key: 'unit', label: 'Birim', type: 'text' },
             { key: 'category', label: 'Kategori', type: 'text' },
-        ],
-    },
-    sevkiyat: {
-        label: 'Sevkiyat',
-        path: (r) => `sevkiyat/${r.id}`,
-        fields: [
-            { key: 'date', label: 'Tarih', type: 'text' },
-            { key: 'firmaAdi', label: 'Firma', type: 'text' },
-            { key: 'irsaliyeNo', label: 'İrsaliye No', type: 'text' },
         ],
     },
     personel: {
@@ -773,7 +748,6 @@ const App = () => {
     // ── Data State ──
     const [items, setItems] = useState([]);
     const [movements, setMovements] = useState([]);
-    const [requests, setRequests] = useState([]);
     const [categories, setCategories] = useState(['Genel', 'Elektrik', 'Tesisat', 'Kaba İnşaat', 'Hırdavat']);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
 
@@ -816,8 +790,6 @@ const App = () => {
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
     const [selectedItemsForExport, setSelectedItemsForExport] = useState([]);
     const [movementViewType, setMovementViewType] = useState('all');
-    const [showRequestModal, setShowRequestModal] = useState(false);
-    const [requestFilter, setRequestFilter] = useState('pending');
     // ── Personel State ──
     const [personel, setPersonel] = useState([]);
     const [showPersonelModal, setShowPersonelModal] = useState(false);
@@ -841,19 +813,10 @@ const App = () => {
     const [zimmetFilterTarih, setZimmetFilterTarih] = useState('');
     const [zimmetKisiInput, setZimmetKisiInput] = useState('');
     const [zimmetEkipInput, setZimmetEkipInput] = useState('');
-    // ── Sevkiyat State ──
-    const [sevkiyat, setSevkiyat] = useState([]);
-    const [sevkiyatLoading, setSevkiyatLoading] = useState(false);
-    const [sevkiyatModal, setSevkiyatModal] = useState({ show: false, data: null });
-    const [sevkiyatToast, setSevkiyatToast] = useState({ show: false, message: '', type: 'success' });
-    const [eksikSelectionMode, setEksikSelectionMode] = useState(false);
-    const [eksikSelectedIndices, setEksikSelectedIndices] = useState([]);
     const [dateRange, setDateRange] = useState({
         start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         end: new Date().toISOString().split('T')[0]
     });
-    const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
-    const [purchaseFormId, setPurchaseFormId] = useState(String(Date.now()));
     const [isQuickAdd, setIsQuickAdd] = useState(false);
     const [isNewRecipient, setIsNewRecipient] = useState(false);
     // ── Multi-Row State (Giriş/Çıkış/Zimmet çoklu malzeme) ──
@@ -866,6 +829,10 @@ const App = () => {
     // ── Giriş Form State ──
     const [inMalzemeAdi, setInMalzemeAdi] = useState('');
     const [inFirmaAdi, setInFirmaAdi] = useState('');
+    const [inActionDate, setInActionDate] = useState(new Date().toISOString().split('T')[0]);
+    const [outActionDate, setOutActionDate] = useState(new Date().toISOString().split('T')[0]);
+    const [outVerilenEkip, setOutVerilenEkip] = useState('');
+    const [outVerilenPersonel, setOutVerilenPersonel] = useState('');
     const [teslimAlanlar, setTeslimAlanlar] = useState([]);
     const [showAddTeslimAlan, setShowAddTeslimAlan] = useState(false);
     const [newTeslimAlanAdi, setNewTeslimAlanAdi] = useState('');
@@ -905,8 +872,6 @@ const App = () => {
     const [pagePermissionsEdit, setPagePermissionsEdit] = useState({});
 
     const fileInputRef = useRef(null);
-    const satinAlimRef = useRef(null);
-    const sevkiyatNavItemRef = useRef(null);
 
     // ── Auth State ──
     const [authUser, setAuthUser] = useState(null);
@@ -1010,10 +975,10 @@ const App = () => {
 
     const handleCtxDelete = () => {
         if (!ctxMenu) return;
-        const cfg = EDIT_CONFIGS[ctxMenu.collection];
-        if (!window.confirm('Bu satırı silmek istediğinize emin misiniz?')) { setCtxMenu(null); return; }
-        remove(ref(db, cfg.path(ctxMenu.row)));
+        const row = ctxMenu.row;
+        const collection = ctxMenu.collection;
         setCtxMenu(null);
+        setBulkDelState({ tableId: collection, rows: [row], count: 1 });
     };
 
     const getZimmetDynOpts = () => ({
@@ -1041,6 +1006,27 @@ const App = () => {
             }
             // keep person field in sync for legacy display
             data.person = [data.kisi, data.ekip].filter(Boolean).join(' / ');
+        }
+        if (editRow.collection === 'movements' && data.itemName && data.itemName !== editRow.row.itemName) {
+            // itemName değişti: items koleksiyonunda eşleşen item bul veya yeni oluştur
+            const match = items.find(i => i.name.toLowerCase() === data.itemName.toLowerCase());
+            if (match) {
+                data.itemId = match.id;
+            } else {
+                // Yeni item oluştur — eski item'ın birim/kategori bilgisini kopyala
+                const oldItem = items.find(i => String(i.id) === String(editRow.row.itemId));
+                const newId = String(Date.now());
+                const newItem = {
+                    id: Number(newId),
+                    name: data.itemName.trim(),
+                    unit: oldItem?.unit || data.unit || 'Adet',
+                    category: oldItem?.category || data.malzemeTuru || 'Genel',
+                    quantity: 0,
+                    minStock: 0,
+                };
+                set(ref(db, `items/${newId}`), newItem);
+                data.itemId = Number(newId);
+            }
         }
         update(ref(db, cfg.path(editRow.row)), data);
         setEditRow(null);
@@ -1219,7 +1205,7 @@ const App = () => {
 
         const unsubItems = onValue(itemsRef, (snapshot) => {
             const data = snapshot.val();
-            setItems(data ? Object.values(data) : []);
+            setItems(data ? Object.entries(data).map(([key, val]) => ({ ...val, _key: key })) : []);
             setIsInitialLoad(false);
         });
 
@@ -1252,15 +1238,6 @@ const App = () => {
         };
     }, []);
 
-    // ── Requests Effect ──
-    useEffect(() => {
-        const requestsRef = ref(db, 'requests');
-        const unsub = onValue(requestsRef, (snap) => {
-            const data = snap.val();
-            setRequests(data ? Object.values(data).sort((a, b) => b.id - a.id) : []);
-        });
-        return () => unsub();
-    }, []);
 
     // ── Transfers Effect ──
     useEffect(() => {
@@ -1278,16 +1255,6 @@ const App = () => {
         const unsub = onValue(zimmetRef, (snap) => {
             const data = snap.val();
             setZimmet(data ? Object.values(data).sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0)) : []);
-        });
-        return () => unsub();
-    }, []);
-
-    // ── Sevkiyat Effect ──
-    useEffect(() => {
-        const sevkiyatRef = ref(db, 'sevkiyat');
-        const unsub = onValue(sevkiyatRef, (snap) => {
-            const data = snap.val();
-            setSevkiyat(data ? Object.values(data).sort((a, b) => b.created_at - a.created_at) : []);
         });
         return () => unsub();
     }, []);
@@ -1384,6 +1351,35 @@ const App = () => {
         });
         return () => unsub();
     }, []);
+
+    // ── Hareketlerdeki itemName'leri items koleksiyonuyla senkronize et ──
+    useEffect(() => {
+        if (isInitialLoad || movements.length === 0 || items.length === 0) return;
+        const existingNames = new Set(items.map(i => i.name.toLowerCase()));
+        // itemId'si olan ve items'da karşılığı olmayan hareketleri bul
+        const nameToMovement = {};
+        movements.forEach(m => {
+            if (!m.itemName) return;
+            const key = m.itemName.toLowerCase();
+            if (!existingNames.has(key) && !nameToMovement[key]) {
+                nameToMovement[key] = m;
+            }
+        });
+        const missing = Object.values(nameToMovement);
+        if (missing.length === 0) return;
+        missing.forEach(m => {
+            // Hareketin kendi itemId'sini kullan — hareket zaten o id'ye bağlı
+            const itemId = String(m.itemId);
+            set(ref(db, `items/${itemId}`), {
+                id: Number(itemId),
+                name: m.itemName.trim(),
+                unit: m.unit || 'Adet',
+                category: m.malzemeTuru || 'Genel',
+                quantity: 0,
+                minStock: 0,
+            });
+        });
+    }, [isInitialLoad, movements, items]);
 
     // ── Pending Actions Effect (geçmiş tarihli onay bekleyenler) ──
     useEffect(() => {
@@ -1576,10 +1572,6 @@ const App = () => {
         };
     }, [items, movements, zimmet]);
 
-    const pendingRequestsCount = useMemo(() =>
-        requests.filter(r => r.status === 'pending').length,
-        [requests]);
-
     // Tedarikçi / Kaynak / Alan listesi (hareketlerden türetilir)
     const uniqueRecipients = useMemo(() => {
         const set = new Set();
@@ -1601,12 +1593,21 @@ const App = () => {
         return [...set].sort((a, b) => a.localeCompare(b, 'tr'));
     }, [movements, kullanimAlanlari]);
 
-    // Firma adları — geçmiş girişlerden otomatik türetilir
+    // Firma adları — giriş hareketlerinde miktarı + olan satırlardan firmaAdi ve recipient (personel isimleri hariç)
     const uniqueFirmaAdlari = useMemo(() => {
+        const personelNames = new Set(personel.map(p => (p.adSoyad || '').toLowerCase().trim()));
         const set = new Set();
-        movements.forEach(m => { if (m.type === 'in' && m.firmaAdi && m.firmaAdi.trim()) set.add(m.firmaAdi.trim()); });
+        movements.forEach(m => {
+            if (m.type !== 'in' || Number(m.amount) <= 0) return;
+            const add = (val) => {
+                const v = (val || '').trim();
+                if (v.length >= 3 && !personelNames.has(v.toLowerCase())) set.add(v);
+            };
+            add(m.firmaAdi);
+            add(m.recipient);
+        });
         return [...set].sort((a, b) => a.localeCompare(b, 'tr'));
-    }, [movements]);
+    }, [movements, personel]);
 
     // Firma adları — Firebase firmalar + hareketlerden birleşik liste
     const allFirmaAdlari = useMemo(() => {
@@ -1619,52 +1620,6 @@ const App = () => {
         [...items].sort((a, b) => a.name.localeCompare(b.name, 'tr')),
         [items]);
 
-    const siparislerData = useMemo(() => {
-        const satinAlinan = [];
-        const eksikler = [];
-        sevkiyat.forEach(s => {
-            if (s.satin_alim_durumu === 'SATIN_ALINDI') {
-                (s.items || []).forEach((item) => {
-                    satinAlinan.push({
-                        ...item,
-                        formNo: s.satin_alim_form_no,
-                        sevkiyatId: s.id,
-                        tarihTR: s.sevkiyata_gonderilme_tarihi_tr,
-                        created_at: s.created_at,
-                    });
-                });
-            }
-            if (s.satin_alim_durumu === 'EKSIK_MALZEME' && Array.isArray(s.eksik_items)) {
-                (s.items || []).forEach((item, idx) => {
-                    if (s.eksik_items.includes(idx)) {
-                        eksikler.push({
-                            ...item,
-                            formNo: s.satin_alim_form_no,
-                            sevkiyatId: s.id,
-                            tarihTR: s.sevkiyata_gonderilme_tarihi_tr,
-                            created_at: s.created_at,
-                        });
-                    } else {
-                        satinAlinan.push({
-                            ...item,
-                            formNo: s.satin_alim_form_no,
-                            sevkiyatId: s.id,
-                            tarihTR: s.sevkiyata_gonderilme_tarihi_tr,
-                            created_at: s.created_at,
-                        });
-                    }
-                });
-            }
-        });
-        satinAlinan.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
-        eksikler.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
-        return { satinAlinan, eksikler };
-    }, [sevkiyat]);
-
-    const filteredRequests = useMemo(() => {
-        if (requestFilter === 'all') return requests;
-        return requests.filter(r => r.status === requestFilter);
-    }, [requests, requestFilter]);
 
     const stockSummary = useMemo(() => {
         let list = items.map(item => {
@@ -1672,11 +1627,12 @@ const App = () => {
             const totalReceived = itemMovements.filter(m => m.type === 'in').reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
             const totalUsed = itemMovements.filter(m => m.type === 'out').reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
             const zimmetteCount = zimmet
-                .filter(z => Number(z.itemId) === Number(item.id) && z.status === 'zimmette')
+                .filter(z => Number(z.itemId) === Number(item.id) && (z.status === 'zimmette' || z.status === 'verildi' || !z.status))
                 .reduce((sum, z) => sum + (Number(z.amount) || 0), 0);
 
             // Gerçek stok miktarını hareketlerden hesapla (item.quantity Firebase'de stale olabilir)
-            const computedQty = Math.max(0, totalReceived - totalUsed);
+            // NOT: Math.max kaldırıldı — negatif değerler veri sorununu gösterir
+            const computedQty = totalReceived - totalUsed;
 
             // Status Logic
             let status = 'healthy';
@@ -1952,6 +1908,15 @@ const App = () => {
                 const validRows = multiInRows.filter(r => r.malzemeAdi.trim() && parseFloat(r.miktar) > 0);
                 if (validRows.length === 0) { setIsSaving(false); return; }
 
+                // Firma adını firmalar koleksiyonuna otomatik ekle (>=3 karakter, yeni ise)
+                if (firmaAdi && firmaAdi.length >= 3) {
+                    const alreadyExists = firmalar.some(f => f.name.toLowerCase() === firmaAdi.toLowerCase());
+                    if (!alreadyExists) {
+                        const fId = String(Date.now());
+                        set(ref(db, `firmalar/${fId}`), { id: fId, name: firmaAdi });
+                    }
+                }
+
                 for (let idx = 0; idx < validRows.length; idx++) {
                     const row = validRows[idx];
                     const malzemeAdi = row.malzemeAdi.trim();
@@ -2011,6 +1976,7 @@ const App = () => {
                 const kullanimAlani = formData.get('kullanimAlani') || '';
                 const rawRecipient = formData.get('recipient');
                 const recipient = rawRecipient === '__NEW__' ? '' : (rawRecipient || '');
+                const verilenBirimGlobal = formData.get('verilenBirim') || '';
                 const displayDateOut = displayDate; // Form'daki tarih input'u kullan (giriş ile aynı mantık)
 
                 const validRows = multiOutRows.filter(r => r.itemId && parseFloat(r.miktar) > 0);
@@ -2022,7 +1988,7 @@ const App = () => {
                     if (!selItem) continue;
                     const amount = Number(row.miktar);
                     const unit = row.birim || selItem.unit || 'Adet';
-                    const verilenBirim = row.verilenBirim || '';
+                    const verilenBirim = verilenBirimGlobal || row.verilenBirim || '';
                     const itemId = String(selItem.id);
                     const outDepo = selItem.defaultDepo || DEFAULT_DEPO;
 
@@ -2092,49 +2058,6 @@ const App = () => {
     const deleteItem = (id) => {
         if (confirm('Bu malzemeyi silmek istediğinize emin misiniz?')) {
             remove(ref(db, `items/${id}`));
-        }
-    };
-
-    // ── Request Handlers ──
-    const handleCreateRequest = (e) => {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        const reqId = String(Date.now());
-        const selectedItem = items.find(i => String(i.id) === formData.get('itemId'));
-        const requestData = {
-            id: Number(reqId),
-            itemId: selectedItem?.id || null,
-            itemName: selectedItem?.name || '',
-            amount: Number(formData.get('amount')),
-            adet: Number(formData.get('adet') || 0),
-            unit: formData.get('unit') || selectedItem?.unit || 'Adet',
-            note: formData.get('note') || '',
-            requestedBy: userProfile.name,
-            requestedByUid: authUser.uid,
-            status: 'pending',
-            date: new Date().toLocaleString(),
-        };
-        set(ref(db, `requests/${reqId}`), requestData)
-            .then(() => setShowRequestModal(false))
-            .catch(err => alert('Talep oluşturulamadı: ' + err.message));
-    };
-
-    const handleApproveRequest = (req) => {
-        set(ref(db, `requests/${req.id}/status`), 'approved');
-        set(ref(db, `requests/${req.id}/approvedBy`), userProfile.name);
-        set(ref(db, `requests/${req.id}/approvedAt`), new Date().toLocaleString());
-    };
-
-    const handleRejectRequest = (req) => {
-        if (confirm('Bu talebi reddetmek istiyor musunuz?')) {
-            set(ref(db, `requests/${req.id}/status`), 'rejected');
-            set(ref(db, `requests/${req.id}/rejectedBy`), userProfile.name);
-        }
-    };
-
-    const handleDeleteRequest = (req) => {
-        if (confirm('Bu talebi silmek istiyor musunuz?')) {
-            remove(ref(db, `requests/${req.id}`));
         }
     };
 
@@ -2472,235 +2395,6 @@ const App = () => {
         update(ref(db), updates)
             .then(() => showToast('İşlem reddedildi.', 'error'))
             .catch(err => alert("Hata: " + err.message));
-    };
-
-    // ── Sevkiyat Handlers ──
-    const showToast = (message, type = 'success') => {
-        setSevkiyatToast({ show: true, message, type });
-        setTimeout(() => setSevkiyatToast({ show: false, message: '', type: 'success' }), 3500);
-    };
-
-    const handleSatisaGonder = async () => {
-        const unsent = requests.filter(r => r.status === 'approved' && !r.sevkiyatId);
-        if (unsent.length === 0) {
-            showToast('Gönderilecek onaylı malzeme yok.', 'error');
-            return;
-        }
-
-        // ── Shrink to Center Animation ──
-        if (satinAlimRef.current && !sevkiyatLoading) {
-            satinAlimRef.current.classList.add('shrink-animating');
-            // Wait for animation to finish
-            await new Promise(resolve => setTimeout(resolve, 600));
-        }
-
-        setSevkiyatLoading(true);
-        try {
-            const sevkId = purchaseFormId;
-            const formNo = `AFAD.MT.${new Date().getFullYear()}-${sevkId.slice(-4)}`;
-            const talepEdenler = [...new Set(unsent.map(r => r.requestedBy).filter(Boolean))].join(', ');
-            const sevkData = {
-                id: sevkId,
-                satin_alim_form_no: formNo,
-                items: unsent,
-                talep_eden: talepEdenler,
-                sevkiyata_gonderilme_tarihi: new Date().toISOString(),
-                sevkiyata_gonderilme_tarihi_tr: new Date().toLocaleDateString('tr-TR'),
-                satin_alim_durumu: 'BEKLEMEDE',
-                gonderen: userProfile.name,
-                created_at: Date.now(),
-            };
-            await set(ref(db, `sevkiyat/${sevkId}`), sevkData);
-            // Her onaylı talebi sevkiyatId ile işaretle
-            const updatePromises = unsent.map(req =>
-                set(ref(db, `requests/${req.id}/sevkiyatId`), sevkId)
-            );
-            await Promise.all(updatePromises);
-
-            // Generate NEW ID for the next form
-            const newFormId = String(Date.now());
-            setPurchaseFormId(newFormId);
-
-            // Show Success Overlay
-            setShowSuccessOverlay(true);
-
-            // Wait for 3 seconds, then clear animation and overlay
-            setTimeout(() => {
-                setShowSuccessOverlay(false);
-                if (satinAlimRef.current) {
-                    satinAlimRef.current.classList.remove('shrink-animating');
-                }
-            }, 3000);
-
-        } catch (err) {
-            showToast('Hata: ' + err.message, 'error');
-            if (satinAlimRef.current) {
-                satinAlimRef.current.classList.remove('shrink-animating');
-            }
-        } finally {
-            setSevkiyatLoading(false);
-        }
-    };
-
-    const handleUpdateItemStatus = async (sevkiyatId, itemIdx, newStatus) => {
-        const record = sevkiyat.find(s => s.id === sevkiyatId);
-        if (!record) return;
-
-        const newItemStatuses = { ...(record.itemStatuses || {}) };
-        newItemStatuses[itemIdx] = newStatus;
-
-        // Calculate new form status
-        const items = record.items || [];
-        const itemArray = items.map((_, idx) => newItemStatuses[idx] || 'pending');
-
-        let newFormStatus = 'BEKLEMEDE';
-        if (itemArray.every(s => s === 'purchased')) {
-            newFormStatus = 'SATIN_ALINDI';
-        } else if (itemArray.every(s => s === 'purchased' || s === 'cancelled') && itemArray.some(s => s === 'cancelled')) {
-            newFormStatus = 'EKSIK_MALZEME';
-        }
-
-        try {
-            await update(ref(db, `sevkiyat/${sevkiyatId}`), {
-                itemStatuses: newItemStatuses,
-                satin_alim_durumu: newFormStatus,
-                last_updated: Date.now()
-            });
-            showToast('Malzeme durumu güncellendi.', 'success');
-        } catch (err) {
-            showToast('Güncelleme hatası: ' + err.message, 'error');
-        }
-    };
-
-    const handleSevkiyatDurumUpdate = (id, durum) => {
-        // Keeping for compatibility with other triggers if any, but now handleUpdateItemStatus is primary
-        update(ref(db, `sevkiyat/${id}`), { satin_alim_durumu: durum })
-            .catch(err => showToast('Durum güncellenemedi: ' + err.message, 'error'));
-    };
-
-    const toggleEksikItem = (index) => {
-        setEksikSelectedIndices(prev =>
-            prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
-        );
-    };
-
-    const handleEksikSave = (sevkiyatId) => {
-        if (eksikSelectedIndices.length === 0) {
-            showToast('Lütfen en az bir eksik malzeme seçin.', 'error');
-            return;
-        }
-        const record = sevkiyat.find(s => s.id === sevkiyatId);
-        const totalItems = (record?.items || []).length;
-        const satinAlinanIndices = [];
-        for (let i = 0; i < totalItems; i++) {
-            if (!eksikSelectedIndices.includes(i)) satinAlinanIndices.push(i);
-        }
-        update(ref(db, `sevkiyat/${sevkiyatId}`), {
-            satin_alim_durumu: 'EKSIK_MALZEME',
-            eksik_items: eksikSelectedIndices,
-            satin_alinan_items: satinAlinanIndices,
-            eksik_isaretlenme_tarihi: new Date().toISOString(),
-            satin_alinma_tarihi: satinAlinanIndices.length > 0 ? new Date().toISOString() : null,
-        }).then(() => {
-            const eksikCount = eksikSelectedIndices.length;
-            const alinanCount = satinAlinanIndices.length;
-            showToast(`${eksikCount} kalem eksik, ${alinanCount} kalem satın alındı olarak işaretlendi.`, 'success');
-            setEksikSelectionMode(false);
-            setEksikSelectedIndices([]);
-            setSevkiyatModal(prev => prev.data ? ({
-                ...prev,
-                data: { ...prev.data, satin_alim_durumu: 'EKSIK_MALZEME', eksik_items: eksikSelectedIndices, satin_alinan_items: satinAlinanIndices }
-            }) : prev);
-        }).catch(err => showToast('Eksik malzeme kaydedilemedi: ' + err.message, 'error'));
-    };
-
-    const exportSevkiyatToPDF = (data) => {
-        if (!data || data.length === 0) { showToast('Dışa aktarılacak veri yok.', 'error'); return; }
-        try {
-            const trMap = { 'ç': 'c', 'Ç': 'C', 'ğ': 'g', 'Ğ': 'G', 'ı': 'i', 'İ': 'I', 'ö': 'o', 'Ö': 'O', 'ş': 's', 'Ş': 'S', 'ü': 'u', 'Ü': 'U' };
-            const fixTR = (t) => t == null ? '' : String(t).replace(/[çÇğĞıİöÖşŞüÜ]/g, m => trMap[m]);
-            const doc = new jsPDF();
-            doc.setFontSize(16);
-            doc.text('Sevkiyat Listesi', 14, 15);
-            doc.setFontSize(9);
-            doc.text(fixTR(`Olusturulma: ${new Date().toLocaleString('tr-TR')}`), 14, 22);
-
-            const mainRows = data.map(s => [
-                fixTR(s.satin_alim_form_no || ''),
-                fixTR(s.talep_eden || (s.items || []).map(it => it.requestedBy).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(', ') || ''),
-                fixTR(s.sevkiyata_gonderilme_tarihi_tr?.split(' ')[0] || ''),
-                fixTR(s.satin_alim_durumu || ''),
-                fixTR(s.gonderen || ''),
-            ]);
-            autoTable(doc, {
-                head: [['Form No', 'Talep Eden', 'Gonderilme Tarihi', 'Siparis', 'Satisi Onaylayan']],
-                body: mainRows,
-                startY: 28,
-                styles: { fontSize: 8, font: 'courier', cellPadding: 2 },
-                headStyles: { fillColor: [234, 88, 12], textColor: [255, 255, 255] },
-                alternateRowStyles: { fillColor: [255, 237, 213] },
-            });
-
-            // Her sevkiyat için malzeme alt tablosu
-            let y = doc.lastAutoTable.finalY + 10;
-            data.forEach(s => {
-                if (!s.items || s.items.length === 0) return;
-                if (y > 240) { doc.addPage(); y = 15; }
-                doc.setFontSize(10);
-                doc.text(fixTR(`Form: ${s.satin_alim_form_no} — Kalemler`), 14, y);
-                y += 3;
-                const itemRows = s.items.map(it => [
-                    fixTR(it.itemName || ''),
-                    it.amount || '',
-                    fixTR(it.unit || ''),
-                    it.adet || '-',
-                    fixTR(it.requestedBy || ''),
-                    fixTR(it.note || ''),
-                ]);
-                autoTable(doc, {
-                    head: [['Malzeme', 'Miktar', 'Birim', 'Adet', 'Talep Eden', 'Not']],
-                    body: itemRows,
-                    startY: y,
-                    styles: { fontSize: 7, font: 'courier', cellPadding: 2 },
-                    headStyles: { fillColor: [100, 116, 139], textColor: [255, 255, 255] },
-                    margin: { left: 14 },
-                });
-                y = doc.lastAutoTable.finalY + 8;
-            });
-            doc.save('Sevkiyat_Listesi.pdf');
-        } catch (e) { showToast('PDF hatası: ' + e.message, 'error'); }
-    };
-
-    const exportSevkiyatToExcel = (data) => {
-        if (!data || data.length === 0) { showToast('Dışa aktarılacak veri yok.', 'error'); return; }
-        const wb = XLSX.utils.book_new();
-        // Ana liste sheet
-        const mainRows = data.map(s => ({
-            'Form No': s.satin_alim_form_no || '',
-            'Talep Eden': s.talep_eden || (s.items || []).map(it => it.requestedBy).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(', ') || '',
-            'Gönderilme Tarihi': s.sevkiyata_gonderilme_tarihi_tr?.split(' ')[0] || '',
-            'Sipariş': s.satin_alim_durumu || '',
-            'Satışı Onaylayan': s.gonderen || '',
-            'Malzeme Çeşit Sayısı': (s.items || []).length,
-        }));
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(mainRows), 'Sevkiyat Listesi');
-        // Kalemler sheet
-        const itemRows = [];
-        data.forEach(s => {
-            (s.items || []).forEach(it => {
-                itemRows.push({
-                    'Form No': s.satin_alim_form_no || '',
-                    'Malzeme': it.itemName || '',
-                    'Miktar': it.amount || '',
-                    'Birim': it.unit || '',
-                    'Adet': it.adet || '',
-                    'Talep Eden': it.requestedBy || '',
-                    'Not': it.note || '',
-                });
-            });
-        });
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(itemRows), 'Malzeme Kalemleri');
-        XLSX.writeFile(wb, 'Sevkiyat_Listesi.xlsx');
     };
 
     // ── Export Helpers ──
@@ -3071,7 +2765,7 @@ const App = () => {
                     <div>
                         <div style={{ position: 'relative', display: 'inline-block' }}>
                             <div className="sidebar-logo-text">Shintea</div>
-                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.059</span>
+                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.060</span>
                         </div>
                     </div>
                 </div>
@@ -3163,32 +2857,6 @@ const App = () => {
                             {pagePerm('irsaliyeler') === 'view' && <Eye size={12} style={{ marginLeft: 'auto', opacity: 0.5 }} />}
                         </button>
                     )}
-                    {/* PASIF: Malzeme Talep - aktif etmek için bu yorum bloğunu kaldır
-                    <button
-                        className={`nav-item${activeTab === 'requests' ? ' active' : ''}`}
-                        onClick={() => { setActiveTab('requests'); setMobileSidebarOpen(false); }}
-                    >
-                        <ClipboardList size={17} /> Malzeme Talep
-                        {pendingRequestsCount > 0 && (
-                            <span className="nav-badge">{pendingRequestsCount}</span>
-                        )}
-                    </button>
-                    */}
-
-                    {/* PASIF: Puantaj - aktif etmek için bu yorum bloğunu kaldır
-                    <button
-                        className={`nav-item${activeTab === 'puantaj' ? ' active' : ''}`}
-                        onClick={() => { setActiveTab('puantaj'); setMobileSidebarOpen(false); }}
-                    >
-                        <Users size={17} /> Puantaj
-                        {personel.filter(p => !p.cikisTarihi).length > 0 && (
-                            <span className="nav-badge" style={{ background: '#0891b2' }}>
-                                {personel.filter(p => !p.cikisTarihi).length}
-                            </span>
-                        )}
-                    </button>
-                    */}
-
                     {pagePerm('personel-analiz') !== 'none' && (
                         <button
                             className={`nav-item${activeTab === 'personel-analiz' ? ' active' : ''}`}
@@ -3211,34 +2879,6 @@ const App = () => {
                             {pagePerm('zimmet') === 'view' && <Eye size={12} style={{ marginLeft: 'auto', opacity: 0.5 }} />}
                         </button>
                     )}
-
-                    {/* PASIF: Satın Alım - aktif etmek için bu yorum bloğunu kaldır
-                    <button
-                        ref={sevkiyatNavItemRef}
-                        className={`nav-item${activeTab === 'sevkiyat' ? ' active' : ''}`}
-                        onClick={() => { setActiveTab('sevkiyat'); setMobileSidebarOpen(false); }}
-                    >
-                        <Truck size={17} /> Satın Alım
-                        {sevkiyat.length > 0 && (
-                            <span className="nav-badge" style={{ background: '#64748b' }}>
-                                {sevkiyat.length}
-                            </span>
-                        )}
-                    </button>
-                    */}
-                    {/* PASIF: Siparişler - aktif etmek için bu yorum bloğunu kaldır
-                    <button
-                        className={`nav-item${activeTab === 'siparisler' ? ' active' : ''}`}
-                        onClick={() => { setActiveTab('siparisler'); setMobileSidebarOpen(false); }}
-                    >
-                        <Package size={17} /> Siparişler
-                        {(siparislerData.satinAlinan.length + siparislerData.eksikler.length) > 0 && (
-                            <span className="nav-badge" style={{ background: '#64748b' }}>
-                                {siparislerData.satinAlinan.length + siparislerData.eksikler.length}
-                            </span>
-                        )}
-                    </button>
-                    */}
 
                     {canEdit && (
                         <button
@@ -3461,7 +3101,7 @@ const App = () => {
                                                 </div>
 
                                                 {/* Liste */}
-                                                <div style={{ overflowY: 'auto', flex: 1 }}>
+                                                <div style={{ overflowY: 'auto', flex: 1, overscrollBehavior: 'contain' }}>
                                                     {stockSummary.length === 0 ? (
                                                         <div style={{ textAlign: 'center', padding: '40px 16px', color: 'var(--text-muted)', fontSize: '13px' }}>Sonuç bulunamadı</div>
                                                     ) : stockSummary.map(row => {
@@ -3469,7 +3109,7 @@ const App = () => {
                                                         const isSel = selRow?.id === row.id;
                                                         return (
                                                             <button
-                                                                key={row.id}
+                                                                key={row._key || String(row.id)}
                                                                 onClick={() => setSummarySelected(row)}
                                                                 onContextMenu={isAdmin ? (e) => handleCtxMenu(e, row, 'items') : undefined}
                                                                 style={{
@@ -3501,8 +3141,10 @@ const App = () => {
                                             <div style={{ flex: 1, minWidth: 0, overflowY: 'auto', paddingRight: '4px' }}>
                                                 {selRow ? (() => {
                                                     const sm = statusMeta(selRow.status);
-                                                    const occupancy = selRow.minStock > 0 ? Math.min(100, Math.round((selRow.quantity / (selRow.minStock * 3)) * 100)) : Math.min(100, Math.round((selRow.quantity / Math.max(selRow.totalReceived, 1)) * 100));
-                                                    const depoMiktar = selRow.quantity - selRow.zimmetteCount;
+                                                    const occupancy = Math.max(0, selRow.minStock > 0 ? Math.min(100, Math.round((selRow.quantity / (selRow.minStock * 3)) * 100)) : Math.min(100, Math.round((selRow.quantity / Math.max(selRow.totalReceived, 1)) * 100)));
+                                                    // Depoda net = tüm depoların depoSummary toplamı (negatif olabilir → veri sorunu)
+                                                    const _itemDepoData2 = depoSummary[String(selRow.id)] || {};
+                                                    const depoMiktar = DEPOLAR.reduce((s, d) => s + (_itemDepoData2[d] || 0), 0);
                                                     return (
                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: '20px' }}>
                                                             {/* Başlık Kartı */}
@@ -3540,19 +3182,20 @@ const App = () => {
                                                             {/* Depo Dağılımı */}
                                                             {(() => {
                                                                 const itemDepoData = depoSummary[String(selRow.id)] || {};
-                                                                const hasDepoData = DEPOLAR.some(d => (itemDepoData[d] || 0) > 0);
+                                                                const hasDepoData = DEPOLAR.some(d => (itemDepoData[d] || 0) !== 0);
                                                                 if (!hasDepoData) return null;
                                                                 return (
                                                                     <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', padding: '14px 20px' }}>
                                                                         <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>Depo Dağılımı</div>
                                                                         <div style={{ display: 'flex', gap: '16px' }}>
                                                                             {DEPOLAR.map(d => {
-                                                                                const qty = Math.max(0, itemDepoData[d] || 0);
+                                                                                const qty = itemDepoData[d] || 0;
+                                                                                const isNeg = qty < 0;
                                                                                 return (
-                                                                                    <div key={d} style={{ flex: 1, textAlign: 'center', padding: '10px', background: qty > 0 ? 'var(--bg-hover)' : 'transparent', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                                                                                    <div key={d} style={{ flex: 1, textAlign: 'center', padding: '10px', background: qty !== 0 ? (isNeg ? '#fff1f2' : 'var(--bg-hover)') : 'transparent', borderRadius: '8px', border: `1px solid ${isNeg ? '#fca5a5' : 'var(--border)'}` }}>
                                                                                         <div style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4px' }}>{d}</div>
-                                                                                        <div style={{ fontSize: '18px', fontWeight: 800, color: qty > 0 ? 'var(--text-main)' : '#cbd5e1' }}>{qty > 0 ? formatNumber(qty) : '—'}</div>
-                                                                                        <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{selRow.unit}</div>
+                                                                                        <div style={{ fontSize: '18px', fontWeight: 800, color: qty !== 0 ? (isNeg ? '#ef4444' : 'var(--text-main)') : '#cbd5e1' }}>{qty !== 0 ? formatNumber(qty) : '—'}</div>
+                                                                                        <div style={{ fontSize: '10px', color: isNeg ? '#ef4444' : 'var(--text-muted)' }}>{selRow.unit}</div>
                                                                                     </div>
                                                                                 );
                                                                             })}
@@ -3696,7 +3339,7 @@ const App = () => {
                     {activeTab === 'depo' && pagePerm('depo') !== 'none' && (() => {
                         // Aktif zimmet miktarları (item bazında)
                         const zimmetQtyMap = {};
-                        zimmet.filter(z => z.status === 'zimmette').forEach(z => {
+                        zimmet.filter(z => z.status === 'zimmette' || z.status === 'verildi' || !z.status).forEach(z => {
                             const k = String(z.itemId);
                             zimmetQtyMap[k] = (zimmetQtyMap[k] || 0) + (Number(z.amount) || 0);
                         });
@@ -5026,869 +4669,8 @@ const App = () => {
                     )}
 
 
-                    {/* ── SEVKİYAT TAB ── */}
-                    {activeTab === 'sevkiyat' && (() => {
-                        const durumMap = {
-                            BEKLEMEDE: { label: 'Beklemede', bg: '#fef3c7', color: '#b45309' },
-                            SATIN_ALINDI: { label: 'Satın Alındı', bg: '#dcfce7', color: '#166534' },
-                            EKSIK_MALZEME: { label: 'Eksik Malzeme', bg: '#fee2e2', color: '#991b1b' },
-                        };
-                        return (
-                            <div className="animate-fade">
-                                {/* Header */}
-                                <div className="table-card mb-4" style={{ padding: '12px 20px' }}>
-                                    <div className="flex justify-between align-center" style={{ flexWrap: 'wrap', gap: '10px' }}>
-                                        <div>
-                                            <span className="section-title"><Truck size={17} /> Satın Alım Listesi</span>
-                                        </div>
-                                        <div style={{ display: 'flex', gap: '8px' }}>
-                                            <button
-                                                className="btn-export-sm"
-                                                onClick={() => exportSevkiyatToExcel(sevkiyat)}
-                                            >
-                                                <FileSpreadsheet size={14} className="icon-excel" /> Excel
-                                            </button>
-                                            <button
-                                                className="btn-export-sm"
-                                                onClick={() => exportSevkiyatToPDF(sevkiyat)}
-                                            >
-                                                <Download size={14} className="icon-pdf" /> PDF
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
 
-                                {sevkiyat.length === 0 ? (
-                                    <div className="table-card" style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>
-                                        <Truck size={40} style={{ opacity: 0.25, marginBottom: 12 }} />
-                                        <div style={{ fontWeight: '600', marginBottom: 6 }}>Henüz sevkiyat kaydı yok</div>
-                                        <div style={{ fontSize: '13px' }}>Satın alım ekranından "Satışa Gönder" ile kayıt oluşturun.</div>
-                                    </div>
-                                ) : (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                                        {/* ÜST PANEL: Malzeme Talep Formları Listesi */}
-                                        <div className="table-card">
-                                            <div className="table-toolbar">
-                                                <span className="section-title"><Truck size={17} /> Malzeme Talep Formları</span>
-                                            </div>
-                                            {(() => {
-                                                const sevSelKeys = tblSelKeys('sevkiyat');
-                                                const sevSelRows = sevkiyat.filter(s => sevSelKeys.includes(String(s.id)));
-                                                const sevAllSel = sevkiyat.length > 0 && sevkiyat.every(s => isRowSel('sevkiyat', s.id));
-                                                return canEdit && tblSelCount('sevkiyat') > 0 ? (
-                                                    <TableActionBar
-                                                        count={tblSelCount('sevkiyat')}
-                                                        totalCount={sevkiyat.length}
-                                                        allSelected={sevAllSel}
-                                                        onSelectAll={() => selectAllTbl('sevkiyat', sevkiyat.map(s => String(s.id)))}
-                                                        onDelete={() => openBulkDel('sevkiyat', sevSelRows)}
-                                                        onEdit={() => { if (sevSelRows.length === 1) setEditRow({ row: sevSelRows[0], collection: 'sevkiyat' }); }}
-                                                        onHighlight={() => openHLPicker('sevkiyat', sevSelKeys)}
-                                                    />
-                                                ) : null;
-                                            })()}
-                                            <div className="table-responsive-wrapper" style={{ maxHeight: '320px', overflowY: 'auto' }}>
-                                                <table className="responsive-table" style={{ borderCollapse: 'collapse' }}>
-                                                    <colgroup>
-                                                        <col style={{ width: '36px' }} />
-                                                        <col className="col-tarih" />
-                                                        <col className="col-kategori" />
-                                                        <col className="col-malzeme" />
-                                                        <col className="col-kategori" />
-                                                        <col style={{ width: '40px' }} />
-                                                    </colgroup>
-                                                    <thead>
-                                                        <tr>
-                                                            <th style={{ ...CB_TH, border: '1px solid var(--border)' }}></th>
-                                                            <th style={{ border: '1px solid var(--border)' }}>TARİH</th>
-                                                            <th style={{ border: '1px solid var(--border)' }}>FORM NO</th>
-                                                            <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>MALZEME</th>
-                                                            <th style={{ border: '1px solid var(--border)' }}>DURUM</th>
-                                                            <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}></th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {sevkiyat.map((s) => {
-                                                            const durum = durumMap[s.satin_alim_durumu] || durumMap.BEKLEMEDE;
-                                                            return (
-                                                                <tr key={s.id} onClick={() => setSevkiyatModal({ show: true, data: s })} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, s, 'sevkiyat') : undefined} style={{ cursor: 'pointer', ...hlRowStyle('sevkiyat', s.id) }}>
-                                                                    <td style={{ ...CB_TD, border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
-                                                                        <input type="checkbox" style={CB_STYLE} checked={isRowSel('sevkiyat', s.id)} onChange={() => toggleSel('sevkiyat', String(s.id))} />
-                                                                    </td>
-                                                                    <td data-label="Tarih" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{s.sevkiyata_gonderilme_tarihi_tr?.split(' ')[0] || '-'}</td>
-                                                                    <td data-label="Form No" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{s.satin_alim_form_no}</td>
-                                                                    <td data-label="Malzeme" style={{ textAlign: 'center', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{(s.items || []).length} kalem</td>
-                                                                    <td data-label="Durum" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>
-                                                                        <span className={"movement-type-pill " + (durum.label === 'Tamamlandı' ? 'in' : 'out')}>
-                                                                            {durum.label}
-                                                                        </span>
-                                                                    </td>
-                                                                    <td style={{ textAlign: 'center', border: '1px solid var(--border)' }}><ArrowUpRight size={14} color="var(--text-muted)" /></td>
-                                                                </tr>
-                                                            );
-                                                        })}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
 
-                                        {/* ALT PANEL: Bekleyen Malzemeler Listesi */}
-                                        <div className="table-card">
-                                            <div className="table-toolbar">
-                                                <span className="section-title"><History size={17} /> Satın Alım</span>
-                                                <span className="movement-type-pill out">
-                                                    {(() => {
-                                                        let count = 0;
-                                                        sevkiyat.forEach(s => {
-                                                            (s.items || []).forEach((_, idx) => {
-                                                                if (!s.itemStatuses?.[idx] || s.itemStatuses?.[idx] === 'pending') count++;
-                                                            });
-                                                        });
-                                                        return `${count} bekleyen`;
-                                                    })()}
-                                                </span>
-                                            </div>
-                                            <div className="table-responsive-wrapper">
-                                                <table className="responsive-table" style={{ borderCollapse: 'collapse' }}>
-                                                    <colgroup>
-                                                        <col className="col-malzeme" />
-                                                        <col className="col-kategori" />
-                                                        <col className="col-birim" />
-                                                        <col className="col-firma" />
-                                                        <col className="col-islem" />
-                                                    </colgroup>
-                                                    <thead>
-                                                        <tr>
-                                                            <th style={{ border: '1px solid var(--border)' }}>MALZEME</th>
-                                                            <th style={{ border: '1px solid var(--border)' }}>FORM NO</th>
-                                                            <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>MİKTAR</th>
-                                                            <th style={{ border: '1px solid var(--border)' }}>TALEP EDEN</th>
-                                                            <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>İŞLEMLER</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {(() => {
-                                                            const pendingList = [];
-                                                            sevkiyat.forEach(s => {
-                                                                (s.items || []).forEach((it, idx) => {
-                                                                    if (!s.itemStatuses?.[idx] || s.itemStatuses[idx] === 'pending') {
-                                                                        pendingList.push({ ...it, s_id: s.id, s_no: s.satin_alim_form_no, s_idx: idx });
-                                                                    }
-                                                                });
-                                                            });
-
-                                                            if (pendingList.length === 0) {
-                                                                return <tr><td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>İşlem bekleyen malzeme kalmadı.</td></tr>;
-                                                            }
-
-                                                            return pendingList.map((item) => (
-                                                                <tr key={`${item.s_id}-${item.s_idx}`}>
-                                                                    <td data-label="Malzeme" style={{ fontWeight: '600', border: '1px solid var(--border)' }}>{item.itemName}</td>
-                                                                    <td data-label="Form No" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{item.s_no}</td>
-                                                                    <td data-label="Miktar" style={{ textAlign: 'center', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}><strong>{item.amount}</strong> {item.unit}</td>
-                                                                    <td data-label="Talep Eden" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{item.requestedBy}</td>
-                                                                    <td data-label="İşlemler" style={{ textAlign: 'center', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>
-                                                                        <div className="flex gap-2 justify-center">
-                                                                            <button
-                                                                                className="btn-primary"
-                                                                                onClick={() => handleUpdateItemStatus(item.s_id, item.s_idx, 'purchased')}
-                                                                                style={{ background: 'var(--success)', fontSize: '11px', padding: '5px 12px' }}
-                                                                            >
-                                                                                <Check size={14} /> Satın Alındı
-                                                                            </button>
-                                                                            <button
-                                                                                className="btn-primary"
-                                                                                onClick={() => handleUpdateItemStatus(item.s_id, item.s_idx, 'cancelled')}
-                                                                                style={{ background: 'var(--danger)', fontSize: '11px', padding: '5px 12px' }}
-                                                                            >
-                                                                                <X size={14} /> İptal Et
-                                                                            </button>
-                                                                        </div>
-                                                                    </td>
-                                                                </tr>
-                                                            ));
-                                                        })()}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })()}
-
-                    {/* ── SEVKİYAT DETAY MODAL ── */}
-                    {sevkiyatModal.show && sevkiyatModal.data && (
-                        <div style={{
-                            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
-                            display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-                            zIndex: 9999, padding: '40px 16px', overflowY: 'auto'
-                        }} onClick={() => { setSevkiyatModal({ show: false, data: null }); setEksikSelectionMode(false); setEksikSelectedIndices([]); }}>
-                            <div style={{
-                                background: 'white', borderRadius: '16px', padding: '28px',
-                                width: '100%', maxWidth: '720px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
-                            }} onClick={e => e.stopPropagation()}>
-                                {/* Modal Header */}
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
-                                    <div>
-                                        <div style={{ fontWeight: '800', fontSize: '17px', color: '#9a3412', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <Truck size={18} color="#ea580c" />
-                                            {sevkiyatModal.data.satin_alim_form_no}
-                                        </div>
-                                        <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                                            <span>👤 Talep Eden: <strong style={{ color: '#ea580c' }}>{sevkiyatModal.data.talep_eden || (sevkiyatModal.data.items || []).map(it => it.requestedBy).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(', ') || '—'}</strong></span>
-                                            <span>📅 {sevkiyatModal.data.sevkiyata_gonderilme_tarihi_tr}</span>
-                                            <span>👤 {sevkiyatModal.data.gonderen}</span>
-                                        </div>
-                                    </div>
-                                    <button onClick={() => { setSevkiyatModal({ show: false, data: null }); setEksikSelectionMode(false); setEksikSelectedIndices([]); }} style={{
-                                        background: '#f1f5f9', border: 'none', borderRadius: '8px',
-                                        padding: '6px 10px', cursor: 'pointer', color: '#64748b'
-                                    }}><X size={16} /></button>
-                                </div>
-
-                                {/* Durum */}
-                                <div style={{ marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                                    <span style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>Satın Alım Durumu:</span>
-                                    {canEdit ? (
-                                        <select
-                                            value={eksikSelectionMode ? 'EKSIK_MALZEME' : (sevkiyatModal.data.satin_alim_durumu || 'BEKLEMEDE')}
-                                            onChange={e => {
-                                                const newDurum = e.target.value;
-                                                if (newDurum === 'EKSIK_MALZEME') {
-                                                    setEksikSelectionMode(true);
-                                                    setEksikSelectedIndices(sevkiyatModal.data.eksik_items || []);
-                                                } else {
-                                                    setEksikSelectionMode(false);
-                                                    setEksikSelectedIndices([]);
-                                                    handleSevkiyatDurumUpdate(sevkiyatModal.data.id, newDurum);
-                                                    setSevkiyatModal(prev => ({ ...prev, data: { ...prev.data, satin_alim_durumu: newDurum } }));
-                                                }
-                                            }}
-                                            style={{
-                                                padding: '5px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: '700',
-                                                border: '1.5px solid #fdba74', background: '#fff7ed', color: '#9a3412', cursor: 'pointer'
-                                            }}
-                                        >
-                                            <option value="BEKLEMEDE">Beklemede</option>
-                                            <option value="SATIN_ALINDI">Satın Alındı</option>
-                                            <option value="EKSIK_MALZEME">Eksik Malzeme</option>
-                                        </select>
-                                    ) : (
-                                        <span style={{
-                                            background: sevkiyatModal.data.satin_alim_durumu === 'SATIN_ALINDI' ? '#dcfce7' : sevkiyatModal.data.satin_alim_durumu === 'EKSIK_MALZEME' ? '#fee2e2' : '#fef3c7',
-                                            color: sevkiyatModal.data.satin_alim_durumu === 'SATIN_ALINDI' ? '#166534' : sevkiyatModal.data.satin_alim_durumu === 'EKSIK_MALZEME' ? '#991b1b' : '#b45309',
-                                            borderRadius: '20px', padding: '4px 12px', fontSize: '13px', fontWeight: '700'
-                                        }}>{sevkiyatModal.data.satin_alim_durumu}</span>
-                                    )}
-                                </div>
-
-                                {/* Eksik Malzeme Seçim Modu */}
-                                {eksikSelectionMode && (
-                                    <div style={{
-                                        marginBottom: '14px', display: 'flex', gap: '10px', alignItems: 'center',
-                                        background: '#fef2f2', padding: '10px 14px', borderRadius: '10px', border: '1px solid #fca5a5',
-                                    }}>
-                                        <AlertTriangle size={16} color="#dc2626" />
-                                        <span style={{ fontSize: '13px', fontWeight: '700', color: '#991b1b', flex: 1 }}>
-                                            Eksik malzemeleri işaretleyin ({eksikSelectedIndices.length} seçili)
-                                        </span>
-                                        <button
-                                            onClick={() => handleEksikSave(sevkiyatModal.data.id)}
-                                            style={{
-                                                background: '#dc2626', color: 'white',
-                                                border: 'none', borderRadius: '6px', padding: '6px 14px',
-                                                fontWeight: '600', fontSize: '13px', cursor: 'pointer',
-                                                display: 'flex', alignItems: 'center', gap: '5px',
-                                            }}
-                                        >
-                                            <CheckCheck size={14} /> Kaydet
-                                        </button>
-                                        <button
-                                            onClick={() => { setEksikSelectionMode(false); setEksikSelectedIndices([]); }}
-                                            style={{
-                                                background: '#f1f5f9', border: 'none', borderRadius: '8px',
-                                                padding: '6px 14px', fontWeight: '600', fontSize: '13px',
-                                                cursor: 'pointer', color: '#64748b',
-                                            }}
-                                        >
-                                            İptal
-                                        </button>
-                                    </div>
-                                )}
-
-                                {/* Malzeme Kalemleri */}
-                                <div style={{ fontWeight: '700', fontSize: '14px', color: '#334155', marginBottom: '10px' }}>
-                                    Malzeme Kalemleri ({(sevkiyatModal.data.items || []).length} kalem)
-                                </div>
-                                {(sevkiyatModal.data.items || []).length === 0 ? (
-                                    <div style={{ textAlign: 'center', color: '#94a3b8', padding: '30px' }}>Kalem bulunamadı.</div>
-                                ) : (
-                                    <div style={{ overflowX: 'auto', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                                            <thead>
-                                                <tr style={{ background: '#f8fafc' }}>
-                                                    <th style={{ padding: '8px 12px', textAlign: 'left', color: '#64748b', fontWeight: '700', border: '1px solid #e2e8f0' }}>Malzeme</th>
-                                                    <th style={{ padding: '8px 12px', textAlign: 'center', color: '#64748b', fontWeight: '700', border: '1px solid #e2e8f0' }}>Miktar</th>
-                                                    <th style={{ padding: '8px 12px', textAlign: 'center', color: '#64748b', fontWeight: '700', border: '1px solid #e2e8f0' }}>Birim</th>
-                                                    <th style={{ padding: '8px 12px', textAlign: 'center', color: '#64748b', fontWeight: '700', border: '1px solid #e2e8f0' }}>Durum</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {(sevkiyatModal.data.items || []).map((it, idx) => {
-                                                    const st = sevkiyatModal.data.itemStatuses?.[idx] || 'pending';
-                                                    return (
-                                                        <tr key={idx} style={{
-                                                            background: st === 'purchased' ? '#f0fdf4' : st === 'cancelled' ? '#fef2f2' : 'white'
-                                                        }}>
-                                                            <td style={{
-                                                                padding: '10px 12px',
-                                                                fontWeight: '600',
-                                                                color: st === 'purchased' ? '#166534' : st === 'cancelled' ? '#991b1b' : '#334155',
-                                                                textDecoration: st === 'cancelled' ? 'line-through' : 'none',
-                                                                border: '1px solid #e2e8f0'
-                                                            }}>{it.itemName}</td>
-                                                            <td style={{ padding: '10px 12px', textAlign: 'center', border: '1px solid #e2e8f0' }}>{it.amount}</td>
-                                                            <td style={{ padding: '10px 12px', textAlign: 'center', color: '#64748b', border: '1px solid #e2e8f0' }}>{it.unit}</td>
-                                                            <td style={{ padding: '10px 12px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
-                                                                <span style={{
-                                                                    fontSize: '11px', fontWeight: '700', borderRadius: '8px', padding: '2px 8px',
-                                                                    background: st === 'purchased' ? '#dcfce7' : st === 'cancelled' ? '#fee2e2' : '#f1f5f9',
-                                                                    color: st === 'purchased' ? '#166534' : st === 'cancelled' ? '#991b1b' : '#64748b'
-                                                                }}>
-                                                                    {st === 'purchased' ? 'ALINDI' : st === 'cancelled' ? 'İPTAL' : 'BEKLEMEDE'}
-                                                                </span>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* ── SİPARİŞLER TAB ── */}
-                    {activeTab === 'siparisler' && (
-                        <div className="animate-fade">
-                            <div className="table-card mb-4" style={{ padding: '16px 20px' }}>
-                                <span className="section-title"><Package size={17} /> Siparişler</span>
-                                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                                    Satın alınan ve eksik malzemelerin takibi.
-                                </div>
-                            </div>
-
-                            <div className="siparisler-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                                {/* SOL: Satın Alınan Malzemeler */}
-                                <div className="table-card" style={{ padding: '0', overflow: 'hidden' }}>
-                                    <div style={{
-                                        padding: '10px 16px', background: '#f8fafb', borderBottom: '1px solid var(--border)',
-                                        color: '#166534', fontWeight: '600', fontSize: '13px',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between'
-                                    }}>
-                                        <div className="flex align-center gap-2">
-                                            <CheckCircle2 size={15} /> Satın Alınan Malzemeler
-                                            <span style={{ background: 'rgba(22,163,74,0.1)', color: '#166534', padding: '2px 10px', borderRadius: '10px', fontSize: '11px', fontWeight: '700' }}>
-                                                {siparislerData.satinAlinan.length}
-                                            </span>
-                                        </div>
-                                        <ExportButtons
-                                            data={siparislerData.satinAlinan.map(it => ({
-                                                Malzeme: it.itemName || '',
-                                                Miktar: it.amount || 0,
-                                                Birim: it.unit || '-',
-                                                FormNo: it.formNo || '-'
-                                            }))}
-                                            title="Satın Alınan Malzemeler"
-                                            columns={[
-                                                { key: 'Malzeme', label: 'Malzeme' },
-                                                { key: 'Miktar', label: 'Miktar' },
-                                                { key: 'Birim', label: 'Birim' },
-                                                { key: 'FormNo', label: 'Form No' }
-                                            ]}
-                                            filename="Satin_Alinanlar"
-                                        />
-                                    </div>
-                                    {siparislerData.satinAlinan.length === 0 ? (
-                                        <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-                                            <CheckCircle2 size={32} style={{ opacity: 0.2, marginBottom: 8 }} />
-                                            <div>Henüz satın alınan malzeme yok</div>
-                                        </div>
-                                    ) : (
-                                        <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
-                                            {siparislerData.satinAlinan.map((item, idx) => (
-                                                <div key={`sa-${item.sevkiyatId}-${idx}`} style={{
-                                                    padding: '10px 18px', borderBottom: '1px solid #f1f5f9',
-                                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                                    background: idx % 2 === 0 ? '#f0fdf4' : 'white',
-                                                }}>
-                                                    <div>
-                                                        <div style={{ fontWeight: '700', color: '#166534', fontSize: '13px' }}>{item.itemName}</div>
-                                                        <div style={{ fontSize: '11px', color: '#64748b' }}>
-                                                            {item.amount} {item.unit}{item.adet ? ` x ${item.adet} adet` : ''} · {item.formNo}
-                                                        </div>
-                                                    </div>
-                                                    <div style={{ textAlign: 'right', fontSize: '11px', color: '#94a3b8' }}>
-                                                        {item.requestedBy}<br />{item.tarihTR}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* SAĞ: Eksik Malzemeler */}
-                                <div className="table-card" style={{ padding: '0', overflow: 'hidden' }}>
-                                    <div style={{
-                                        padding: '10px 16px', background: '#f8fafb', borderBottom: '1px solid var(--border)',
-                                        color: '#991b1b', fontWeight: '600', fontSize: '13px',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between'
-                                    }}>
-                                        <div className="flex align-center gap-2">
-                                            <AlertTriangle size={15} /> Eksik Malzemeler
-                                            <span style={{ background: 'rgba(220,38,38,0.08)', color: '#991b1b', padding: '2px 10px', borderRadius: '10px', fontSize: '11px', fontWeight: '700' }}>
-                                                {siparislerData.eksikler.length}
-                                            </span>
-                                        </div>
-                                        <ExportButtons
-                                            data={siparislerData.eksikler.map(it => ({
-                                                Malzeme: it.itemName || '',
-                                                Miktar: it.amount || 0,
-                                                Birim: it.unit || '-',
-                                                FormNo: it.formNo || '-'
-                                            }))}
-                                            title="Eksik Malzemeler"
-                                            columns={[
-                                                { key: 'Malzeme', label: 'Malzeme' },
-                                                { key: 'Miktar', label: 'Miktar' },
-                                                { key: 'Birim', label: 'Birim' },
-                                                { key: 'FormNo', label: 'Form No' }
-                                            ]}
-                                            filename="Eksik_Malzemeler"
-                                        />
-                                    </div>
-                                    {siparislerData.eksikler.length === 0 ? (
-                                        <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-                                            <AlertTriangle size={32} style={{ opacity: 0.2, marginBottom: 8 }} />
-                                            <div>Eksik malzeme yok</div>
-                                        </div>
-                                    ) : (
-                                        <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
-                                            {siparislerData.eksikler.map((item, idx) => (
-                                                <div key={`ek-${item.sevkiyatId}-${idx}`} style={{
-                                                    padding: '10px 18px', borderBottom: '1px solid #f1f5f9',
-                                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                                    background: idx % 2 === 0 ? '#fef2f2' : 'white',
-                                                }}>
-                                                    <div>
-                                                        <div style={{ fontWeight: '700', color: '#991b1b', fontSize: '13px' }}>{item.itemName}</div>
-                                                        <div style={{ fontSize: '11px', color: '#64748b' }}>
-                                                            {item.amount} {item.unit}{item.adet ? ` x ${item.adet} adet` : ''} · {item.formNo}
-                                                        </div>
-                                                    </div>
-                                                    <div style={{ textAlign: 'right', fontSize: '11px', color: '#94a3b8' }}>
-                                                        {item.requestedBy}<br />{item.tarihTR}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* ── SEVKİYAT TOAST ── */}
-                    {sevkiyatToast.show && (
-                        <div style={{
-                            position: 'fixed', bottom: '28px', right: '28px', zIndex: 99999,
-                            background: sevkiyatToast.type === 'error' ? '#fee2e2' : '#dcfce7',
-                            color: sevkiyatToast.type === 'error' ? '#991b1b' : '#166534',
-                            border: `1.5px solid ${sevkiyatToast.type === 'error' ? '#fca5a5' : '#86efac'}`,
-                            borderRadius: '12px', padding: '14px 20px', maxWidth: '380px',
-                            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-                            fontWeight: '600', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '10px',
-                            animation: 'slideInRight 0.3s ease',
-                        }}>
-                            {sevkiyatToast.type === 'error'
-                                ? <XCircle size={18} />
-                                : <CheckCircle2 size={18} />
-                            }
-                            {sevkiyatToast.message}
-                        </div>
-                    )}
-
-                    {/* ── PUANTAJ TAB ── */}
-                    {activeTab === 'puantaj' && (
-                        <div className="animate-fade">
-                            <div className="table-card" style={{ display: 'flex', flexDirection: 'column' }}>
-                                <div className="table-toolbar" style={{ flexShrink: 0 }}>
-                                    <span className="section-title"><Users size={16} /> Personel Listesi</span>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                                            Toplam: <strong>{personel.length}</strong> &nbsp;|&nbsp; Aktif: <strong style={{ color: 'var(--success)' }}>{personel.filter(p => !p.cikisTarihi).length}</strong>
-                                        </span>
-                                        <button
-                                            className="btn-primary"
-                                            style={{ fontSize: '12px', padding: '6px 14px', gap: '6px', background: 'var(--success)' }}
-                                            onClick={exportPuantajToExcel}
-                                        >
-                                            <FileSpreadsheet size={14} /> Günlük Puantaj Formu Oluştur
-                                        </button>
-                                        {canEdit && (
-                                            <>
-                                                <button
-                                                    className="btn-primary"
-                                                    style={{ fontSize: '12px', padding: '6px 14px', gap: '6px', background: 'var(--accent)' }}
-                                                    onClick={handleNotionSync}
-                                                    disabled={isSyncingNotion}
-                                                    title="Notion'dan personel listesini güncelle"
-                                                >
-                                                    {isSyncingNotion ? '⟳ Güncelleniyor...' : '⟳ Notion\'dan Güncelle'}
-                                                </button>
-                                                <button
-                                                    className="btn-primary"
-                                                    style={{ fontSize: '12px', padding: '6px 14px', gap: '6px' }}
-                                                    onClick={() => { setEditingPersonel(null); setPersonelForm({ tc: '', adSoyad: '', girisTarihi: '', cikisTarihi: '', taseron: '' }); setShowPersonelModal(true); }}
-                                                >
-                                                    <UserPlus size={14} /> Personel Ekle
-                                                </button>
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
-                                {(() => {
-                                    const perSelKeys = tblSelKeys('personel');
-                                    const perSelRows = personel.filter(p => perSelKeys.includes(String(p.id)));
-                                    const perAllSel = personel.length > 0 && personel.every(p => isRowSel('personel', p.id));
-                                    return canEdit && tblSelCount('personel') > 0 ? (
-                                        <TableActionBar
-                                            count={tblSelCount('personel')}
-                                            totalCount={personel.length}
-                                            allSelected={perAllSel}
-                                            onSelectAll={() => selectAllTbl('personel', personel.map(p => String(p.id)))}
-                                            onDelete={() => openBulkDel('personel', perSelRows)}
-                                            onEdit={() => { if (perSelRows.length === 1) setEditRow({ row: perSelRows[0], collection: 'personel' }); }}
-                                            onHighlight={() => openHLPicker('personel', perSelKeys)}
-                                        />
-                                    ) : null;
-                                })()}
-                                <div style={{ overflowY: 'auto', height: '555px' }}>
-                                    <table className="responsive-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                        <colgroup>
-                                            <col style={{ width: '36px' }} />
-                                            <col className="col-tarih" />
-                                            <col className="col-tarih" />
-                                            <col className="col-detay" />
-                                            <col className="col-malzeme" />
-                                            <col className="col-firma" />
-                                            <col className="col-kategori" />
-                                            {canEdit && <col style={{ width: '90px' }} />}
-                                        </colgroup>
-                                        <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: 'var(--bg-table-header)' }}>
-                                            <tr>
-                                                <th style={{ ...CB_TH, border: '1px solid var(--border)' }}></th>
-                                                <th style={{ border: '1px solid var(--border)' }}>GİRİŞ TARİHİ</th>
-                                                <th style={{ border: '1px solid var(--border)' }}>ÇIKIŞ TARİHİ</th>
-                                                <th style={{ border: '1px solid var(--border)' }}>TC</th>
-                                                <th style={{ border: '1px solid var(--border)' }}>AD SOYAD</th>
-                                                <th style={{ border: '1px solid var(--border)' }}>TAŞERON</th>
-                                                <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>DURUM</th>
-                                                {canEdit && <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>İŞLEMLER</th>}
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {personel.length === 0 && (
-                                                <tr>
-                                                    <td colSpan={canEdit ? 8 : 7} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
-                                                        Henüz personel kaydı yok.
-                                                    </td>
-                                                </tr>
-                                            )}
-                                            {personel.map(p => (
-                                                <tr key={p.id} style={{ ...hlRowStyle('personel', p.id) }} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, p, 'personel') : undefined}>
-                                                    <td style={{ ...CB_TD, border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
-                                                        <input type="checkbox" style={CB_STYLE} checked={isRowSel('personel', p.id)} onChange={() => toggleSel('personel', String(p.id))} />
-                                                    </td>
-                                                    <td data-label="Giriş Tarihi" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{p.girisTarihi}</td>
-                                                    <td data-label="Çıkış Tarihi" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{p.cikisTarihi || '—'}</td>
-                                                    <td data-label="TC" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{p.tc}</td>
-                                                    <td data-label="Ad Soyad" style={{ fontWeight: '600', border: '1px solid var(--border)' }}>{p.adSoyad}</td>
-                                                    <td data-label="Taşeron" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{p.taseron}</td>
-                                                    <td data-label="Durum" style={{ textAlign: 'center', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>
-                                                        {!p.cikisTarihi
-                                                            ? <span className="movement-type-pill in">Çalışıyor</span>
-                                                            : <span className="movement-type-pill out">Çıkış Yapıldı</span>
-                                                        }
-                                                    </td>
-                                                    {canEdit && (
-                                                        <td data-label="İşlemler" style={{ textAlign: 'center', border: '1px solid var(--border)' }}>
-                                                            <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-                                                                <button
-                                                                    className="btn-icon"
-                                                                    title="Düzenle"
-                                                                    onClick={() => {
-                                                                        setEditingPersonel(p);
-                                                                        setPersonelForm({ tc: p.tc, adSoyad: p.adSoyad, girisTarihi: p.girisTarihi, cikisTarihi: p.cikisTarihi || '', taseron: p.taseron });
-                                                                        setShowPersonelModal(true);
-                                                                    }}
-                                                                >
-                                                                    <Edit3 size={14} />
-                                                                </button>
-                                                                <button
-                                                                    className="btn-icon"
-                                                                    title="Sil"
-                                                                    style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}
-                                                                    onClick={() => handleDeletePersonel(p.id)}
-                                                                >
-                                                                    <Trash2 size={14} />
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    )}
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* ── REQUESTS TAB ── */}
-                    {activeTab === 'requests' && (
-                        <div className="animate-fade split-view-container">
-                            <div className="split-top">
-                                <div className="table-card" style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                                    <div className="flex justify-between align-center mb-4">
-                                        <div>
-                                            <span className="section-title">
-                                                <Clock size={16} /> Bekleyen Malzeme Talepleri
-                                            </span>
-                                            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                                                Onay bekleyen son malzeme talepleri.
-                                            </div>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <ExportButtons
-                                                data={requests.filter(req => req.status === 'pending').map(req => ({
-                                                    Malzeme: req.itemName || '',
-                                                    Miktar: req.amount || 0,
-                                                    TalepEden: req.requestedBy || '',
-                                                    Tarih: normDateDisplay(req.date)
-                                                }))}
-                                                title="Bekleyen Malzeme Talepleri"
-                                                columns={[
-                                                    { key: 'Malzeme', label: 'Malzeme' },
-                                                    { key: 'Miktar', label: 'Miktar' },
-                                                    { key: 'TalepEden', label: 'Talep Eden' },
-                                                    { key: 'Tarih', label: 'Tarih' }
-                                                ]}
-                                                filename="Bekleyen_Talepler"
-                                            />
-                                            <button className="btn-primary" onClick={() => setShowRequestModal(true)}
-                                                style={{ fontSize: '13px', padding: '7px 14px' }}>
-                                                <Plus size={15} /> Yeni Talep
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="scrollable-pending-list">
-                                        {(() => {
-                                            const pendingReqs = requests.filter(r => r.status === 'pending');
-                                            const reqSelKeys = tblSelKeys('requests');
-                                            const reqSelRows = pendingReqs.filter(r => reqSelKeys.includes(String(r.id)));
-                                            const reqAllSel = pendingReqs.length > 0 && pendingReqs.every(r => isRowSel('requests', r.id));
-                                            return canEdit && tblSelCount('requests') > 0 ? (
-                                                <TableActionBar
-                                                    count={tblSelCount('requests')}
-                                                    totalCount={pendingReqs.length}
-                                                    allSelected={reqAllSel}
-                                                    onSelectAll={() => selectAllTbl('requests', pendingReqs.map(r => String(r.id)))}
-                                                    onDelete={() => openBulkDel('requests', reqSelRows)}
-                                                    onEdit={() => { if (reqSelRows.length === 1) setEditRow({ row: reqSelRows[0], collection: 'requests' }); }}
-                                                    onHighlight={() => openHLPicker('requests', reqSelKeys)}
-                                                />
-                                            ) : null;
-                                        })()}
-                                        <div className="table-responsive-wrapper">
-                                            <table className="responsive-table" style={{ borderCollapse: 'collapse' }}>
-                                                <colgroup>
-                                                    <col style={{ width: '36px' }} />
-                                                    <col className="col-tarih" />
-                                                    <col className="col-malzeme" />
-                                                    <col className="col-miktar" />
-                                                    <col className="col-firma" />
-                                                    {canEdit && <col className="col-islem" />}
-                                                </colgroup>
-                                                <thead>
-                                                    <tr>
-                                                        <th style={{ ...CB_TH, border: '1px solid var(--border)' }}></th>
-                                                        <th style={{ border: '1px solid var(--border)' }}>TARİH</th>
-                                                        <th style={{ border: '1px solid var(--border)' }}>MALZEME</th>
-                                                        <th style={{ textAlign: 'right', border: '1px solid var(--border)' }}>MİKTAR</th>
-                                                        <th style={{ border: '1px solid var(--border)' }}>TALEP EDEN</th>
-                                                        {canEdit && <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>İŞLEMLER</th>}
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {requests.filter(r => r.status === 'pending').length === 0 ? (
-                                                        <tr><td colSpan={canEdit ? 6 : 5} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Bekleyen talep yok.</td></tr>
-                                                    ) : requests.filter(r => r.status === 'pending').map(req => (
-                                                        <tr key={req.id} style={{ ...hlRowStyle('requests', req.id) }} onContextMenu={isAdmin ? (e) => handleCtxMenu(e, req, 'requests') : undefined}>
-                                                            <td style={{ ...CB_TD, border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
-                                                                <input type="checkbox" style={CB_STYLE} checked={isRowSel('requests', req.id)} onChange={() => toggleSel('requests', String(req.id))} />
-                                                            </td>
-                                                            <td data-label="Tarih" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{normDateDisplay(req.date)}</td>
-                                                            <td data-label="Malzeme" style={{ fontWeight: '600', border: '1px solid var(--border)' }}>{req.itemName}</td>
-                                                            <td data-label="Miktar" style={{ textAlign: 'right', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{req.amount} {req.unit}</td>
-                                                            <td data-label="Talep Eden" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{req.requestedBy}</td>
-                                                            {canEdit && (
-                                                                <td data-label="İşlemler" style={{ textAlign: 'center', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>
-                                                                    <div className="flex gap-2 justify-center">
-                                                                        <button
-                                                                            className="btn-primary"
-                                                                            style={{ background: 'var(--success)', fontSize: '11px', padding: '5px 12px' }}
-                                                                            onClick={() => handleApproveRequest(req)}
-                                                                        >
-                                                                            Onayla
-                                                                        </button>
-                                                                        <button
-                                                                            className="btn-primary"
-                                                                            style={{ background: 'var(--danger)', fontSize: '11px', padding: '5px 12px' }}
-                                                                            onClick={() => handleRejectRequest(req)}
-                                                                        >
-                                                                            Reddet
-                                                                        </button>
-                                                                    </div>
-                                                                </td>
-                                                            )}
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="section-divider"></div>
-
-                            <div className="split-bottom">
-                                {(() => {
-                                    const approvedReqs = requests.filter(r => r.status === 'approved' && !r.sevkiyatId);
-                                    const currentDraftNo = `AFAD.MT.${new Date().getFullYear()}-${purchaseFormId.slice(-4)}`;
-                                    const purchaseCols = [
-                                        { key: 'itemName', label: 'Malzeme' },
-                                        { key: 'amount', label: 'Miktar' },
-                                        { key: 'unit', label: 'Birim' },
-                                        { key: 'adet', label: 'Adet' },
-                                        { key: 'requestedBy', label: 'Talep Eden' },
-                                        { key: 'note', label: 'Açıklama' },
-                                        { key: 'approvedBy', label: 'Onaylayan' },
-                                        { key: 'approvedAt', label: 'Onay Tarihi' },
-                                    ];
-
-                                    return (
-                                        <div className="shrink-effect flex flex-column" ref={satinAlimRef} style={{ animation: 'fadeIn 0.4s ease', minHeight: 0, flex: 1 }}>
-                                            <div className="table-card mb-3" style={{ flexShrink: 0 }}>
-                                                <div className="table-toolbar">
-                                                    <div className="flex align-center gap-3">
-                                                        <span className="section-title"><ShoppingCart size={17} /> Malzeme Talep Formu</span>
-                                                        <span className="movement-type-pill in">{currentDraftNo}</span>
-                                                    </div>
-                                                    {approvedReqs.length > 0 && (
-                                                        <div className="flex gap-2">
-                                                            <button className="btn-primary" style={{ background: 'var(--success)', fontSize: '12px', padding: '6px 12px' }}
-                                                                onClick={() => exportToExcelGeneral(approvedReqs, purchaseCols, 'Satin_Alim_Listesi')}>
-                                                                <FileSpreadsheet size={15} /> Excel
-                                                            </button>
-                                                            <button className="btn-primary" style={{ background: 'var(--danger)', fontSize: '12px', padding: '6px 12px' }}
-                                                                onClick={() => exportToPDF(approvedReqs, 'Satın Alım Listesi', purchaseCols, 'Satin_Alim_Listesi')}>
-                                                                <Download size={15} /> PDF
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            <div className="table-card scrollable-purchase-list">
-                                                {approvedReqs.length === 0 ? (
-                                                    <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-                                                        <ShoppingCart size={32} style={{ opacity: 0.2, marginBottom: 10 }} />
-                                                        <div style={{ fontWeight: '600', fontSize: '13px' }}>Malzeme talep listesi boş</div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="table-responsive-wrapper">
-                                                        <table className="responsive-table" style={{ borderCollapse: 'collapse' }}>
-                                                            <colgroup>
-                                                                <col style={{ width: '40px' }} />
-                                                                <col className="col-malzeme" />
-                                                                <col className="col-miktar" />
-                                                                <col className="col-miktar" />
-                                                                <col className="col-birim" />
-                                                                <col className="col-firma" />
-                                                                <col className="col-detay" />
-                                                            </colgroup>
-                                                            <thead>
-                                                                <tr>
-                                                                    <th style={{ border: '1px solid var(--border)' }}>#</th>
-                                                                    <th style={{ border: '1px solid var(--border)' }}>MALZEME</th>
-                                                                    <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>STOK</th>
-                                                                    <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>TALEP</th>
-                                                                    <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>BİRİM</th>
-                                                                    <th style={{ border: '1px solid var(--border)' }}>TALEP EDEN</th>
-                                                                    <th style={{ border: '1px solid var(--border)' }}>ACIKLAMA</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                {approvedReqs.map((req, idx) => {
-                                                                    const stockItem = items.find(i => Number(i.id) === Number(req.itemId));
-                                                                    const stockQty = stockItem ? stockItem.quantity : 0;
-                                                                    return (
-                                                                        <tr key={req.id}>
-                                                                            <td data-label="#" style={{ whiteSpace: 'nowrap', border: '1px solid var(--border)' }}>{idx + 1}</td>
-                                                                            <td data-label="Malzeme" style={{ fontWeight: '600', border: '1px solid var(--border)' }}>{req.itemName}</td>
-                                                                            <td data-label="Stok" style={{ textAlign: 'center', border: '1px solid var(--border)' }}>
-                                                                                <span style={{ color: stockQty <= 0 ? 'var(--danger)' : 'var(--text-muted)', fontWeight: '600' }}>
-                                                                                    {formatNumber(stockQty)}
-                                                                                </span>
-                                                                            </td>
-                                                                            <td data-label="Miktar" style={{ textAlign: 'center', border: '1px solid var(--border)' }}>{req.amount}</td>
-                                                                            <td data-label="Birim" style={{ textAlign: 'center', border: '1px solid var(--border)' }}>{req.unit}</td>
-                                                                            <td data-label="Talep Eden" style={{ border: '1px solid var(--border)' }}>{req.requestedBy}</td>
-                                                                            <td data-label="Açıklama" style={{ border: '1px solid var(--border)' }}>{req.note || '—'}</td>
-                                                                        </tr>
-                                                                    );
-                                                                })}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            {canEdit && approvedReqs.length > 0 && (
-                                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px', flexShrink: 0 }}>
-                                                    <button onClick={handleSatisaGonder} disabled={sevkiyatLoading}
-                                                        style={{
-                                                            padding: '8px 18px', borderRadius: '6px',
-                                                            background: '#dc2626', color: 'white',
-                                                            border: 'none', fontWeight: '600', fontSize: '13px', cursor: 'pointer',
-                                                            display: 'flex', alignItems: 'center', gap: '6px'
-                                                        }}>
-                                                        <Truck size={16} /> {sevkiyatLoading ? 'Gönderiliyor...' : 'Satışa Gönder'}
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })()}
-                            </div>
-                        </div>
-                    )}
 
                     {/* ── AYARLAR TAB ── */}
                     {activeTab === 'settings' && canEdit && (
@@ -6237,12 +5019,15 @@ const App = () => {
                         </div>
                     )}
 
-                    {/* Move Stock Modal */}
+                    {/* Move Stock Modal — Split Panel */}
                     {showMoveModal && (pagePerm('action_giris') === 'edit' || pagePerm('action_cikis') === 'edit') && (() => {
                         const isIn = movementType === 'in';
-                        const accentGradient = isIn
-                            ? 'linear-gradient(160deg, #34d399 0%, #059669 100%)'
-                            : 'linear-gradient(160deg, #f87171 0%, #dc2626 100%)';
+                        const saveDisabled = isSaving
+                            || (isIn  && !multiInRows.some(r => r.malzemeAdi.trim() && parseFloat(r.miktar) > 0))
+                            || (!isIn && !multiOutRows.some(r => r.itemId && parseFloat(r.miktar) > 0));
+                        const saveGradient = isIn
+                            ? 'linear-gradient(135deg, #34d399, #059669)'
+                            : 'linear-gradient(135deg, #f87171, #dc2626)';
                         const closeModal = () => {
                             setShowMoveModal(false); setIsQuickAdd(false); setIsNewRecipient(false);
                             setInIrsaliyeNo(''); setInDepo(DEFAULT_DEPO); setInDepoLocked(false); setShowAddMalzemeAdi(false); setShowAddMalzemeTuru(false);
@@ -6250,309 +5035,341 @@ const App = () => {
                             setShowAddVerilenBirim(false); setShowAddKullanimAlani(false); setShowAddRecipient(false);
                             setNewVerilenBirimInput(''); setNewKullanimAlaniInput(''); setNewRecipientInput('');
                             setMultiInRows([emptyInRow()]); setMultiOutRows([emptyOutRow()]);
+                            setInActionDate(new Date().toISOString().split('T')[0]); setOutActionDate(new Date().toISOString().split('T')[0]);
+                            setOutVerilenEkip(''); setOutVerilenPersonel('');
                         };
+
+                        /* ── Sağ Panel: canlı özet verileri ── */
+                        const previewRows = isIn
+                            ? multiInRows.filter(r => r.malzemeAdi.trim())
+                            : multiOutRows.filter(r => r.itemId).map(r => ({
+                                malzemeAdi: items.find(it => String(it.id) === String(r.itemId))?.name || '—',
+                                miktar: r.miktar,
+                                birim: r.birim,
+                                fiyat: ''
+                              }));
+                        const totalTutar = isIn
+                            ? multiInRows.reduce((s, r) => s + (parseFloat(r.miktar) || 0) * (parseFloat(r.fiyat) || 0), 0)
+                            : 0;
+                        const previewDate = isIn ? inActionDate : outActionDate;
+                        const [py, pm, pd] = previewDate.split('-');
+                        const previewDateTr = `${pd}.${pm}.${py}`;
+
                         return (
                             <div className="modal-overlay">
-                                <div className="fm-modal">
-                                    {/* Sol Panel */}
-                                    <div className="fm-panel" style={{ background: accentGradient }}>
-                                        <div className="fm-panel-icon">
-                                            {isIn ? <ArrowUpRight size={30} /> : <ArrowDownLeft size={30} />}
-                                        </div>
-                                        <div className="fm-panel-title">
-                                            {isIn ? 'Malzeme\nGirişi' : 'Malzeme\nÇıkışı'}
-                                        </div>
-                                        <div className="fm-panel-desc">
-                                            {isIn
-                                                ? 'Depoya gelen malzemeleri kayıt altına alın'
-                                                : 'Depodan çıkan malzemeleri takip edin'}
-                                        </div>
-                                    </div>
+                                <div className="fm-modal sp">
+                                    <form onSubmit={handleMoveStock} style={{ display: 'flex', width: '100%', overflow: 'hidden' }}>
 
-                                    {/* Sağ Gövde */}
-                                    <div className="fm-body">
-                                        <div className="fm-close-row">
-                                            <button className="btn-icon" onClick={closeModal}><X size={16} /></button>
-                                        </div>
-
-                                        <form onSubmit={handleMoveStock} className="fm-form">
-                                            {isIn ? (
-                                                <>
-                                                    {/* 1. Tarih */}
-                                                    <div className="fm-field">
-                                                        <div className="fm-label-row"><span className="fm-label">Tarih</span></div>
-                                                        <input className="fm-input" name="actionDate" type="date" defaultValue={new Date().toISOString().split('T')[0]} required />
-                                                    </div>
-
-                                                    {/* 2. Firma */}
-                                                    <div className="fm-field">
-                                                        <div className="fm-label-row">
-                                                            <span className="fm-label">Firma</span>
-                                                            <button type="button" className="fm-add-chip" onClick={() => setShowAddFirma(v => !v)}>+ Ekle</button>
-                                                        </div>
-                                                        {showAddFirma && (
-                                                            <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
-                                                                <input className="fm-input" value={newFirmaInput} onChange={e => setNewFirmaInput(e.target.value)} placeholder="Firma adı..." style={{ flex: 1 }} />
-                                                                <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
-                                                                    onClick={async () => { if (!newFirmaInput.trim()) return; const id = String(Date.now()); await set(ref(db, `firmalar/${id}`), { id, name: newFirmaInput.trim() }); setNewFirmaInput(''); setShowAddFirma(false); }}>
-                                                                    Kaydet
-                                                                </button>
-                                                                <button type="button" className="btn-icon" onClick={() => setShowAddFirma(false)}><X size={14} /></button>
-                                                            </div>
-                                                        )}
-                                                        <input className="fm-input" list="firma-datalist" value={inFirmaAdi} onChange={e => setInFirmaAdi(e.target.value)} placeholder="Firma adı yazın..." autoComplete="off" />
-                                                        <datalist id="firma-datalist">{allFirmaAdlari.map(f => <option key={f} value={f} />)}</datalist>
-                                                    </div>
-
-                                                    {/* 3. İrsaliye No */}
-                                                    <div className="fm-field">
-                                                        <div className="fm-label-row">
-                                                            <span className="fm-label">İrsaliye No</span>
-                                                            <button type="button" className="fm-add-chip" onClick={() => setShowAddIrsaliye(v => !v)}>+ Ekle</button>
-                                                        </div>
-                                                        {showAddIrsaliye && (
-                                                            <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
-                                                                <input className="fm-input" value={newIrsaliyeInput} onChange={e => setNewIrsaliyeInput(e.target.value)} placeholder="İrsaliye numarası..." style={{ flex: 1 }} />
-                                                                <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
-                                                                    onClick={async () => { if (!newIrsaliyeInput.trim()) return; const id = String(Date.now()); await set(ref(db, `irsaliyeListesi/${id}`), { id: Number(id), no: newIrsaliyeInput.trim() }); setInIrsaliyeNo(newIrsaliyeInput.trim()); setNewIrsaliyeInput(''); setShowAddIrsaliye(false); }}>
-                                                                    Kaydet
-                                                                </button>
-                                                                <button type="button" className="btn-icon" onClick={() => setShowAddIrsaliye(false)}><X size={14} /></button>
-                                                            </div>
-                                                        )}
-                                                        <input className="fm-input" name="irsaliyeNo" list="irsaliye-datalist" value={inIrsaliyeNo} onChange={e => setInIrsaliyeNo(e.target.value)} placeholder="Örn: IRS-2026-001" autoComplete="off" />
-                                                        <datalist id="irsaliye-datalist">{irsaliyeListesi.map(i => <option key={i.id} value={i.no} />)}</datalist>
-                                                    </div>
-
-                                                    {/* 4. Çoklu Malzeme Satırları */}
-                                                    <div className="fm-field">
-                                                        <div className="fm-label-row">
-                                                            <span className="fm-label">Malzemeler</span>
-                                                            <button type="button" className="fm-add-chip" onClick={() => setMultiInRows(prev => [...prev, emptyInRow()])}>+ Satır Ekle</button>
-                                                        </div>
-                                                        {showAddMalzemeAdi && (
-                                                            <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
-                                                                <input className="fm-input" value={newMalzemeAdiInput} onChange={e => setNewMalzemeAdiInput(e.target.value)} placeholder="Yeni malzeme adı..." style={{ flex: 1 }} />
-                                                                <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 14px', background: 'var(--success)', borderRadius: '8px', fontSize: '12px' }}
-                                                                    onClick={async () => { if (!newMalzemeAdiInput.trim()) return; const id = String(Date.now()); await set(ref(db, `items/${id}`), { id: Number(id), name: newMalzemeAdiInput.trim(), unit: 'Adet', category: 'Genel', quantity: 0, minStock: 0 }); setNewMalzemeAdiInput(''); setShowAddMalzemeAdi(false); }}>
-                                                                    Kaydet
-                                                                </button>
-                                                                <button type="button" className="btn-icon" onClick={() => setShowAddMalzemeAdi(false)}><X size={14} /></button>
-                                                            </div>
-                                                        )}
-                                                        <div className="fm-multi-rows">
-                                                            {multiInRows.map((row, ri) => (
-                                                                <div key={ri} className="fm-multi-row">
-                                                                    <div className="fm-multi-row-num">{ri + 1}</div>
-                                                                    <div className="fm-multi-row-fields">
-                                                                        <div className="fm-multi-row-main">
-                                                                            <input className="fm-input" list="malzeme-datalist" value={row.malzemeAdi} onChange={e => { const v = e.target.value; setMultiInRows(prev => prev.map((r, i) => i === ri ? { ...r, malzemeAdi: v } : r)); }} placeholder="Malzeme adı..." autoComplete="off" style={{ flex: 3 }} />
-                                                                            <input className="fm-input" type="number" value={row.miktar} onChange={e => setMultiInRows(prev => prev.map((r, i) => i === ri ? { ...r, miktar: e.target.value } : r))} placeholder="Miktar" min="0.01" step="0.01" style={{ flex: 1 }} />
-                                                                            <select className="fm-input" value={row.birim} onChange={e => setMultiInRows(prev => prev.map((r, i) => i === ri ? { ...r, birim: e.target.value } : r))} style={{ flex: 1 }}>
-                                                                                {birimlerList.map(b => <option key={b}>{b}</option>)}
-                                                                            </select>
-                                                                            <div style={{ position: 'relative', flex: 1 }}>
-                                                                                <input className="fm-input" type="number" value={row.fiyat} onChange={e => setMultiInRows(prev => prev.map((r, i) => i === ri ? { ...r, fiyat: e.target.value } : r))} placeholder="Fiyat" min="0" step="0.01" style={{ paddingRight: '24px' }} />
-                                                                                <span style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', fontSize: '11px', color: 'var(--text-muted)', pointerEvents: 'none' }}>₺</span>
-                                                                            </div>
-                                                                        </div>
-                                                                        {multiInRows.length > 1 && (
-                                                                            <button type="button" className="fm-multi-row-remove" onClick={() => setMultiInRows(prev => prev.filter((_, i) => i !== ri))} title="Satırı sil">
-                                                                                <X size={14} />
-                                                                            </button>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                        <datalist id="malzeme-datalist">{sortedItems.map(i => <option key={i.id} value={i.name} />)}</datalist>
-                                                        <button type="button" className="fm-add-chip" onClick={() => setShowAddMalzemeAdi(v => !v)} style={{ marginTop: '6px' }}>+ Yeni Malzeme Tanımla</button>
-                                                    </div>
-
-                                                    {/* 5. Teslim Alan */}
-                                                    <div className="fm-field">
-                                                        <div className="fm-label-row">
-                                                            <span className="fm-label">Teslim Alan</span>
-                                                            <button type="button" className="fm-add-chip" onClick={() => setShowAddTeslimAlan(v => !v)}>+ Ekle</button>
-                                                        </div>
-                                                        {showAddTeslimAlan && (
-                                                            <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
-                                                                <input className="fm-input" value={newTeslimAlanAdi} onChange={e => setNewTeslimAlanAdi(e.target.value)} placeholder="Kişi adı..." style={{ flex: 1 }} />
-                                                                <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
-                                                                    onClick={async () => { if (!newTeslimAlanAdi.trim()) return; const id = String(Date.now()); await set(ref(db, `teslimAlanlar/${id}`), { id, name: newTeslimAlanAdi.trim() }); setNewTeslimAlanAdi(''); setShowAddTeslimAlan(false); }}>
-                                                                    Kaydet
-                                                                </button>
-                                                                <button type="button" className="btn-icon" onClick={() => setShowAddTeslimAlan(false)}><X size={14} /></button>
-                                                            </div>
-                                                        )}
-                                                        <select name="teslimAlan" className="fm-input">
-                                                            <option value="">— Seçin —</option>
-                                                            {teslimAlanlar.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
-                                                        </select>
-                                                    </div>
-
-                                                    {/* 6. Depo */}
-                                                    <div className="fm-field">
-                                                        <div className="fm-label-row">
-                                                            <span className="fm-label">Depo</span>
-                                                        </div>
-                                                        <select
-                                                            className="fm-input"
-                                                            value={inDepo}
-                                                            onChange={e => setInDepo(e.target.value)}
-                                                            required
-                                                        >
-                                                            {DEPOLAR.map(d => <option key={d} value={d}>{d}</option>)}
-                                                        </select>
-                                                    </div>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    {/* Tarih */}
-                                                    <div className="fm-field">
-                                                        <div className="fm-label-row"><span className="fm-label">Tarih</span></div>
-                                                        <input className="fm-input" name="actionDate" type="date" defaultValue={new Date().toISOString().split('T')[0]} required />
-                                                    </div>
-                                                    {/* Çoklu Malzeme Satırları */}
-                                                    <div className="fm-field">
-                                                        <div className="fm-label-row">
-                                                            <span className="fm-label">Malzemeler</span>
-                                                            <button type="button" className="fm-add-chip" onClick={() => setMultiOutRows(prev => [...prev, emptyOutRow()])}>+ Satır Ekle</button>
-                                                        </div>
-                                                        {showAddMalzemeAdi && (
-                                                            <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
-                                                                <input className="fm-input" value={newMalzemeAdiInput} onChange={e => setNewMalzemeAdiInput(e.target.value)} placeholder="Yeni malzeme adı..." style={{ flex: 1 }} />
-                                                                <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 14px', background: 'var(--success)', borderRadius: '8px', fontSize: '12px' }}
-                                                                    onClick={async () => {
-                                                                        if (!newMalzemeAdiInput.trim()) return;
-                                                                        const id = Date.now();
-                                                                        const newItem = { id: Number(id), name: newMalzemeAdiInput.trim(), unit: 'Adet', category: 'Genel', quantity: 0, minStock: 0 };
-                                                                        await set(ref(db, `items/${id}`), newItem);
-                                                                        setNewMalzemeAdiInput('');
-                                                                        setShowAddMalzemeAdi(false);
-                                                                    }}>
-                                                                    Kaydet
-                                                                </button>
-                                                                <button type="button" className="btn-icon" onClick={() => setShowAddMalzemeAdi(false)}><X size={14} /></button>
-                                                            </div>
-                                                        )}
-                                                        <div className="fm-multi-rows">
-                                                            {multiOutRows.map((row, ri) => {
-                                                                const selItem = items.find(i => String(i.id) === String(row.itemId));
-                                                                return (
-                                                                    <div key={ri} className="fm-multi-row">
-                                                                        <div className="fm-multi-row-num">{ri + 1}</div>
-                                                                        <div className="fm-multi-row-fields">
-                                                                            <div className="fm-multi-row-main">
-                                                                                <select className="fm-input" value={row.itemId} onChange={e => setMultiOutRows(prev => prev.map((r, i) => i === ri ? { ...r, itemId: e.target.value, birim: items.find(it => String(it.id) === e.target.value)?.unit || 'Adet' } : r))} style={{ flex: 3 }}>
-                                                                                    <option value="" disabled>— Malzeme Seç —</option>
-                                                                                    {sortedItems.map(it => <option key={it.id} value={it.id}>{it.name} (Stok: {it.quantity})</option>)}
-                                                                                </select>
-                                                                                <input className="fm-input" type="number" value={row.miktar} onChange={e => setMultiOutRows(prev => prev.map((r, i) => i === ri ? { ...r, miktar: e.target.value } : r))} placeholder="Miktar" min="0.01" step="0.01" style={{ flex: 1 }} />
-                                                                                <select className="fm-input" value={row.birim} onChange={e => setMultiOutRows(prev => prev.map((r, i) => i === ri ? { ...r, birim: e.target.value } : r))} style={{ flex: 1 }}>
-                                                                                    {birimlerList.map(b => <option key={b}>{b}</option>)}
-                                                                                </select>
-                                                                            </div>
-                                                                            {multiOutRows.length > 1 && (
-                                                                                <button type="button" className="fm-multi-row-remove" onClick={() => setMultiOutRows(prev => prev.filter((_, i) => i !== ri))} title="Satırı sil">
-                                                                                    <X size={14} />
-                                                                                </button>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                        <button type="button" className="fm-add-chip" onClick={() => setShowAddMalzemeAdi(v => !v)} style={{ marginTop: '6px' }}>+ Yeni Malzeme Tanımla</button>
-                                                    </div>
-
-                                                    {/* Verilen Birim */}
-                                                    <div className="fm-field">
-                                                        <div className="fm-label-row">
-                                                            <span className="fm-label">Verilen Birim</span>
-                                                            <button type="button" className="fm-add-chip" onClick={() => setShowAddVerilenBirim(v => !v)}>+ Ekle</button>
-                                                        </div>
-                                                        {showAddVerilenBirim && (
-                                                            <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
-                                                                <input className="fm-input" value={newVerilenBirimInput} onChange={e => setNewVerilenBirimInput(e.target.value)} placeholder="Yeni birim/ekip..." style={{ flex: 1 }} />
-                                                                <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
-                                                                    onClick={async () => { if (!newVerilenBirimInput.trim()) return; const id = String(Date.now()); await set(ref(db, `verilenBirimler/${id}`), { id, name: newVerilenBirimInput.trim() }); setNewVerilenBirimInput(''); setShowAddVerilenBirim(false); }}>
-                                                                    Kaydet
-                                                                </button>
-                                                                <button type="button" className="btn-icon" onClick={() => setShowAddVerilenBirim(false)}><X size={14} /></button>
-                                                            </div>
-                                                        )}
-                                                        <select className="fm-input" name="verilenBirim">
-                                                            <option value="">— Seçin —</option>
-                                                            {uniqueVerilenBirimler.map(v => <option key={v} value={v}>{v}</option>)}
-                                                        </select>
-                                                    </div>
-
-                                                    {/* Verilen Kişi */}
-                                                    <div className="fm-field">
-                                                        <div className="fm-label-row">
-                                                            <span className="fm-label">Verilen Kişi</span>
-                                                            <button type="button" className="fm-add-chip" onClick={() => setShowAddRecipient(v => !v)}>+ Ekle</button>
-                                                        </div>
-                                                        {showAddRecipient && (
-                                                            <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
-                                                                <input className="fm-input" value={newRecipientInput} onChange={e => setNewRecipientInput(e.target.value)} placeholder="Kişi adı..." style={{ flex: 1 }} />
-                                                                <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
-                                                                    onClick={async () => {
-                                                                        if (!newRecipientInput.trim()) return;
-                                                                        const id = String(Date.now());
-                                                                        await set(ref(db, `teslimAlanlar/${id}`), { id, name: newRecipientInput.trim() });
-                                                                        setShowAddRecipient(false);
-                                                                    }}>
-                                                                    Kaydet
-                                                                </button>
-                                                                <button type="button" className="btn-icon" onClick={() => setShowAddRecipient(false)}><X size={14} /></button>
-                                                            </div>
-                                                        )}
-                                                        <select className="fm-input" name="recipient">
-                                                            <option value="">— Seçin —</option>
-                                                            {newRecipientInput && <option value={newRecipientInput}>{newRecipientInput} (Yeni)</option>}
-                                                            {[...new Set([...uniqueRecipients, ...teslimAlanlar.map(t => t.name)])].sort((a, b) => a.localeCompare(b, 'tr')).map(r => <option key={r} value={r}>{r}</option>)}
-                                                        </select>
-                                                    </div>
-
-                                                    {/* Kullanım Alanı */}
-                                                    <div className="fm-field">
-                                                        <div className="fm-label-row">
-                                                            <span className="fm-label">Kullanım Alanı</span>
-                                                            <button type="button" className="fm-add-chip" onClick={() => setShowAddKullanimAlani(v => !v)}>+ Ekle</button>
-                                                        </div>
-                                                        {showAddKullanimAlani && (
-                                                            <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
-                                                                <input className="fm-input" value={newKullanimAlaniInput} onChange={e => setNewKullanimAlaniInput(e.target.value)} placeholder="Yeni kullanım alanı..." style={{ flex: 1 }} />
-                                                                <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }}
-                                                                    onClick={async () => { if (!newKullanimAlaniInput.trim()) return; const id = String(Date.now()); await set(ref(db, `kullanimAlanlari/${id}`), { id, name: newKullanimAlaniInput.trim() }); setNewKullanimAlaniInput(''); setShowAddKullanimAlani(false); }}>
-                                                                    Kaydet
-                                                                </button>
-                                                                <button type="button" className="btn-icon" onClick={() => setShowAddKullanimAlani(false)}><X size={14} /></button>
-                                                            </div>
-                                                        )}
-                                                        <select className="fm-input" name="kullanimAlani">
-                                                            <option value="">— Seçin —</option>
-                                                            {uniqueKullanimAlanlari.map(k => <option key={k} value={k}>{k}</option>)}
-                                                        </select>
-                                                    </div>
-                                                </>
-                                            )}
-
-                                            <div className="fm-footer">
-                                                <button type="button" className="fm-btn-cancel" onClick={closeModal}>İptal</button>
-                                                <button
-                                                    type="submit"
-                                                    className="fm-btn-submit"
-                                                    disabled={isSaving || (movementType === 'out' && !multiOutRows.some(r => r.itemId && parseFloat(r.miktar) > 0)) || (movementType === 'in' && !multiInRows.some(r => r.malzemeAdi.trim() && parseFloat(r.miktar) > 0))}
-                                                    style={{ background: isIn ? 'linear-gradient(135deg, #34d399, #059669)' : 'linear-gradient(135deg, #f87171, #dc2626)' }}
-                                                >
-                                                    {isSaving ? 'İşleniyor...' : (isIn ? '↑ Girişi Tamamla' : '↓ Çıkışı Tamamla')}
-                                                </button>
+                                        {/* ══ SOL: FORM ALANI ══ */}
+                                        <div className="fm-sp-form">
+                                            <div className="fm-sp-form-head">
+                                                <div>
+                                                    <div className={`fm-sp-badge ${isIn ? 'in' : 'out'}`}>{isIn ? '↑ Giriş' : '↓ Çıkış'}</div>
+                                                    <div className="fm-sp-title">{isIn ? 'Malzeme Girişi' : 'Malzeme Çıkışı'}</div>
+                                                </div>
+                                                <button type="button" className="btn-icon" onClick={closeModal}><X size={16} /></button>
                                             </div>
-                                        </form>
-                                    </div>
+
+                                            <div className="fm-sp-body">
+                                                {isIn ? (
+                                                    <>
+                                                        {/* 1. Tarih */}
+                                                        <div className="fm-field">
+                                                            <div className="fm-label-row"><span className="fm-label">Tarih</span></div>
+                                                            <input className="fm-input" name="actionDate" type="date" value={inActionDate} onChange={e => setInActionDate(e.target.value)} required style={{ fontSize: '15px', height: '44px', fontWeight: '500' }} />
+                                                        </div>
+                                                        {/* 2. Firma */}
+                                                        <div className="fm-field">
+                                                            <div className="fm-label-row">
+                                                                <span className="fm-label">Firma</span>
+                                                                <button type="button" className="fm-add-chip" onClick={() => setShowAddFirma(v => !v)}>+ Ekle</button>
+                                                            </div>
+                                                            {showAddFirma && (
+                                                                <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                                    <input className="fm-input" value={newFirmaInput} onChange={e => setNewFirmaInput(e.target.value)} placeholder="Firma adı..." style={{ flex: 1 }} />
+                                                                    <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }} onClick={async () => { if (!newFirmaInput.trim()) return; const id = String(Date.now()); await set(ref(db, `firmalar/${id}`), { id, name: newFirmaInput.trim() }); setNewFirmaInput(''); setShowAddFirma(false); }}>Kaydet</button>
+                                                                    <button type="button" className="btn-icon" onClick={() => setShowAddFirma(false)}><X size={14} /></button>
+                                                                </div>
+                                                            )}
+                                                            <input className="fm-input" list="firma-datalist" value={inFirmaAdi} onChange={e => setInFirmaAdi(e.target.value)} placeholder="Firma adı yazın..." autoComplete="off" />
+                                                            <datalist id="firma-datalist">{allFirmaAdlari.map(f => <option key={f} value={f} />)}</datalist>
+                                                        </div>
+                                                        {/* 3. İrsaliye No */}
+                                                        <div className="fm-field">
+                                                            <div className="fm-label-row"><span className="fm-label">İrsaliye No</span></div>
+                                                            <input className="fm-input" name="irsaliyeNo" type="text" value={inIrsaliyeNo} onChange={e => setInIrsaliyeNo(e.target.value)} placeholder="Örn: IRS-2026-001" autoComplete="off" />
+                                                        </div>
+                                                        {/* 4. Malzemeler */}
+                                                        <div className="fm-field">
+                                                            {/* Ana başlık — sadece + (satır ekle) */}
+                                                            <div className="fm-label-row" style={{ marginBottom: '8px' }}>
+                                                                <span className="fm-label">Malzemeler</span>
+                                                                <button type="button" className="fm-add-chip" onClick={() => setMultiInRows(prev => [...prev, emptyInRow()])}>+</button>
+                                                            </div>
+                                                            {/* Sütun başlıkları: Malzeme Adı [+Ekle] | Miktar | Birim [+Ekle] | Birim Fiyat */}
+                                                            <div style={{ display: 'grid', gridTemplateColumns: '2.6fr 1fr 1.3fr 1.4fr 28px', gap: '6px', marginBottom: '6px' }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                                    <span style={{ fontSize: '10px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Malzeme Adı</span>
+                                                                    <button type="button" className="fm-add-chip" onClick={() => setShowAddMalzemeAdi(v => !v)}>+ Ekle</button>
+                                                                </div>
+                                                                <span style={{ fontSize: '10px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Miktar</span>
+                                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                                    <span style={{ fontSize: '10px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Birim</span>
+                                                                    <button type="button" className="fm-add-chip" onClick={() => setShowAddBirim(v => !v)}>+ Ekle</button>
+                                                                </div>
+                                                                <span style={{ fontSize: '10px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Birim Fiyat</span>
+                                                                <span></span>
+                                                            </div>
+                                                            {/* Yeni malzeme tanımla inline panel */}
+                                                            {showAddMalzemeAdi && (
+                                                                <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                                    <input className="fm-input" value={newMalzemeAdiInput} onChange={e => setNewMalzemeAdiInput(e.target.value)} placeholder="Yeni malzeme adı..." style={{ flex: 1 }} />
+                                                                    <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 14px', background: 'var(--success)', borderRadius: '8px', fontSize: '12px' }} onClick={async () => { if (!newMalzemeAdiInput.trim()) return; const id = String(Date.now()); await set(ref(db, `items/${id}`), { id: Number(id), name: newMalzemeAdiInput.trim(), unit: 'Adet', category: 'Genel', quantity: 0, minStock: 0 }); setNewMalzemeAdiInput(''); setShowAddMalzemeAdi(false); }}>Kaydet</button>
+                                                                    <button type="button" className="btn-icon" onClick={() => setShowAddMalzemeAdi(false)}><X size={14} /></button>
+                                                                </div>
+                                                            )}
+                                                            {/* Yeni birim inline panel */}
+                                                            {showAddBirim && (
+                                                                <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                                    <input className="fm-input" value={newBirimInput} onChange={e => setNewBirimInput(e.target.value)} placeholder="Yeni birim adı..." style={{ flex: 1 }} />
+                                                                    <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }} onClick={async () => { if (!newBirimInput.trim()) return; const id = String(Date.now()); await set(ref(db, `birimler/${id}`), { id, name: newBirimInput.trim() }); setNewBirimInput(''); setShowAddBirim(false); }}>Kaydet</button>
+                                                                    <button type="button" className="btn-icon" onClick={() => setShowAddBirim(false)}><X size={14} /></button>
+                                                                </div>
+                                                            )}
+                                                            {/* Malzeme satırları — grid ile hizalı */}
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                                {multiInRows.map((row, ri) => (
+                                                                    <div key={ri} style={{ display: 'grid', gridTemplateColumns: '2.6fr 1fr 1.3fr 1.4fr 28px', gap: '6px', alignItems: 'center' }}>
+                                                                        <input className="fm-input" list="malzeme-datalist" value={row.malzemeAdi} onChange={e => { const v = e.target.value; setMultiInRows(prev => prev.map((r, i) => i === ri ? { ...r, malzemeAdi: v } : r)); }} placeholder="Malzeme adı..." autoComplete="off" />
+                                                                        <input className="fm-input" type="number" value={row.miktar} onChange={e => setMultiInRows(prev => prev.map((r, i) => i === ri ? { ...r, miktar: e.target.value } : r))} placeholder="Miktar" min="0.01" step="0.01" />
+                                                                        <select className="fm-input" value={row.birim} onChange={e => setMultiInRows(prev => prev.map((r, i) => i === ri ? { ...r, birim: e.target.value } : r))}>
+                                                                            {birimlerList.map(b => <option key={b}>{b}</option>)}
+                                                                        </select>
+                                                                        <input className="fm-input" type="number" value={row.fiyat} onChange={e => setMultiInRows(prev => prev.map((r, i) => i === ri ? { ...r, fiyat: e.target.value } : r))} placeholder="Birim Fiyat ₺" min="0" step="0.01" />
+                                                                        {multiInRows.length > 1
+                                                                            ? <button type="button" className="fm-multi-row-remove" onClick={() => setMultiInRows(prev => prev.filter((_, i) => i !== ri))} title="Satırı sil"><X size={14} /></button>
+                                                                            : <span></span>}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                            <datalist id="malzeme-datalist">{sortedItems.map(i => <option key={i.id} value={i.name} />)}</datalist>
+                                                        </div>
+                                                        {/* 5. Teslim Alan */}
+                                                        <div className="fm-field">
+                                                            <div className="fm-label-row">
+                                                                <span className="fm-label">Teslim Alan</span>
+                                                                <button type="button" className="fm-add-chip" onClick={() => setShowAddTeslimAlan(v => !v)}>+ Ekle</button>
+                                                            </div>
+                                                            {showAddTeslimAlan && (
+                                                                <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                                    <input className="fm-input" value={newTeslimAlanAdi} onChange={e => setNewTeslimAlanAdi(e.target.value)} placeholder="Kişi adı..." style={{ flex: 1 }} />
+                                                                    <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }} onClick={async () => { if (!newTeslimAlanAdi.trim()) return; const id = String(Date.now()); await set(ref(db, `teslimAlanlar/${id}`), { id, name: newTeslimAlanAdi.trim() }); setNewTeslimAlanAdi(''); setShowAddTeslimAlan(false); }}>Kaydet</button>
+                                                                    <button type="button" className="btn-icon" onClick={() => setShowAddTeslimAlan(false)}><X size={14} /></button>
+                                                                </div>
+                                                            )}
+                                                            <select name="teslimAlan" className="fm-input">
+                                                                <option value="">— Seçin —</option>
+                                                                {teslimAlanlar.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                                                            </select>
+                                                        </div>
+                                                        {/* 6. Depo */}
+                                                        <div className="fm-field">
+                                                            <div className="fm-label-row"><span className="fm-label">Depo</span></div>
+                                                            <select className="fm-input" value={inDepo} onChange={e => setInDepo(e.target.value)} required>
+                                                                {DEPOLAR.map(d => <option key={d} value={d}>{d}</option>)}
+                                                            </select>
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        {/* Tarih */}
+                                                        <div className="fm-field">
+                                                            <div className="fm-label-row"><span className="fm-label">Tarih</span></div>
+                                                            <input className="fm-input" name="actionDate" type="date" value={outActionDate} onChange={e => setOutActionDate(e.target.value)} required style={{ fontSize: '15px', height: '44px', fontWeight: '500' }} />
+                                                        </div>
+                                                        {/* Malzemeler */}
+                                                        <div className="fm-field">
+                                                            {/* Ana başlık — sadece + (satır ekle) */}
+                                                            <div className="fm-label-row" style={{ marginBottom: '8px' }}>
+                                                                <span className="fm-label">Malzemeler</span>
+                                                                <button type="button" className="fm-add-chip" onClick={() => setMultiOutRows(prev => [...prev, emptyOutRow()])}>+</button>
+                                                            </div>
+                                                            {/* Sütun başlıkları: Malzeme [+Ekle] | Miktar | Birim [+Ekle] */}
+                                                            <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1.3fr 28px', gap: '6px', marginBottom: '6px' }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                                    <span style={{ fontSize: '10px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Malzeme</span>
+                                                                    <button type="button" className="fm-add-chip" onClick={() => setShowAddMalzemeAdi(v => !v)}>+ Ekle</button>
+                                                                </div>
+                                                                <span style={{ fontSize: '10px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Miktar</span>
+                                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                                    <span style={{ fontSize: '10px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Birim</span>
+                                                                    <button type="button" className="fm-add-chip" onClick={() => setShowAddBirim(v => !v)}>+ Ekle</button>
+                                                                </div>
+                                                                <span></span>
+                                                            </div>
+                                                            {/* Yeni malzeme tanımla inline panel */}
+                                                            {showAddMalzemeAdi && (
+                                                                <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                                    <input className="fm-input" value={newMalzemeAdiInput} onChange={e => setNewMalzemeAdiInput(e.target.value)} placeholder="Yeni malzeme adı..." style={{ flex: 1 }} />
+                                                                    <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 14px', background: 'var(--success)', borderRadius: '8px', fontSize: '12px' }} onClick={async () => { if (!newMalzemeAdiInput.trim()) return; const id = Date.now(); await set(ref(db, `items/${id}`), { id: Number(id), name: newMalzemeAdiInput.trim(), unit: 'Adet', category: 'Genel', quantity: 0, minStock: 0 }); setNewMalzemeAdiInput(''); setShowAddMalzemeAdi(false); }}>Kaydet</button>
+                                                                    <button type="button" className="btn-icon" onClick={() => setShowAddMalzemeAdi(false)}><X size={14} /></button>
+                                                                </div>
+                                                            )}
+                                                            {/* Yeni birim inline panel */}
+                                                            {showAddBirim && (
+                                                                <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                                    <input className="fm-input" value={newBirimInput} onChange={e => setNewBirimInput(e.target.value)} placeholder="Yeni birim adı..." style={{ flex: 1 }} />
+                                                                    <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }} onClick={async () => { if (!newBirimInput.trim()) return; const id = String(Date.now()); await set(ref(db, `birimler/${id}`), { id, name: newBirimInput.trim() }); setNewBirimInput(''); setShowAddBirim(false); }}>Kaydet</button>
+                                                                    <button type="button" className="btn-icon" onClick={() => setShowAddBirim(false)}><X size={14} /></button>
+                                                                </div>
+                                                            )}
+                                                            {/* Malzeme satırları — grid ile hizalı */}
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                                {multiOutRows.map((row, ri) => (
+                                                                    <div key={ri} style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1.3fr 28px', gap: '6px', alignItems: 'center' }}>
+                                                                        <select className="fm-input" value={row.itemId} onChange={e => setMultiOutRows(prev => prev.map((r, i) => i === ri ? { ...r, itemId: e.target.value, birim: items.find(it => String(it.id) === e.target.value)?.unit || 'Adet' } : r))}>
+                                                                            <option value="" disabled>— Malzeme Seç —</option>
+                                                                            {sortedItems.map(it => <option key={it.id} value={it.id}>{it.name} (Stok: {it.quantity})</option>)}
+                                                                        </select>
+                                                                        <input className="fm-input" type="number" value={row.miktar} onChange={e => setMultiOutRows(prev => prev.map((r, i) => i === ri ? { ...r, miktar: e.target.value } : r))} placeholder="Miktar" min="0.01" step="0.01" />
+                                                                        <select className="fm-input" value={row.birim} onChange={e => setMultiOutRows(prev => prev.map((r, i) => i === ri ? { ...r, birim: e.target.value } : r))}>
+                                                                            {birimlerList.map(b => <option key={b}>{b}</option>)}
+                                                                        </select>
+                                                                        {multiOutRows.length > 1
+                                                                            ? <button type="button" className="fm-multi-row-remove" onClick={() => setMultiOutRows(prev => prev.filter((_, i) => i !== ri))} title="Satırı sil"><X size={14} /></button>
+                                                                            : <span></span>}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                        {/* Verilen Ekip */}
+                                                        <div className="fm-field">
+                                                            <div className="fm-label-row">
+                                                                <span className="fm-label">Verilen Ekip</span>
+                                                                <button type="button" className="fm-add-chip" onClick={() => setShowAddVerilenBirim(v => !v)}>+ Ekle</button>
+                                                            </div>
+                                                            {showAddVerilenBirim && (
+                                                                <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                                    <input className="fm-input" value={newVerilenBirimInput} onChange={e => setNewVerilenBirimInput(e.target.value)} placeholder="Yeni birim/ekip..." style={{ flex: 1 }} />
+                                                                    <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }} onClick={async () => { if (!newVerilenBirimInput.trim()) return; const id = String(Date.now()); await set(ref(db, `verilenBirimler/${id}`), { id, name: newVerilenBirimInput.trim() }); setNewVerilenBirimInput(''); setShowAddVerilenBirim(false); }}>Kaydet</button>
+                                                                    <button type="button" className="btn-icon" onClick={() => setShowAddVerilenBirim(false)}><X size={14} /></button>
+                                                                </div>
+                                                            )}
+                                                            <select className="fm-input" name="verilenBirim" value={outVerilenEkip} onChange={e => setOutVerilenEkip(e.target.value)}>
+                                                                <option value="">— Seçin —</option>
+                                                                {uniqueVerilenBirimler.map(v => <option key={v} value={v}>{v}</option>)}
+                                                            </select>
+                                                        </div>
+                                                        {/* Verilen Personel */}
+                                                        <div className="fm-field">
+                                                            <div className="fm-label-row">
+                                                                <span className="fm-label">Verilen Personel</span>
+                                                                <button type="button" className="fm-add-chip" onClick={() => setShowAddRecipient(v => !v)}>+ Ekle</button>
+                                                            </div>
+                                                            {showAddRecipient && (
+                                                                <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                                    <input className="fm-input" value={newRecipientInput} onChange={e => setNewRecipientInput(e.target.value)} placeholder="Kişi adı..." style={{ flex: 1 }} />
+                                                                    <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }} onClick={async () => { if (!newRecipientInput.trim()) return; const id = String(Date.now()); await set(ref(db, `teslimAlanlar/${id}`), { id, name: newRecipientInput.trim() }); setShowAddRecipient(false); }}>Kaydet</button>
+                                                                    <button type="button" className="btn-icon" onClick={() => setShowAddRecipient(false)}><X size={14} /></button>
+                                                                </div>
+                                                            )}
+                                                            <select className="fm-input" name="recipient" value={outVerilenPersonel} onChange={e => setOutVerilenPersonel(e.target.value)}>
+                                                                <option value="">— Seçin —</option>
+                                                                {newRecipientInput && <option value={newRecipientInput}>{newRecipientInput} (Yeni)</option>}
+                                                                {[...new Set([...uniqueRecipients, ...teslimAlanlar.map(t => t.name)])].sort((a, b) => a.localeCompare(b, 'tr')).map(r => <option key={r} value={r}>{r}</option>)}
+                                                            </select>
+                                                        </div>
+                                                        {/* Kullanım Alanı */}
+                                                        <div className="fm-field">
+                                                            <div className="fm-label-row">
+                                                                <span className="fm-label">Kullanım Alanı</span>
+                                                                <button type="button" className="fm-add-chip" onClick={() => setShowAddKullanimAlani(v => !v)}>+ Ekle</button>
+                                                            </div>
+                                                            {showAddKullanimAlani && (
+                                                                <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                                    <input className="fm-input" value={newKullanimAlaniInput} onChange={e => setNewKullanimAlaniInput(e.target.value)} placeholder="Yeni kullanım alanı..." style={{ flex: 1 }} />
+                                                                    <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }} onClick={async () => { if (!newKullanimAlaniInput.trim()) return; const id = String(Date.now()); await set(ref(db, `kullanimAlanlari/${id}`), { id, name: newKullanimAlaniInput.trim() }); setNewKullanimAlaniInput(''); setShowAddKullanimAlani(false); }}>Kaydet</button>
+                                                                    <button type="button" className="btn-icon" onClick={() => setShowAddKullanimAlani(false)}><X size={14} /></button>
+                                                                </div>
+                                                            )}
+                                                            <select className="fm-input" name="kullanimAlani">
+                                                                <option value="">— Seçin —</option>
+                                                                {uniqueKullanimAlanlari.map(k => <option key={k} value={k}>{k}</option>)}
+                                                            </select>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>{/* /fm-sp-body */}
+                                        </div>{/* /fm-sp-form */}
+
+                                        {/* ══ SAĞ: CANLI ÖZET PANELİ ══ */}
+                                        <div className="fm-sp-right">
+                                            <div className="fm-sp-right-head">
+                                                <div className="fm-sp-section-label">Hareket Özeti</div>
+                                                <div className="fm-sp-info-row">
+                                                    <div className="fm-sp-info-label">Tarih</div>
+                                                    <div className="fm-sp-info-val">{previewDateTr}</div>
+                                                </div>
+                                                {isIn ? (
+                                                    <>
+                                                        <div className="fm-sp-info-row">
+                                                            <div className="fm-sp-info-label">Firma</div>
+                                                            <div className={`fm-sp-info-val${inFirmaAdi.trim() ? '' : ' dim'}`}>{inFirmaAdi.trim() || 'girilmedi'}</div>
+                                                        </div>
+                                                        <div className="fm-sp-info-row">
+                                                            <div className="fm-sp-info-label">İrsaliye No</div>
+                                                            <div className={`fm-sp-info-val${inIrsaliyeNo.trim() ? '' : ' dim'}`}>{inIrsaliyeNo.trim() || 'girilmedi'}</div>
+                                                        </div>
+                                                        <div className="fm-sp-info-row">
+                                                            <div className="fm-sp-info-label">Depo</div>
+                                                            <div className="fm-sp-info-val">{inDepo}</div>
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <div className="fm-sp-info-row">
+                                                            <div className="fm-sp-info-label">Verilen Ekip</div>
+                                                            <div className={`fm-sp-info-val${outVerilenEkip ? '' : ' dim'}`}>{outVerilenEkip || 'seçilmedi'}</div>
+                                                        </div>
+                                                        <div className="fm-sp-info-row">
+                                                            <div className="fm-sp-info-label">Verilen Personel</div>
+                                                            <div className={`fm-sp-info-val${outVerilenPersonel ? '' : ' dim'}`}>{outVerilenPersonel || 'seçilmedi'}</div>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+
+                                            <div className="fm-sp-right-items">
+                                                <div className="fm-sp-section-label">Malzemeler</div>
+                                                {previewRows.length === 0
+                                                    ? <div className="fm-sp-item-empty">Henüz malzeme eklenmedi</div>
+                                                    : previewRows.map((r, i) => (
+                                                        <div key={i} className="fm-sp-item-card">
+                                                            <div className="fm-sp-item-name">{r.malzemeAdi}</div>
+                                                            <div className="fm-sp-item-meta">
+                                                                <span>{r.miktar || '—'} {r.birim}</span>
+                                                                {r.fiyat && <span className="fm-sp-item-price">{((parseFloat(r.miktar) || 0) * (parseFloat(r.fiyat) || 0)).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</span>}
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                }
+                                            </div>
+
+                                            <div className="fm-sp-right-footer">
+                                                {isIn && totalTutar > 0 && (
+                                                    <div className="fm-sp-total-row">
+                                                        <span className="fm-sp-total-label">Toplam Tutar</span>
+                                                        <span className="fm-sp-total-val">{totalTutar.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</span>
+                                                    </div>
+                                                )}
+                                                <button type="submit" className="fm-sp-save-btn" disabled={saveDisabled} style={{ background: saveGradient }}>
+                                                    {isSaving ? 'İşleniyor...' : (isIn ? '↑ Girişi Kaydet' : '↓ Çıkışı Kaydet')}
+                                                </button>
+                                                <button type="button" className="fm-sp-cancel-btn" onClick={closeModal}>Vazgeç</button>
+                                            </div>
+                                        </div>{/* /fm-sp-right */}
+
+                                    </form>
                                 </div>
                             </div>
                         );
@@ -6562,8 +5379,14 @@ const App = () => {
                     {showZimmetModal && pagePerm('action_zimmet') === 'edit' && (() => {
                         const nowDate = new Date().toISOString().split('T')[0];
                         const nowTime = new Date().toTimeString().slice(0, 5);
-                        const existingKisi = [...new Set(zimmet.map(z => z.kisi).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'));
-                        const existingEkip = [...new Set(zimmet.map(z => z.ekip).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'));
+                        const existingKisi = [...new Set([
+                            ...zimmet.map(z => z.kisi).filter(Boolean),
+                            ...movements.filter(m => m.type === 'out' && m.recipient).map(m => m.recipient)
+                        ])].sort((a, b) => a.localeCompare(b, 'tr'));
+                        const existingEkip = [...new Set([
+                            ...zimmet.map(z => z.ekip).filter(Boolean),
+                            ...movements.filter(m => m.type === 'out' && m.verilenBirim).map(m => m.verilenBirim)
+                        ])].sort((a, b) => a.localeCompare(b, 'tr'));
                         return (
                             <div className="modal-overlay">
                                 <div className="fm-modal">
@@ -6592,55 +5415,81 @@ const App = () => {
 
                                             {/* Kişi */}
                                             <div className="fm-field">
-                                                <div className="fm-label-row"><span className="fm-label">Kişi</span><span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>opsiyonel</span></div>
-                                                <div style={{ display: 'flex', gap: '6px' }}>
-                                                    <select className="fm-input" style={{ flex: 1 }} value={zimmetKisiInput} onChange={e => setZimmetKisiInput(e.target.value)}>
-                                                        <option value="">— Seç veya yaz —</option>
-                                                        {existingKisi.map(k => <option key={k} value={k}>{k}</option>)}
-                                                    </select>
-                                                    <input className="fm-input" style={{ flex: 1 }} placeholder="Yeni kişi..." value={zimmetKisiInput} onChange={e => setZimmetKisiInput(e.target.value)} />
+                                                <div className="fm-label-row">
+                                                    <span className="fm-label">Kişi</span>
+                                                    <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginRight: 'auto' }}>opsiyonel</span>
+                                                    <button type="button" className="fm-add-chip" onClick={() => { const v = zimmetKisiInput.trim(); if (v && !existingKisi.includes(v)) { const id = String(Date.now()); set(ref(db, `teslimAlanlar/${id}`), { id, name: v }); } }}>+ Ekle</button>
                                                 </div>
+                                                <input className="fm-input" list="zimmet-kisi-datalist" value={zimmetKisiInput} onChange={e => setZimmetKisiInput(e.target.value)} placeholder="Kişi adı yazın veya seçin..." autoComplete="off" />
+                                                <datalist id="zimmet-kisi-datalist">
+                                                    {existingKisi.map(k => <option key={k} value={k} />)}
+                                                </datalist>
                                             </div>
 
                                             {/* Ekip */}
                                             <div className="fm-field">
-                                                <div className="fm-label-row"><span className="fm-label">Ekip</span><span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>opsiyonel</span></div>
-                                                <div style={{ display: 'flex', gap: '6px' }}>
-                                                    <select className="fm-input" style={{ flex: 1 }} value={zimmetEkipInput} onChange={e => setZimmetEkipInput(e.target.value)}>
-                                                        <option value="">— Seç veya yaz —</option>
-                                                        {existingEkip.map(k => <option key={k} value={k}>{k}</option>)}
-                                                    </select>
-                                                    <input className="fm-input" style={{ flex: 1 }} placeholder="Yeni ekip..." value={zimmetEkipInput} onChange={e => setZimmetEkipInput(e.target.value)} />
+                                                <div className="fm-label-row">
+                                                    <span className="fm-label">Ekip</span>
+                                                    <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginRight: 'auto' }}>opsiyonel</span>
+                                                    <button type="button" className="fm-add-chip" onClick={() => { const v = zimmetEkipInput.trim(); if (v && !existingEkip.includes(v)) { const id = String(Date.now()); set(ref(db, `verilenBirimler/${id}`), { id, name: v }); } }}>+ Ekle</button>
                                                 </div>
+                                                <input className="fm-input" list="zimmet-ekip-datalist" value={zimmetEkipInput} onChange={e => setZimmetEkipInput(e.target.value)} placeholder="Ekip adı yazın veya seçin..." autoComplete="off" />
+                                                <datalist id="zimmet-ekip-datalist">
+                                                    {existingEkip.map(k => <option key={k} value={k} />)}
+                                                </datalist>
                                             </div>
 
                                             {/* Çoklu Malzeme Satırları */}
                                             <div className="fm-field">
-                                                <div className="fm-label-row">
+                                                {/* Ana başlık — sadece + (satır ekle) */}
+                                                <div className="fm-label-row" style={{ marginBottom: '8px' }}>
                                                     <span className="fm-label">Malzemeler</span>
-                                                    <button type="button" className="fm-add-chip" onClick={() => setMultiZimmetRows(prev => [...prev, emptyZimmetRow()])}>+ Satır Ekle</button>
+                                                    <button type="button" className="fm-add-chip" onClick={() => setMultiZimmetRows(prev => [...prev, emptyZimmetRow()])}>+</button>
                                                 </div>
-                                                <div className="fm-multi-rows">
+                                                {/* Sütun başlıkları: Malzeme [+Ekle] | Miktar | Birim [+Ekle] */}
+                                                <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1.3fr 28px', gap: '6px', marginBottom: '6px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                        <span style={{ fontSize: '10px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Malzeme</span>
+                                                        <button type="button" className="fm-add-chip" onClick={() => setShowAddMalzemeAdi(v => !v)}>+ Ekle</button>
+                                                    </div>
+                                                    <span style={{ fontSize: '10px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Miktar</span>
+                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                        <span style={{ fontSize: '10px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Birim</span>
+                                                        <button type="button" className="fm-add-chip" onClick={() => setShowAddBirim(v => !v)}>+ Ekle</button>
+                                                    </div>
+                                                    <span></span>
+                                                </div>
+                                                {/* Yeni malzeme tanımla inline panel */}
+                                                {showAddMalzemeAdi && (
+                                                    <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                        <input className="fm-input" value={newMalzemeAdiInput} onChange={e => setNewMalzemeAdiInput(e.target.value)} placeholder="Yeni malzeme adı..." style={{ flex: 1 }} />
+                                                        <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 14px', background: 'var(--success)', borderRadius: '8px', fontSize: '12px' }} onClick={async () => { if (!newMalzemeAdiInput.trim()) return; const id = String(Date.now()); await set(ref(db, `items/${id}`), { id: Number(id), name: newMalzemeAdiInput.trim(), unit: 'Adet', category: 'Genel', quantity: 0, minStock: 0 }); setNewMalzemeAdiInput(''); setShowAddMalzemeAdi(false); }}>Kaydet</button>
+                                                        <button type="button" className="btn-icon" onClick={() => setShowAddMalzemeAdi(false)}><X size={14} /></button>
+                                                    </div>
+                                                )}
+                                                {/* Yeni birim inline panel */}
+                                                {showAddBirim && (
+                                                    <div className="fm-inline-add" style={{ marginBottom: '6px' }}>
+                                                        <input className="fm-input" value={newBirimInput} onChange={e => setNewBirimInput(e.target.value)} placeholder="Yeni birim adı..." style={{ flex: 1 }} />
+                                                        <button type="button" className="fm-btn-submit" style={{ flex: '0 0 auto', padding: '8px 12px', background: 'var(--primary)', borderRadius: '8px', fontSize: '12px' }} onClick={async () => { if (!newBirimInput.trim()) return; const id = String(Date.now()); await set(ref(db, `birimler/${id}`), { id, name: newBirimInput.trim() }); setNewBirimInput(''); setShowAddBirim(false); }}>Kaydet</button>
+                                                        <button type="button" className="btn-icon" onClick={() => setShowAddBirim(false)}><X size={14} /></button>
+                                                    </div>
+                                                )}
+                                                {/* Malzeme satırları — grid ile hizalı */}
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                                     {multiZimmetRows.map((row, ri) => (
-                                                        <div key={ri} className="fm-multi-row">
-                                                            <div className="fm-multi-row-num">{ri + 1}</div>
-                                                            <div className="fm-multi-row-fields">
-                                                                <div className="fm-multi-row-main">
-                                                                    <select className="fm-input" value={row.itemId} onChange={e => setMultiZimmetRows(prev => prev.map((r, i) => i === ri ? { ...r, itemId: e.target.value, birim: items.find(it => String(it.id) === e.target.value)?.unit || 'Adet' } : r))} style={{ flex: 3 }}>
-                                                                        <option value="" disabled>— Malzeme Seç —</option>
-                                                                        {sortedItems.map(it => <option key={it.id} value={it.id}>{it.name} (Stok: {it.quantity})</option>)}
-                                                                    </select>
-                                                                    <input className="fm-input" type="number" value={row.miktar} onChange={e => setMultiZimmetRows(prev => prev.map((r, i) => i === ri ? { ...r, miktar: e.target.value } : r))} placeholder="Miktar" min="1" style={{ flex: 1 }} />
-                                                                    <select className="fm-input" value={row.birim} onChange={e => setMultiZimmetRows(prev => prev.map((r, i) => i === ri ? { ...r, birim: e.target.value } : r))} style={{ flex: 1 }}>
-                                                                        <option>Adet</option><option>Torba</option><option>Metre</option><option>Palet</option><option>M3</option><option>Ton</option><option>Kg</option><option>Lt</option>
-                                                                    </select>
-                                                                </div>
-                                                                {multiZimmetRows.length > 1 && (
-                                                                    <button type="button" className="fm-multi-row-remove" onClick={() => setMultiZimmetRows(prev => prev.filter((_, i) => i !== ri))} title="Satırı sil">
-                                                                        <X size={14} />
-                                                                    </button>
-                                                                )}
-                                                            </div>
+                                                        <div key={ri} style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1.3fr 28px', gap: '6px', alignItems: 'center' }}>
+                                                            <select className="fm-input" value={row.itemId} onChange={e => setMultiZimmetRows(prev => prev.map((r, i) => i === ri ? { ...r, itemId: e.target.value, birim: items.find(it => String(it.id) === e.target.value)?.unit || 'Adet' } : r))}>
+                                                                <option value="" disabled>— Malzeme Seç —</option>
+                                                                {sortedItems.map(it => <option key={it.id} value={it.id}>{it.name} (Stok: {it.quantity})</option>)}
+                                                            </select>
+                                                            <input className="fm-input" type="number" value={row.miktar} onChange={e => setMultiZimmetRows(prev => prev.map((r, i) => i === ri ? { ...r, miktar: e.target.value } : r))} placeholder="Miktar" min="1" />
+                                                            <select className="fm-input" value={row.birim} onChange={e => setMultiZimmetRows(prev => prev.map((r, i) => i === ri ? { ...r, birim: e.target.value } : r))}>
+                                                                {birimlerList.map(b => <option key={b}>{b}</option>)}
+                                                            </select>
+                                                            {multiZimmetRows.length > 1
+                                                                ? <button type="button" className="fm-multi-row-remove" onClick={() => setMultiZimmetRows(prev => prev.filter((_, i) => i !== ri))} title="Satırı sil"><X size={14} /></button>
+                                                                : <span></span>}
                                                         </div>
                                                     ))}
                                                 </div>
@@ -7003,68 +5852,68 @@ const App = () => {
                 </div>
             )}
 
-            {showRequestModal && (
-                <div className="modal-overlay">
-                    <div className="modal-card" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
-                        <div className="modal-header">
-                            <span className="modal-title">
-                                <ClipboardList size={16} style={{ marginRight: 5, verticalAlign: 'middle' }} />
-                                Malzeme Talebi Oluştur
-                            </span>
-                            <button className="btn-icon" onClick={() => setShowRequestModal(false)}><X size={16} /></button>
-                        </div>
-                        <div style={{
-                            background: '#f8f9fa', border: '1px solid #e5e7eb', borderRadius: 6,
-                            padding: '8px 12px', fontSize: '12px', color: '#6b7280', marginBottom: 14
-                        }}>
-                            ℹ️ Talebiniz yöneticiye iletilecek. Onaylandığında satın alım listesine eklenir.
-                        </div>
-                        <form onSubmit={handleCreateRequest}>
-                            <div className="mb-2">
-                                <label className="label">Malzeme Seçin</label>
-                                <select name="itemId" required defaultValue="">
-                                    <option value="" disabled>-- Malzeme Seçin --</option>
-                                    {items.sort((a, b) => a.name.localeCompare(b.name)).map(i => (
-                                        <option key={i.id} value={String(i.id)}>{i.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="flex gap-2 mb-2">
-                                <div style={{ flex: 1 }}>
-                                    <label className="label">Miktar</label>
-                                    <input name="amount" type="number" required min="1" placeholder="Örn: 50" />
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                    <label className="label">Birim</label>
-                                    <select name="unit" defaultValue="Adet">
-                                        <option>Adet</option>
-                                        <option>Metre</option>
-                                        <option>Torba</option>
-                                        <option>Palet</option>
-                                        <option>M3</option>
-                                        <option>Ton</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div className="mb-2">
-                                <label className="label">Açıklama / Sebep</label>
-                                <input name="note" placeholder="Örn: A Blok çatı için gerekli" />
-                            </div>
-                            <button type="submit" className="btn-primary"
-                                style={{ width: '100%', marginTop: '1rem' }}>
-                                <Send size={14} /> Talebi Gönder
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            )}
-
             {/* Center Success Message Overlay */}
-            {showSuccessOverlay && (
-                <div className="center-success-overlay">
-                    <div className="success-message-card">
-                        <CheckCircle2 size={48} color="#16a34a" />
-                        <span>SATIN ALIM İÇİN GÖNDERİLDİ</span>
+            {showIrsaliyeDetailModal && selectedIrsaliye && (
+                <div className="modal-overlay">
+                    <div className="modal-card modal-card-wide" style={{ maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
+                        <div className="modal-header">
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span className="modal-title">{selectedIrsaliye.irsaliyeNo} — Malzeme Listesi</span>
+                                <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                    {selectedIrsaliye.firma} | {selectedIrsaliye.date}
+                                </span>
+                            </div>
+                            <div className="flex align-center gap-2">
+                                <ExportButtons
+                                    data={selectedIrsaliye.items.map(m => ({
+                                        'Malzeme': m.itemName,
+                                        'Miktar': m.amount,
+                                        'Birim': m.unit,
+                                        'Birim Fiyat': m.birimFiyat ? `${formatNumber(m.birimFiyat)} ₺` : '—'
+                                    }))}
+                                    title={`Irsaliye_${selectedIrsaliye.irsaliyeNo}_Detay`}
+                                    columns={[
+                                        { key: 'Malzeme', label: 'MALZEME' },
+                                        { key: 'Miktar', label: 'MİKTAR' },
+                                        { key: 'Birim', label: 'BİRİM' },
+                                        { key: 'Birim Fiyat', label: 'BİRİM FİYAT' }
+                                    ]}
+                                    filename={`Irsaliye_${selectedIrsaliye.irsaliyeNo}`}
+                                />
+                                <button className="btn-icon" onClick={() => setShowIrsaliyeDetailModal(false)}><X size={16} /></button>
+                            </div>
+                        </div>
+                        <div className="table-responsive-wrapper" style={{ marginTop: '1rem' }}>
+                            <table className="responsive-table" style={{ borderCollapse: 'collapse' }}>
+                                <colgroup>
+                                    <col className="col-malzeme" />
+                                    <col className="col-miktar" />
+                                    <col className="col-birim" />
+                                    <col className="col-miktar" />
+                                </colgroup>
+                                <thead>
+                                    <tr>
+                                        <th style={{ border: '1px solid var(--border)' }}>MALZEME</th>
+                                        <th style={{ textAlign: 'right', border: '1px solid var(--border)' }}>MİKTAR</th>
+                                        <th style={{ textAlign: 'center', border: '1px solid var(--border)' }}>BİRİM</th>
+                                        <th style={{ textAlign: 'right', border: '1px solid var(--border)' }}>BİRİM FİYAT</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {selectedIrsaliye.items.map((m, idx) => (
+                                        <tr key={idx}>
+                                            <td data-label="Malzeme" style={{ fontWeight: '600', border: '1px solid var(--border)' }}>{m.itemName}</td>
+                                            <td data-label="Miktar" style={{ textAlign: 'right', fontWeight: '700', color: 'var(--success)', border: '1px solid var(--border)' }}>{formatNumber(m.amount)}</td>
+                                            <td data-label="Birim" style={{ textAlign: 'center', border: '1px solid var(--border)' }}>{m.unit}</td>
+                                            <td data-label="Birim Fiyat" style={{ textAlign: 'right', border: '1px solid var(--border)' }}>{m.birimFiyat ? `${formatNumber(m.birimFiyat)} ₺` : '—'}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
+                            <button className="btn-primary" onClick={() => setShowIrsaliyeDetailModal(false)}>Kapat</button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -7074,6 +5923,15 @@ const App = () => {
                 data={bulkDelState}
                 onConfirm={async () => {
                     if (bulkDelState) {
+                        // Stok özeti'nde seçili malzeme siliniyorsa → komşu öğeyi seç (lista başına atlama)
+                        if (bulkDelState.tableId === 'items' && summarySelected) {
+                            const deletedIds = new Set(bulkDelState.rows.map(r => Number(r.id)));
+                            if (deletedIds.has(Number(summarySelected.id))) {
+                                const idx = stockSummary.findIndex(r => Number(r.id) === Number(summarySelected.id));
+                                const next = stockSummary[idx + 1] || stockSummary[idx - 1] || null;
+                                setSummarySelected(next);
+                            }
+                        }
                         if (bulkDelState.tableId === 'movements_mixed') {
                             for (const row of bulkDelState.rows) {
                                 const col = row.category === 'zimmet' ? 'zimmet' : 'movements';

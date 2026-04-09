@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Taşeron Masraf Analizi — 10 Tasarım Önerisi</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; }
+
+  /* NAV */
+  .nav { background: #1e293b; border-bottom: 1px solid #334155; padding: 14px 32px; display: flex; align-items: center; gap: 16px; position: sticky; top: 0; z-index: 100; }
+  .nav-title { font-weight: 800; font-size: 16px; color: #f1f5f9; }
+  .nav-sub { font-size: 12px; color: #64748b; }
+  .nav-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+  .pill { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid #334155; background: #1e293b; color: #94a3b8; transition: all .15s; }
+  .pill:hover, .pill.active { background: #4f46e5; color: #fff; border-color: #4f46e5; }
+
+  /* SECTIONS */
+  .section { padding: 32px; border-bottom: 1px solid #1e293b; }
+  .section:nth-child(odd) { background: #0f172a; }
+  .section:nth-child(even) { background: #111827; }
+  .section-header { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 24px; }
+  .section-num { width: 36px; height: 36px; border-radius: 10px; background: #4f46e5; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; color: #fff; flex-shrink: 0; }
+  .section-meta h2 { font-size: 17px; font-weight: 700; color: #f1f5f9; }
+  .section-meta p { font-size: 12px; color: #64748b; margin-top: 3px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: .04em; margin-left: 8px; }
+  .badge-green { background: #dcfce7; color: #166534; }
+  .badge-blue { background: #dbeafe; color: #1d4ed8; }
+  .badge-purple { background: #ede9fe; color: #6d28d9; }
+
+  /* ─── MOCK DATA ─── */
+  /* Used inline in each design */
+
+  /* DESIGN 1 — Kart Grid */
+  .d1-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+  .d1-card { background: #1e293b; border: 1px solid #334155; border-radius: 14px; padding: 18px; position: relative; overflow: hidden; cursor: pointer; transition: transform .15s, border-color .15s; }
+  .d1-card:hover { transform: translateY(-2px); border-color: #4f46e5; }
+  .d1-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 14px 14px 0 0; }
+  .d1-card.c1::before { background: #4f46e5; }
+  .d1-card.c2::before { background: #0ea5e9; }
+  .d1-card.c3::before { background: #10b981; }
+  .d1-card.c4::before { background: #f59e0b; }
+  .d1-card.c5::before { background: #ef4444; }
+  .d1-card.c6::before { background: #8b5cf6; }
+  .d1-name { font-size: 12px; font-weight: 600; color: #94a3b8; margin-bottom: 8px; text-transform: uppercase; letter-spacing: .04em; }
+  .d1-val { font-size: 22px; font-weight: 800; color: #f1f5f9; }
+  .d1-sub { font-size: 11px; color: #64748b; margin-top: 4px; }
+  .d1-bar { height: 4px; background: #334155; border-radius: 2px; margin-top: 12px; }
+  .d1-bar-fill { height: 100%; border-radius: 2px; }
+
+  /* DESIGN 2 — Yatay Bar Chart */
+  .d2-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .d2-label { width: 140px; font-size: 12px; font-weight: 600; color: #cbd5e1; text-align: right; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .d2-track { flex: 1; height: 28px; background: #1e293b; border-radius: 6px; overflow: hidden; position: relative; }
+  .d2-fill { height: 100%; border-radius: 6px; display: flex; align-items: center; padding: 0 10px; font-size: 12px; font-weight: 700; color: #fff; transition: width .6s ease; }
+  .d2-amount { width: 120px; font-size: 13px; font-weight: 700; color: #f1f5f9; text-align: right; flex-shrink: 0; }
+
+  /* DESIGN 3 — Liste + Detay Panel */
+  .d3-wrap { display: flex; gap: 0; border: 1px solid #334155; border-radius: 14px; overflow: hidden; }
+  .d3-list { width: 260px; flex-shrink: 0; border-right: 1px solid #334155; }
+  .d3-item { padding: 12px 16px; border-bottom: 1px solid #1e293b; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: background .1s; }
+  .d3-item:hover { background: #1e293b; }
+  .d3-item.active { background: #1e3a5f; border-left: 3px solid #3b82f6; }
+  .d3-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .d3-item-name { font-size: 12px; font-weight: 600; color: #cbd5e1; }
+  .d3-item-val { font-size: 11px; color: #64748b; }
+  .d3-detail { flex: 1; padding: 20px; background: #0f172a; }
+  .d3-detail-title { font-size: 18px; font-weight: 800; color: #f1f5f9; margin-bottom: 4px; }
+  .d3-detail-sub { font-size: 12px; color: #64748b; margin-bottom: 16px; }
+  .d3-stat-row { display: flex; gap: 12px; margin-bottom: 16px; }
+  .d3-stat { flex: 1; background: #1e293b; border-radius: 10px; padding: 12px; }
+  .d3-stat-label { font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .06em; }
+  .d3-stat-val { font-size: 18px; font-weight: 800; color: #f1f5f9; margin-top: 4px; }
+  .d3-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .d3-table th { padding: 6px 8px; text-align: left; color: #64748b; font-weight: 700; font-size: 10px; text-transform: uppercase; border-bottom: 1px solid #334155; }
+  .d3-table td { padding: 6px 8px; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
+
+  /* DESIGN 4 — Donut + Sıralama */
+  .d4-wrap { display: flex; gap: 24px; align-items: flex-start; }
+  .d4-donut-wrap { position: relative; width: 180px; height: 180px; flex-shrink: 0; }
+  .d4-donut-wrap svg { transform: rotate(-90deg); }
+  .d4-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; }
+  .d4-center-val { font-size: 20px; font-weight: 800; color: #f1f5f9; }
+  .d4-center-lbl { font-size: 10px; color: #64748b; }
+  .d4-list { flex: 1; }
+  .d4-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #1e293b; }
+  .d4-rank { width: 22px; height: 22px; border-radius: 6px; background: #1e293b; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #64748b; }
+  .d4-color { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+  .d4-name { flex: 1; font-size: 12px; font-weight: 600; color: #cbd5e1; }
+  .d4-pct { font-size: 11px; color: #64748b; width: 38px; text-align: right; }
+  .d4-amount { font-size: 13px; font-weight: 700; color: #f1f5f9; width: 110px; text-align: right; }
+
+  /* DESIGN 5 — Klasik Tablo */
+  .d5-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .d5-table thead th { background: #1e293b; padding: 10px 14px; text-align: left; font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .06em; position: sticky; top: 0; }
+  .d5-table thead th:first-child { border-radius: 8px 0 0 0; }
+  .d5-table thead th:last-child { border-radius: 0 8px 0 0; text-align: right; }
+  .d5-table tbody tr { border-bottom: 1px solid #1e293b; cursor: pointer; }
+  .d5-table tbody tr:hover { background: #1e293b; }
+  .d5-table td { padding: 10px 14px; color: #cbd5e1; }
+  .d5-table td:last-child { text-align: right; font-weight: 700; color: #f1f5f9; }
+  .d5-table tfoot td { padding: 10px 14px; font-weight: 800; background: #1e3a5f; color: #f1f5f9; border-top: 2px solid #3b82f6; }
+  .d5-table tfoot td:last-child { text-align: right; color: #60a5fa; }
+  .d5-spark { display: flex; gap: 2px; align-items: flex-end; height: 20px; }
+  .d5-spark-bar { width: 4px; border-radius: 1px; background: #4f46e5; }
+
+  /* DESIGN 6 — Accordion */
+  .d6-item { border: 1px solid #334155; border-radius: 10px; margin-bottom: 8px; overflow: hidden; }
+  .d6-header { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: #1e293b; cursor: pointer; }
+  .d6-icon { font-size: 16px; }
+  .d6-name { flex: 1; font-size: 13px; font-weight: 700; color: #f1f5f9; }
+  .d6-chip { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+  .d6-total { font-size: 15px; font-weight: 800; color: #f1f5f9; min-width: 120px; text-align: right; }
+  .d6-chevron { color: #64748b; font-size: 12px; }
+  .d6-body { background: #0f172a; padding: 14px 16px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .d6-body.hidden { display: none; }
+  .d6-mini { background: #1e293b; border-radius: 8px; padding: 10px 12px; }
+  .d6-mini-lbl { font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase; }
+  .d6-mini-val { font-size: 14px; font-weight: 800; color: #f1f5f9; margin-top: 3px; }
+
+  /* DESIGN 7 — Heatmap */
+  .d7-wrap { overflow-x: auto; }
+  .d7-table { border-collapse: separate; border-spacing: 3px; }
+  .d7-table th { font-size: 10px; font-weight: 700; color: #64748b; padding: 4px 8px; text-align: center; white-space: nowrap; }
+  .d7-table th.row-header { text-align: right; width: 130px; }
+  .d7-table td { width: 70px; height: 36px; border-radius: 6px; text-align: center; font-size: 11px; font-weight: 700; color: #fff; vertical-align: middle; cursor: pointer; transition: transform .1s; }
+  .d7-table td:hover { transform: scale(1.08); }
+  .d7-table td.label { background: none; color: #94a3b8; font-size: 11px; text-align: right; padding-right: 8px; }
+  .d7-table td.total { background: #1e293b; color: #94a3b8; font-weight: 700; }
+  /* Isı renkleri */
+  .h0 { background: #1e293b; color: #475569; }
+  .h1 { background: #1e3a5f; }
+  .h2 { background: #1d4ed8; }
+  .h3 { background: #2563eb; }
+  .h4 { background: #4f46e5; }
+  .h5 { background: #7c3aed; }
+
+  /* DESIGN 8 — Timeline */
+  .d8-wrap { overflow-x: auto; }
+  .d8-chart { display: flex; align-items: flex-end; gap: 4px; height: 140px; padding: 0 8px; }
+  .d8-month { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 56px; }
+  .d8-bars { display: flex; gap: 2px; align-items: flex-end; height: 120px; }
+  .d8-bar { width: 10px; border-radius: 2px 2px 0 0; cursor: pointer; transition: opacity .15s; }
+  .d8-bar:hover { opacity: .8; }
+  .d8-month-lbl { font-size: 10px; color: #64748b; font-weight: 600; margin-top: 4px; }
+  .d8-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  .d8-legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #94a3b8; }
+  .d8-legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+
+  /* DESIGN 9 — Top N + Kalan */
+  .d9-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .d9-top { background: #1e293b; border-radius: 14px; padding: 16px; }
+  .d9-top-title { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 12px; }
+  .d9-podium { display: flex; align-items: flex-end; gap: 8px; height: 110px; margin-bottom: 12px; }
+  .d9-pod { flex: 1; border-radius: 8px 8px 0 0; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 8px; cursor: pointer; }
+  .d9-pod-name { font-size: 9px; font-weight: 700; color: rgba(255,255,255,.8); text-align: center; padding: 0 4px; word-break: break-all; }
+  .d9-pod-val { font-size: 10px; font-weight: 800; color: #fff; }
+  .d9-others { background: #1e293b; border-radius: 14px; padding: 16px; }
+  .d9-other-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid #1e293b; }
+  .d9-other-num { width: 20px; font-size: 11px; font-weight: 700; color: #64748b; }
+  .d9-other-name { flex: 1; font-size: 12px; color: #cbd5e1; }
+  .d9-other-val { font-size: 12px; font-weight: 700; color: #f1f5f9; }
+  .d9-other-bar { height: 3px; border-radius: 2px; margin-top: 3px; }
+
+  /* DESIGN 10 — Scorecard */
+  .d10-header { display: flex; gap: 12px; margin-bottom: 16px; }
+  .d10-summary { flex: 1; background: linear-gradient(135deg, #4f46e5, #7c3aed); border-radius: 14px; padding: 16px; }
+  .d10-summary-lbl { font-size: 10px; font-weight: 700; color: rgba(255,255,255,.6); text-transform: uppercase; }
+  .d10-summary-val { font-size: 28px; font-weight: 900; color: #fff; }
+  .d10-summary-sub { font-size: 11px; color: rgba(255,255,255,.6); }
+  .d10-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+  .d10-card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 6px; }
+  .d10-card-name { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .d10-card-val { font-size: 20px; font-weight: 900; color: #f1f5f9; }
+  .d10-card-meta { display: flex; gap: 6px; flex-wrap: wrap; }
+  .d10-tag { font-size: 10px; padding: 2px 7px; border-radius: 4px; font-weight: 600; }
+  .d10-progress { height: 4px; background: #334155; border-radius: 2px; }
+  .d10-progress-fill { height: 100%; border-radius: 2px; }
+
+  /* Colors */
+  .col1 { --c: #4f46e5; } .col2 { --c: #0ea5e9; } .col3 { --c: #10b981; }
+  .col4 { --c: #f59e0b; } .col5 { --c: #ef4444; } .col6 { --c: #8b5cf6; }
+  .col7 { --c: #ec4899; } .col8 { --c: #14b8a6; }
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <div>
+    <div class="nav-title">🏗 Taşeron Masraf Analizi — 10 Tasarım Önerisi</div>
+    <div class="nav-sub">Mock veri ile gösterim · Gerçek veriler Firebase'den gelecek</div>
+  </div>
+  <div class="nav-pills">
+    <span class="pill active" onclick="scrollTo(1)">1</span>
+    <span class="pill" onclick="scrollTo(2)">2</span>
+    <span class="pill" onclick="scrollTo(3)">3</span>
+    <span class="pill" onclick="scrollTo(4)">4</span>
+    <span class="pill" onclick="scrollTo(5)">5</span>
+    <span class="pill" onclick="scrollTo(6)">6</span>
+    <span class="pill" onclick="scrollTo(7)">7</span>
+    <span class="pill" onclick="scrollTo(8)">8</span>
+    <span class="pill" onclick="scrollTo(9)">9</span>
+    <span class="pill" onclick="scrollTo(10)">10</span>
+  </div>
+</div>
+
+<!-- ─────── DESIGN 1 ─────── -->
+<div class="section" id="s1">
+  <div class="section-header">
+    <div class="section-num">1</div>
+    <div class="section-meta">
+      <h2>Kart Grid <span class="badge badge-green">Önerilen</span></h2>
+      <p>Her taşeron için renk kodlu kart. Tutar büyük, ilerleme çubuğu ile oran gösterimi. En hızlı tarama için ideal.</p>
+    </div>
+  </div>
+  <div class="d1-grid">
+    <div class="d1-card c1">
+      <div class="d1-name">METİN KOÇAK</div>
+      <div class="d1-val">₺ 842.340</div>
+      <div class="d1-sub">347 hareket · 28 malzeme</div>
+      <div class="d1-bar"><div class="d1-bar-fill" style="width:100%;background:#4f46e5"></div></div>
+    </div>
+    <div class="d1-card c2">
+      <div class="d1-name">MEHMET ŞİRİN MARAL</div>
+      <div class="d1-val">₺ 654.120</div>
+      <div class="d1-sub">218 hareket · 19 malzeme</div>
+      <div class="d1-bar"><div class="d1-bar-fill" style="width:78%;background:#0ea5e9"></div></div>
+    </div>
+    <div class="d1-card c3">
+      <div class="d1-name">ÇİZEL</div>
+      <div class="d1-val">₺ 498.770</div>
+      <div class="d1-sub">189 hareket · 15 malzeme</div>
+      <div class="d1-bar"><div class="d1-bar-fill" style="width:59%;background:#10b981"></div></div>
+    </div>
+    <div class="d1-card c4">
+      <div class="d1-name">ELEKTRİK</div>
+      <div class="d1-val">₺ 327.450</div>
+      <div class="d1-sub">142 hareket · 22 malzeme</div>
+      <div class="d1-bar"><div class="d1-bar-fill" style="width:39%;background:#f59e0b"></div></div>
+    </div>
+    <div class="d1-card c5">
+      <div class="d1-name">HAYRİ FİDAN</div>
+      <div class="d1-val">₺ 214.880</div>
+      <div class="d1-sub">87 hareket · 12 malzeme</div>
+      <div class="d1-bar"><div class="d1-bar-fill" style="width:26%;background:#ef4444"></div></div>
+    </div>
+    <div class="d1-card c6">
+      <div class="d1-name">ARS GRUP</div>
+      <div class="d1-val">₺ 183.240</div>
+      <div class="d1-sub">73 hareket · 9 malzeme</div>
+      <div class="d1-bar"><div class="d1-bar-fill" style="width:22%;background:#8b5cf6"></div></div>
+    </div>
+    <div class="d1-card" style="border-color:#334155">
+      <div class="d1-name" style="color:#475569">MEKANİK</div>
+      <div class="d1-val" style="color:#94a3b8">₺ 97.600</div>
+      <div class="d1-sub">41 hareket · 7 malzeme</div>
+      <div class="d1-bar"><div class="d1-bar-fill" style="width:12%;background:#475569"></div></div>
+    </div>
+    <div class="d1-card" style="border-color:#334155">
+      <div class="d1-name" style="color:#475569">DİĞER</div>
+      <div class="d1-val" style="color:#94a3b8">₺ 62.140</div>
+      <div class="d1-sub">28 hareket · 5 malzeme</div>
+      <div class="d1-bar"><div class="d1-bar-fill" style="width:7%;background:#475569"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────── DESIGN 2 ─────── -->
+<div class="section" id="s2">
+  <div class="section-header">
+    <div class="section-num">2</div>
+    <div class="section-meta">
+      <h2>Yatay Bar Chart <span class="badge badge-blue">Karşılaştırma</span></h2>
+      <p>Taşeronlar büyükten küçüğe sıralı yatay çubuk grafik. Görsel karşılaştırma için en net yöntem.</p>
+    </div>
+  </div>
+  <div style="max-width:700px">
+    <div class="d2-row">
+      <div class="d2-label">METİN KOÇAK</div>
+      <div class="d2-track"><div class="d2-fill" style="width:100%;background:linear-gradient(90deg,#4f46e5,#7c3aed)">%100</div></div>
+      <div class="d2-amount">₺ 842.340</div>
+    </div>
+    <div class="d2-row">
+      <div class="d2-label">M. ŞİRİN MARAL</div>
+      <div class="d2-track"><div class="d2-fill" style="width:78%;background:linear-gradient(90deg,#0ea5e9,#3b82f6)">%78</div></div>
+      <div class="d2-amount">₺ 654.120</div>
+    </div>
+    <div class="d2-row">
+      <div class="d2-label">ÇİZEL</div>
+      <div class="d2-track"><div class="d2-fill" style="width:59%;background:linear-gradient(90deg,#10b981,#059669)">%59</div></div>
+      <div class="d2-amount">₺ 498.770</div>
+    </div>
+    <div class="d2-row">
+      <div class="d2-label">ELEKTRİK</div>
+      <div class="d2-track"><div class="d2-fill" style="width:39%;background:linear-gradient(90deg,#f59e0b,#d97706)">%39</div></div>
+      <div class="d2-amount">₺ 327.450</div>
+    </div>
+    <div class="d2-row">
+      <div class="d2-label">HAYRİ FİDAN</div>
+      <div class="d2-track"><div class="d2-fill" style="width:26%;background:linear-gradient(90deg,#ef4444,#dc2626)">%26</div></div>
+      <div class="d2-amount">₺ 214.880</div>
+    </div>
+    <div class="d2-row">
+      <div class="d2-label">ARS GRUP</div>
+      <div class="d2-track"><div class="d2-fill" style="width:22%;background:linear-gradient(90deg,#8b5cf6,#6d28d9)">%22</div></div>
+      <div class="d2-amount">₺ 183.240</div>
+    </div>
+    <div class="d2-row">
+      <div class="d2-label">MEKANİK</div>
+      <div class="d2-track"><div class="d2-fill" style="width:12%;background:#334155">%12</div></div>
+      <div class="d2-amount">₺ 97.600</div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────── DESIGN 3 ─────── -->
+<div class="section" id="s3">
+  <div class="section-header">
+    <div class="section-num">3</div>
+    <div class="section-meta">
+      <h2>Sol Liste + Detay Panel <span class="badge badge-green">Önerilen</span></h2>
+      <p>Sol taşeron listesi, sağda seçilen taşeronun detaylı malzeme dökümü. Personel Analizi sayfasıyla tutarlı.</p>
+    </div>
+  </div>
+  <div class="d3-wrap">
+    <div class="d3-list">
+      <div style="padding:10px 16px;font-size:10px;font-weight:700;color:#64748b;border-bottom:1px solid #334155;text-transform:uppercase;letter-spacing:.06em">Taşeronlar</div>
+      <div class="d3-item active">
+        <div class="d3-dot" style="background:#4f46e5"></div>
+        <div><div class="d3-item-name">METİN KOÇAK</div><div class="d3-item-val">₺ 842.340</div></div>
+      </div>
+      <div class="d3-item">
+        <div class="d3-dot" style="background:#0ea5e9"></div>
+        <div><div class="d3-item-name">M. ŞİRİN MARAL</div><div class="d3-item-val">₺ 654.120</div></div>
+      </div>
+      <div class="d3-item">
+        <div class="d3-dot" style="background:#10b981"></div>
+        <div><div class="d3-item-name">ÇİZEL</div><div class="d3-item-val">₺ 498.770</div></div>
+      </div>
+      <div class="d3-item">
+        <div class="d3-dot" style="background:#f59e0b"></div>
+        <div><div class="d3-item-name">ELEKTRİK</div><div class="d3-item-val">₺ 327.450</div></div>
+      </div>
+      <div class="d3-item">
+        <div class="d3-dot" style="background:#ef4444"></div>
+        <div><div class="d3-item-name">HAYRİ FİDAN</div><div class="d3-item-val">₺ 214.880</div></div>
+      </div>
+      <div class="d3-item">
+        <div class="d3-dot" style="background:#8b5cf6"></div>
+        <div><div class="d3-item-name">ARS GRUP</div><div class="d3-item-val">₺ 183.240</div></div>
+      </div>
+    </div>
+    <div class="d3-detail">
+      <div class="d3-detail-title">METİN KOÇAK</div>
+      <div class="d3-detail-sub">01.11.2025 — 03.04.2026 arası · 347 hareket</div>
+      <div class="d3-stat-row">
+        <div class="d3-stat"><div class="d3-stat-label">Toplam Tutar</div><div class="d3-stat-val" style="color:#4f46e5">₺ 842.340</div></div>
+        <div class="d3-stat"><div class="d3-stat-label">Hareket</div><div class="d3-stat-val">347</div></div>
+        <div class="d3-stat"><div class="d3-stat-label">Malzeme Çeşidi</div><div class="d3-stat-val">28</div></div>
+      </div>
+      <table class="d3-table">
+        <thead><tr><th>Malzeme</th><th>Miktar</th><th>Birim</th><th style="text-align:right">Tutar</th></tr></thead>
+        <tbody>
+          <tr><td>İş Eldiveni</td><td>328</td><td>Adet</td><td style="text-align:right;color:#f1f5f9;font-weight:700">₺ 24.600</td></tr>
+          <tr><td>İş Ayakkabısı</td><td>177</td><td>Adet</td><td style="text-align:right;color:#f1f5f9;font-weight:700">₺ 88.500</td></tr>
+          <tr><td>Baret</td><td>149</td><td>Adet</td><td style="text-align:right;color:#f1f5f9;font-weight:700">₺ 37.250</td></tr>
+          <tr><td>Nevresim</td><td>85</td><td>Adet</td><td style="text-align:right;color:#f1f5f9;font-weight:700">₺ 42.500</td></tr>
+          <tr><td>Yorgan - Battaniye</td><td>60</td><td>Adet</td><td style="text-align:right;color:#f1f5f9;font-weight:700">₺ 48.000</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ─────── DESIGN 4 ─────── -->
+<div class="section" id="s4">
+  <div class="section-header">
+    <div class="section-num">4</div>
+    <div class="section-meta">
+      <h2>Donut Chart + Sıralama <span class="badge badge-purple">Görsel</span></h2>
+      <p>Pasta grafik ile oransal dağılım + sağda sıralı liste. Hangi taşeronun toplam bütçede ne kadar pay aldığı net görünür.</p>
+    </div>
+  </div>
+  <div class="d4-wrap">
+    <div class="d4-donut-wrap">
+      <svg width="180" height="180" viewBox="0 0 36 36">
+        <circle cx="18" cy="18" r="15.9" fill="none" stroke="#1e293b" stroke-width="4"/>
+        <circle cx="18" cy="18" r="15.9" fill="none" stroke="#4f46e5" stroke-width="4" stroke-dasharray="30 70" stroke-dashoffset="0"/>
+        <circle cx="18" cy="18" r="15.9" fill="none" stroke="#0ea5e9" stroke-width="4" stroke-dasharray="23 77" stroke-dashoffset="-30"/>
+        <circle cx="18" cy="18" r="15.9" fill="none" stroke="#10b981" stroke-width="4" stroke-dasharray="18 82" stroke-dashoffset="-53"/>
+        <circle cx="18" cy="18" r="15.9" fill="none" stroke="#f59e0b" stroke-width="4" stroke-dasharray="12 88" stroke-dashoffset="-71"/>
+        <circle cx="18" cy="18" r="15.9" fill="none" stroke="#ef4444" stroke-width="4" stroke-dasharray="8 92" stroke-dashoffset="-83"/>
+        <circle cx="18" cy="18" r="15.9" fill="none" stroke="#8b5cf6" stroke-width="4" stroke-dasharray="9 91" stroke-dashoffset="-91"/>
+      </svg>
+      <div class="d4-center">
+        <div class="d4-center-val">₺2.88M</div>
+        <div class="d4-center-lbl">Toplam</div>
+      </div>
+    </div>
+    <div class="d4-list" style="max-width:400px">
+      <div class="d4-row"><div class="d4-rank">1</div><div class="d4-color" style="background:#4f46e5"></div><div class="d4-name">METİN KOÇAK</div><div class="d4-pct">%30</div><div class="d4-amount">₺ 842.340</div></div>
+      <div class="d4-row"><div class="d4-rank">2</div><div class="d4-color" style="background:#0ea5e9"></div><div class="d4-name">M. ŞİRİN MARAL</div><div class="d4-pct">%23</div><div class="d4-amount">₺ 654.120</div></div>
+      <div class="d4-row"><div class="d4-rank">3</div><div class="d4-color" style="background:#10b981"></div><div class="d4-name">ÇİZEL</div><div class="d4-pct">%18</div><div class="d4-amount">₺ 498.770</div></div>
+      <div class="d4-row"><div class="d4-rank">4</div><div class="d4-color" style="background:#f59e0b"></div><div class="d4-name">ELEKTRİK</div><div class="d4-pct">%12</div><div class="d4-amount">₺ 327.450</div></div>
+      <div class="d4-row"><div class="d4-rank">5</div><div class="d4-color" style="background:#ef4444"></div><div class="d4-name">HAYRİ FİDAN</div><div class="d4-pct">%8</div><div class="d4-amount">₺ 214.880</div></div>
+      <div class="d4-row"><div class="d4-rank">6</div><div class="d4-color" style="background:#8b5cf6"></div><div class="d4-name">ARS GRUP</div><div class="d4-pct">%7</div><div class="d4-amount">₺ 183.240</div></div>
+      <div class="d4-row"><div class="d4-rank">—</div><div class="d4-color" style="background:#475569"></div><div class="d4-name">Diğerleri</div><div class="d4-pct">%2</div><div class="d4-amount">₺ 159.740</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────── DESIGN 5 ─────── -->
+<div class="section" id="s5">
+  <div class="section-header">
+    <div class="section-num">5</div>
+    <div class="section-meta">
+      <h2>Klasik Tablo + Toplam Satırı <span class="badge badge-blue">Veri Odaklı</span></h2>
+      <p>Mini sparkline + sütun başlığı ile sıralama. Excel alışkanlığı olanlar için en tanıdık format.</p>
+    </div>
+  </div>
+  <table class="d5-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Taşeron / Ekip</th>
+        <th>Hareket</th>
+        <th>Malzeme Çeşidi</th>
+        <th>Son Hareket</th>
+        <th>Aylık Trend</th>
+        <th>Toplam Tutar ↓</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td>METİN KOÇAK</td><td>347</td><td>28</td><td>03.04.2026</td><td><div class="d5-spark"><div class="d5-spark-bar" style="height:8px"></div><div class="d5-spark-bar" style="height:12px"></div><div class="d5-spark-bar" style="height:16px"></div><div class="d5-spark-bar" style="height:20px;background:#4f46e5"></div></div></td><td>₺ 842.340</td></tr>
+      <tr><td>2</td><td>MEHMET ŞİRİN MARAL</td><td>218</td><td>19</td><td>01.04.2026</td><td><div class="d5-spark"><div class="d5-spark-bar" style="height:14px"></div><div class="d5-spark-bar" style="height:10px"></div><div class="d5-spark-bar" style="height:18px"></div><div class="d5-spark-bar" style="height:15px;background:#0ea5e9"></div></div></td><td>₺ 654.120</td></tr>
+      <tr><td>3</td><td>ÇİZEL</td><td>189</td><td>15</td><td>02.04.2026</td><td><div class="d5-spark"><div class="d5-spark-bar" style="height:12px"></div><div class="d5-spark-bar" style="height:16px"></div><div class="d5-spark-bar" style="height:10px"></div><div class="d5-spark-bar" style="height:14px;background:#10b981"></div></div></td><td>₺ 498.770</td></tr>
+      <tr><td>4</td><td>ELEKTRİK</td><td>142</td><td>22</td><td>02.04.2026</td><td><div class="d5-spark"><div class="d5-spark-bar" style="height:6px"></div><div class="d5-spark-bar" style="height:10px"></div><div class="d5-spark-bar" style="height:8px"></div><div class="d5-spark-bar" style="height:12px;background:#f59e0b"></div></div></td><td>₺ 327.450</td></tr>
+      <tr><td>5</td><td>HAYRİ FİDAN</td><td>87</td><td>12</td><td>13.02.2026</td><td><div class="d5-spark"><div class="d5-spark-bar" style="height:10px"></div><div class="d5-spark-bar" style="height:8px"></div><div class="d5-spark-bar" style="height:4px"></div><div class="d5-spark-bar" style="height:2px;background:#ef4444"></div></div></td><td>₺ 214.880</td></tr>
+      <tr><td>6</td><td>ARS GRUP</td><td>73</td><td>9</td><td>13.12.2025</td><td><div class="d5-spark"><div class="d5-spark-bar" style="height:16px"></div><div class="d5-spark-bar" style="height:4px"></div><div class="d5-spark-bar" style="height:2px"></div><div class="d5-spark-bar" style="height:2px;background:#8b5cf6"></div></div></td><td>₺ 183.240</td></tr>
+    </tbody>
+    <tfoot>
+      <tr><td colspan="6">GENEL TOPLAM</td><td>₺ 2.881.540</td></tr>
+    </tfoot>
+  </table>
+</div>
+
+<!-- ─────── DESIGN 6 ─────── -->
+<div class="section" id="s6">
+  <div class="section-header">
+    <div class="section-num">6</div>
+    <div class="section-meta">
+      <h2>Accordion — Genişletilebilir <span class="badge badge-purple">Kompakt</span></h2>
+      <p>Her taşeron tıklanınca açılır, alt bilgiler görünür. Ekranda çok fazla satır varken alan tasarrufu sağlar.</p>
+    </div>
+  </div>
+  <div id="d6">
+    <div class="d6-item">
+      <div class="d6-header" onclick="toggleAccordion('a1')">
+        <div class="d6-icon">👷</div>
+        <div class="d6-name">METİN KOÇAK</div>
+        <div class="d6-chip" style="background:#ede9fe;color:#6d28d9">347 hareket</div>
+        <div class="d6-total">₺ 842.340</div>
+        <div class="d6-chevron" id="ch_a1">▼</div>
+      </div>
+      <div class="d6-body" id="a1">
+        <div class="d6-mini"><div class="d6-mini-lbl">İSG Malzeme</div><div class="d6-mini-val">₺ 412.000</div></div>
+        <div class="d6-mini"><div class="d6-mini-lbl">Yaşam Malz.</div><div class="d6-mini-val">₺ 198.000</div></div>
+        <div class="d6-mini"><div class="d6-mini-lbl">Ekipman</div><div class="d6-mini-val">₺ 232.340</div></div>
+        <div class="d6-mini"><div class="d6-mini-lbl">Son Tarih</div><div class="d6-mini-val">03.04.2026</div></div>
+        <div class="d6-mini"><div class="d6-mini-lbl">Çalışan</div><div class="d6-mini-val">42 kişi</div></div>
+        <div class="d6-mini"><div class="d6-mini-lbl">Ortalama/Kişi</div><div class="d6-mini-val">₺ 20.056</div></div>
+      </div>
+    </div>
+    <div class="d6-item">
+      <div class="d6-header" onclick="toggleAccordion('a2')">
+        <div class="d6-icon">👷</div>
+        <div class="d6-name">MEHMET ŞİRİN MARAL</div>
+        <div class="d6-chip" style="background:#dcfce7;color:#166534">218 hareket</div>
+        <div class="d6-total">₺ 654.120</div>
+        <div class="d6-chevron" id="ch_a2">▶</div>
+      </div>
+      <div class="d6-body hidden" id="a2">
+        <div class="d6-mini"><div class="d6-mini-lbl">İSG Malzeme</div><div class="d6-mini-val">₺ 198.000</div></div>
+        <div class="d6-mini"><div class="d6-mini-lbl">Elektrik</div><div class="d6-mini-val">₺ 312.000</div></div>
+        <div class="d6-mini"><div class="d6-mini-lbl">Diğer</div><div class="d6-mini-val">₺ 144.120</div></div>
+      </div>
+    </div>
+    <div class="d6-item">
+      <div class="d6-header" onclick="toggleAccordion('a3')">
+        <div class="d6-icon">👷</div>
+        <div class="d6-name">ÇİZEL</div>
+        <div class="d6-chip" style="background:#dbeafe;color:#1d4ed8">189 hareket</div>
+        <div class="d6-total">₺ 498.770</div>
+        <div class="d6-chevron" id="ch_a3">▶</div>
+      </div>
+      <div class="d6-body hidden" id="a3">
+        <div class="d6-mini"><div class="d6-mini-lbl">Kategori A</div><div class="d6-mini-val">₺ 220.000</div></div>
+        <div class="d6-mini"><div class="d6-mini-lbl">Kategori B</div><div class="d6-mini-val">₺ 278.770</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────── DESIGN 7 ─────── -->
+<div class="section" id="s7">
+  <div class="section-header">
+    <div class="section-num">7</div>
+    <div class="section-meta">
+      <h2>Kategori × Taşeron Isı Haritası <span class="badge badge-purple">Analitik</span></h2>
+      <p>Hangi taşeron hangi kategoriden ne kadar harcadı. Renk yoğunluğu tutarı gösterir. Çarpıcı pattern'lar ortaya çıkar.</p>
+    </div>
+  </div>
+  <div class="d7-wrap">
+    <table class="d7-table">
+      <thead>
+        <tr>
+          <th class="row-header">Taşeron ↓ / Kategori →</th>
+          <th>İSG</th><th>Elektrik</th><th>Hırdavat</th><th>Tesisat</th><th>Yaşam</th><th>Diğer</th>
+          <th>TOPLAM</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="label">METİN KOÇAK</td><td class="h5">₺412K</td><td class="h0">—</td><td class="h2">₺98K</td><td class="h0">—</td><td class="h4">₺198K</td><td class="h2">₺134K</td><td class="total">₺842K</td></tr>
+        <tr><td class="label">M. Ş. MARAL</td><td class="h2">₺88K</td><td class="h5">₺312K</td><td class="h3">₺142K</td><td class="h2">₺68K</td><td class="h0">—</td><td class="h1">₺44K</td><td class="total">₺654K</td></tr>
+        <tr><td class="label">ÇİZEL</td><td class="h3">₺156K</td><td class="h1">₺42K</td><td class="h4">₺188K</td><td class="h2">₺72K</td><td class="h1">₺40K</td><td class="h0">—</td><td class="total">₺498K</td></tr>
+        <tr><td class="label">ELEKTRİK</td><td class="h1">₺32K</td><td class="h4">₺198K</td><td class="h1">₺28K</td><td class="h3">₺68K</td><td class="h0">—</td><td class="h0">₺1K</td><td class="total">₺327K</td></tr>
+        <tr><td class="label">HAYRİ FİDAN</td><td class="h2">₺88K</td><td class="h0">—</td><td class="h2">₺72K</td><td class="h0">—</td><td class="h2">₺54K</td><td class="h0">—</td><td class="total">₺214K</td></tr>
+        <tr><td class="label">ARS GRUP</td><td class="h2">₺78K</td><td class="h1">₺28K</td><td class="h2">₺54K</td><td class="h1">₺23K</td><td class="h0">—</td><td class="h0">—</td><td class="total">₺183K</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ─────── DESIGN 8 ─────── -->
+<div class="section" id="s8">
+  <div class="section-header">
+    <div class="section-num">8</div>
+    <div class="section-meta">
+      <h2>Aylık Timeline — Grouped Bar <span class="badge badge-blue">Trend</span></h2>
+      <p>Aylar bazında her taşeronun harcamasını yan yana gösterir. Kim ne zaman yoğun çalışmış hemen belli olur.</p>
+    </div>
+  </div>
+  <div class="d8-wrap">
+    <div class="d8-chart">
+      <div class="d8-month">
+        <div class="d8-bars">
+          <div class="d8-bar" style="height:30px;background:#4f46e5" title="METİN KOÇAK"></div>
+          <div class="d8-bar" style="height:18px;background:#0ea5e9" title="M.Ş.MARAL"></div>
+          <div class="d8-bar" style="height:10px;background:#10b981" title="ÇİZEL"></div>
+          <div class="d8-bar" style="height:8px;background:#f59e0b" title="ELEKTRİK"></div>
+        </div>
+        <div class="d8-month-lbl">KAS'25</div>
+      </div>
+      <div class="d8-month">
+        <div class="d8-bars">
+          <div class="d8-bar" style="height:45px;background:#4f46e5"></div>
+          <div class="d8-bar" style="height:28px;background:#0ea5e9"></div>
+          <div class="d8-bar" style="height:22px;background:#10b981"></div>
+          <div class="d8-bar" style="height:12px;background:#f59e0b"></div>
+          <div class="d8-bar" style="height:6px;background:#ef4444"></div>
+        </div>
+        <div class="d8-month-lbl">ARA'25</div>
+      </div>
+      <div class="d8-month">
+        <div class="d8-bars">
+          <div class="d8-bar" style="height:60px;background:#4f46e5"></div>
+          <div class="d8-bar" style="height:42px;background:#0ea5e9"></div>
+          <div class="d8-bar" style="height:35px;background:#10b981"></div>
+          <div class="d8-bar" style="height:24px;background:#f59e0b"></div>
+          <div class="d8-bar" style="height:18px;background:#ef4444"></div>
+          <div class="d8-bar" style="height:14px;background:#8b5cf6"></div>
+        </div>
+        <div class="d8-month-lbl">OCA'26</div>
+      </div>
+      <div class="d8-month">
+        <div class="d8-bars">
+          <div class="d8-bar" style="height:80px;background:#4f46e5"></div>
+          <div class="d8-bar" style="height:65px;background:#0ea5e9"></div>
+          <div class="d8-bar" style="height:48px;background:#10b981"></div>
+          <div class="d8-bar" style="height:35px;background:#f59e0b"></div>
+          <div class="d8-bar" style="height:28px;background:#ef4444"></div>
+          <div class="d8-bar" style="height:20px;background:#8b5cf6"></div>
+        </div>
+        <div class="d8-month-lbl">ŞUB'26</div>
+      </div>
+      <div class="d8-month">
+        <div class="d8-bars">
+          <div class="d8-bar" style="height:95px;background:#4f46e5"></div>
+          <div class="d8-bar" style="height:75px;background:#0ea5e9"></div>
+          <div class="d8-bar" style="height:60px;background:#10b981"></div>
+          <div class="d8-bar" style="height:48px;background:#f59e0b"></div>
+          <div class="d8-bar" style="height:32px;background:#ef4444"></div>
+          <div class="d8-bar" style="height:24px;background:#8b5cf6"></div>
+        </div>
+        <div class="d8-month-lbl">MAR'26</div>
+      </div>
+      <div class="d8-month">
+        <div class="d8-bars">
+          <div class="d8-bar" style="height:110px;background:#4f46e5"></div>
+          <div class="d8-bar" style="height:88px;background:#0ea5e9"></div>
+          <div class="d8-bar" style="height:70px;background:#10b981"></div>
+          <div class="d8-bar" style="height:58px;background:#f59e0b"></div>
+          <div class="d8-bar" style="height:42px;background:#ef4444"></div>
+          <div class="d8-bar" style="height:30px;background:#8b5cf6"></div>
+        </div>
+        <div class="d8-month-lbl">NİS'26</div>
+      </div>
+    </div>
+    <div class="d8-legend">
+      <div class="d8-legend-item"><div class="d8-legend-dot" style="background:#4f46e5"></div>METİN KOÇAK</div>
+      <div class="d8-legend-item"><div class="d8-legend-dot" style="background:#0ea5e9"></div>M. Ş. MARAL</div>
+      <div class="d8-legend-item"><div class="d8-legend-dot" style="background:#10b981"></div>ÇİZEL</div>
+      <div class="d8-legend-item"><div class="d8-legend-dot" style="background:#f59e0b"></div>ELEKTRİK</div>
+      <div class="d8-legend-item"><div class="d8-legend-dot" style="background:#ef4444"></div>HAYRİ FİDAN</div>
+      <div class="d8-legend-item"><div class="d8-legend-dot" style="background:#8b5cf6"></div>ARS GRUP</div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────── DESIGN 9 ─────── -->
+<div class="section" id="s9">
+  <div class="section-header">
+    <div class="section-num">9</div>
+    <div class="section-meta">
+      <h2>Podyum (Top 3) + Diğerleri <span class="badge badge-green">Eğlenceli</span></h2>
+      <p>En fazla masraf çıkaran 3 taşeron podyumda büyük gösterilir, kalanlar sağda liste olarak sıralanır.</p>
+    </div>
+  </div>
+  <div class="d9-wrap">
+    <div class="d9-top">
+      <div class="d9-top-title">🏆 En Çok Masraf Çıkaran</div>
+      <div class="d9-podium">
+        <div class="d9-pod" style="height:80px;background:linear-gradient(180deg,#94a3b8,#64748b)">
+          <div class="d9-pod-name">M. Ş. MARAL</div>
+          <div class="d9-pod-val">₺654K</div>
+        </div>
+        <div class="d9-pod" style="height:110px;background:linear-gradient(180deg,#fbbf24,#f59e0b)">
+          <div class="d9-pod-name">METİN KOÇAK</div>
+          <div class="d9-pod-val">₺842K</div>
+        </div>
+        <div class="d9-pod" style="height:65px;background:linear-gradient(180deg,#a78bfa,#8b5cf6)">
+          <div class="d9-pod-name">ÇİZEL</div>
+          <div class="d9-pod-val">₺498K</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:#64748b;text-align:center">2. · 1. · 3.</div>
+    </div>
+    <div class="d9-others">
+      <div class="d9-top-title">Diğer Taşeronlar</div>
+      <br>
+      <div class="d9-other-row">
+        <div class="d9-other-num">4</div>
+        <div><div class="d9-other-name">ELEKTRİK</div><div class="d9-other-bar" style="width:60%;background:#f59e0b"></div></div>
+        <div class="d9-other-val">₺ 327.450</div>
+      </div>
+      <div class="d9-other-row">
+        <div class="d9-other-num">5</div>
+        <div><div class="d9-other-name">HAYRİ FİDAN</div><div class="d9-other-bar" style="width:40%;background:#ef4444"></div></div>
+        <div class="d9-other-val">₺ 214.880</div>
+      </div>
+      <div class="d9-other-row">
+        <div class="d9-other-num">6</div>
+        <div><div class="d9-other-name">ARS GRUP</div><div class="d9-other-bar" style="width:35%;background:#8b5cf6"></div></div>
+        <div class="d9-other-val">₺ 183.240</div>
+      </div>
+      <div class="d9-other-row">
+        <div class="d9-other-num">7</div>
+        <div><div class="d9-other-name">MEKANİK</div><div class="d9-other-bar" style="width:18%;background:#64748b"></div></div>
+        <div class="d9-other-val">₺ 97.600</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────── DESIGN 10 ─────── -->
+<div class="section" id="s10">
+  <div class="section-header">
+    <div class="section-num">10</div>
+    <div class="section-meta">
+      <h2>Scorecard Dashboard <span class="badge badge-green">Kapsamlı</span></h2>
+      <p>Üstte toplam özet, altta her taşeron için kompakt kart. Tarih filtresi + kategori filtresiyle tam dashboard deneyimi.</p>
+    </div>
+  </div>
+  <!-- Filtreler -->
+  <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+    <select style="padding:6px 12px;border-radius:8px;border:1px solid #334155;background:#1e293b;color:#cbd5e1;font-size:12px">
+      <option>Tüm Dönem</option><option>Bu Ay</option><option>Son 3 Ay</option>
+    </select>
+    <select style="padding:6px 12px;border-radius:8px;border:1px solid #334155;background:#1e293b;color:#cbd5e1;font-size:12px">
+      <option>Tüm Kategoriler</option><option>İSG</option><option>Elektrik</option>
+    </select>
+    <div style="margin-left:auto;font-size:12px;color:#64748b;line-height:32px">8 taşeron · 6 kategori · 1.024 hareket</div>
+  </div>
+  <!-- Özet satırı -->
+  <div class="d10-header">
+    <div class="d10-summary" style="flex:1">
+      <div class="d10-summary-lbl">Toplam Masraf</div>
+      <div class="d10-summary-val">₺ 2.881.540</div>
+      <div class="d10-summary-sub">1.024 hareket · 8 taşeron · 42 malzeme çeşidi</div>
+    </div>
+    <div class="d10-summary" style="flex:0.4;background:linear-gradient(135deg,#0ea5e9,#0284c7)">
+      <div class="d10-summary-lbl">Bu Ay</div>
+      <div class="d10-summary-val" style="font-size:20px">₺ 412.300</div>
+      <div class="d10-summary-sub">▲ %18 geçen aya göre</div>
+    </div>
+    <div class="d10-summary" style="flex:0.4;background:linear-gradient(135deg,#10b981,#059669)">
+      <div class="d10-summary-lbl">En Aktif</div>
+      <div class="d10-summary-val" style="font-size:16px">METİN KOÇAK</div>
+      <div class="d10-summary-sub">%30 pay · ₺842K</div>
+    </div>
+  </div>
+  <div class="d10-grid">
+    <div class="d10-card">
+      <div class="d10-card-name">METİN KOÇAK</div>
+      <div class="d10-card-val">₺ 842K</div>
+      <div class="d10-card-meta"><span class="d10-tag" style="background:#ede9fe;color:#6d28d9">347 hareket</span><span class="d10-tag" style="background:#dcfce7;color:#166534">%30</span></div>
+      <div class="d10-progress"><div class="d10-progress-fill" style="width:100%;background:#4f46e5"></div></div>
+    </div>
+    <div class="d10-card">
+      <div class="d10-card-name">M. Ş. MARAL</div>
+      <div class="d10-card-val">₺ 654K</div>
+      <div class="d10-card-meta"><span class="d10-tag" style="background:#dbeafe;color:#1d4ed8">218 hareket</span><span class="d10-tag" style="background:#dcfce7;color:#166534">%23</span></div>
+      <div class="d10-progress"><div class="d10-progress-fill" style="width:78%;background:#0ea5e9"></div></div>
+    </div>
+    <div class="d10-card">
+      <div class="d10-card-name">ÇİZEL</div>
+      <div class="d10-card-val">₺ 498K</div>
+      <div class="d10-card-meta"><span class="d10-tag" style="background:#dbeafe;color:#1d4ed8">189 hareket</span><span class="d10-tag" style="background:#dcfce7;color:#166534">%18</span></div>
+      <div class="d10-progress"><div class="d10-progress-fill" style="width:59%;background:#10b981"></div></div>
+    </div>
+    <div class="d10-card">
+      <div class="d10-card-name">ELEKTRİK</div>
+      <div class="d10-card-val">₺ 327K</div>
+      <div class="d10-card-meta"><span class="d10-tag" style="background:#fef9c3;color:#854d0e">142 hareket</span><span class="d10-tag" style="background:#dcfce7;color:#166534">%12</span></div>
+      <div class="d10-progress"><div class="d10-progress-fill" style="width:39%;background:#f59e0b"></div></div>
+    </div>
+    <div class="d10-card">
+      <div class="d10-card-name">HAYRİ FİDAN</div>
+      <div class="d10-card-val">₺ 214K</div>
+      <div class="d10-card-meta"><span class="d10-tag" style="background:#fee2e2;color:#991b1b">87 hareket</span><span class="d10-tag" style="background:#dcfce7;color:#166534">%8</span></div>
+      <div class="d10-progress"><div class="d10-progress-fill" style="width:26%;background:#ef4444"></div></div>
+    </div>
+    <div class="d10-card">
+      <div class="d10-card-name">ARS GRUP</div>
+      <div class="d10-card-val">₺ 183K</div>
+      <div class="d10-card-meta"><span class="d10-tag" style="background:#ede9fe;color:#6d28d9">73 hareket</span><span class="d10-tag" style="background:#dcfce7;color:#166534">%7</span></div>
+      <div class="d10-progress"><div class="d10-progress-fill" style="width:22%;background:#8b5cf6"></div></div>
+    </div>
+    <div class="d10-card">
+      <div class="d10-card-name">MEKANİK</div>
+      <div class="d10-card-val">₺ 97K</div>
+      <div class="d10-card-meta"><span class="d10-tag" style="background:#f1f5f9;color:#475569">41 hareket</span><span class="d10-tag" style="background:#dcfce7;color:#166534">%3</span></div>
+      <div class="d10-progress"><div class="d10-progress-fill" style="width:12%;background:#475569"></div></div>
+    </div>
+    <div class="d10-card" style="border-style:dashed;opacity:.5">
+      <div class="d10-card-name">DİĞER (3)</div>
+      <div class="d10-card-val">₺ 65K</div>
+      <div class="d10-card-meta"><span class="d10-tag" style="background:#f1f5f9;color:#475569">28 hareket</span></div>
+      <div class="d10-progress"><div class="d10-progress-fill" style="width:8%;background:#475569"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Footer -->
+<div style="text-align:center;padding:40px;color:#334155;font-size:12px">
+  Tasarım önerilerini inceledikten sonra hangisini uygulamak istediğinizi söyleyin.
+</div>
+
+<script>
+function scrollTo(n) {
+  document.getElementById('s'+n).scrollIntoView({behavior:'smooth'});
+  document.querySelectorAll('.pill').forEach((p,i) => p.classList.toggle('active', i===n-1));
+}
+function toggleAccordion(id) {
+  const el = document.getElementById(id);
+  const ch = document.getElementById('ch_'+id);
+  const hidden = el.classList.toggle('hidden');
+  ch.textContent = hidden ? '▶' : '▼';
+}
+// Nav pills highlight on scroll
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const n = e.target.id.replace('s','');
+      document.querySelectorAll('.pill').forEach((p,i) => p.classList.toggle('active', String(i+1)===n));
+    }
+  });
+}, {threshold: 0.3});
+for(let i=1;i<=10;i++) { const el = document.getElementById('s'+i); if(el) observer.observe(el); }
+</script>
+</body>
+</html>
