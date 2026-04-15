@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Veri Temizleme Aracı</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 520px; margin: 60px auto; padding: 20px; background: #f8fafc; color: #1e293b; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  .sub { color: #64748b; font-size: 14px; margin-bottom: 28px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  input { width: 100%; box-sizing: border-box; padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; margin-bottom: 14px; }
+  button { width: 100%; padding: 11px; background: #dc2626; color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; }
+  button:disabled { background: #94a3b8; cursor: not-allowed; }
+  #log { margin-top: 24px; background: #0f172a; color: #e2e8f0; border-radius: 10px; padding: 16px; font-size: 13px; font-family: monospace; min-height: 60px; max-height: 320px; overflow-y: auto; display: none; }
+  .ok  { color: #4ade80; }
+  .err { color: #f87171; }
+  .inf { color: #93c5fd; }
+  .warn { color: #fbbf24; font-weight: 600; border: 1px solid #fbbf24; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 13px; }
+</style>
+</head>
+<body>
+<h1>Veri Temizleme Aracı</h1>
+<p class="sub">Malzeme verilerini siler. Kullanıcı hesapları korunur.</p>
+
+<div class="warn">
+  ⚠️ Bu işlem geri alınamaz. Tüm stok, hareket, zimmet ve irsaliye verileri silinecek.
+</div>
+
+<label>E-posta</label>
+<input type="email" id="email" placeholder="admin@example.com" />
+
+<label>Şifre</label>
+<input type="password" id="pass" placeholder="••••••••" />
+
+<button id="btn" onclick="baslat()">Sil</button>
+
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js';
+import { getAuth, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js';
+import { getDatabase, ref, remove } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAOSvWbObTRgqlJ7QWDnyGuWUDlFEUMuv8",
+  authDomain: "shintea-dc091.firebaseapp.com",
+  databaseURL: "https://shintea-dc091-default-rtdb.europe-west1.firebasedatabase.app/",
+  projectId: "shintea-dc091",
+  storageBucket: "shintea-dc091.firebasestorage.app",
+  messagingSenderId: "5412538263",
+  appId: "1:5412538263:web:fb3cdb792250af9b23e6d2"
+};
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getDatabase(app);
+
+const SILINECEKLER = [
+  'items', 'movements', 'transfers', 'zimmet',
+  'irsaliyeListesi', 'irsaliyeMeta',
+  'firmalar', 'personel', 'teslimAlanlar', 'verilenBirimler',
+  'pendingActions', 'backups', 'presence',
+  'categories', 'birimler', 'malzemeTurleri', 'kullanimAlanlari'
+];
+
+const log = document.getElementById('log');
+
+function yazdir(msg, cls = '') {
+  const d = document.createElement('div');
+  d.className = cls;
+  d.textContent = msg;
+  log.appendChild(d);
+  log.scrollTop = log.scrollHeight;
+}
+
+window.baslat = async function() {
+  const email = document.getElementById('email').value.trim();
+  const pass  = document.getElementById('pass').value;
+  const btn   = document.getElementById('btn');
+
+  if (!email || !pass) { alert('E-posta ve şifre gerekli.'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'İşlem yapılıyor...';
+  log.style.display = 'block';
+  log.innerHTML = '';
+
+  try {
+    yazdir('Giriş yapılıyor...', 'inf');
+    await signInWithEmailAndPassword(auth, email, pass);
+    yazdir('✓ Giriş başarılı', 'ok');
+    yazdir('Veriler siliniyor...\n', 'inf');
+
+    let ok = 0, err = 0;
+    for (const col of SILINECEKLER) {
+      try {
+        await remove(ref(db, col));
+        yazdir(`✓ ${col}`, 'ok');
+        ok++;
+      } catch (e) {
+        yazdir(`✗ ${col}: ${e.message}`, 'err');
+        err++;
+      }
+    }
+
+    yazdir(`\nTamamlandı: ${ok} silindi, ${err} hata. users korundu.`, ok > 0 ? 'ok' : 'err');
+    btn.textContent = 'Tamamlandı';
+  } catch (e) {
+    yazdir(`Hata: ${e.message}`, 'err');
+    btn.disabled = false;
+    btn.textContent = 'Tekrar Dene';
+  }
+};
+</script>
+</body>
+</html>
