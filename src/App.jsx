@@ -125,7 +125,7 @@ const LoadingScreen = () => (
         <div style={{ textAlign: 'center' }}>
             <div className="auth-logo-icon" style={{ margin: '0 auto 24px' }}>S</div>
             <div className="loading-spinner" />
-            <div style={{ fontSize: '1.5rem', color: 'white', fontWeight: '800', fontFamily: "'Inter', sans-serif", letterSpacing: '-0.5px' }}>Shintea</div>
+            <div style={{ fontSize: '1.5rem', color: 'white', fontWeight: '600', fontFamily: "'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif", letterSpacing: '0.01em' }}>Shintea</div>
             <div style={{ color: 'rgba(255,255,255,0.45)', marginTop: '8px', fontSize: '12px', letterSpacing: '0.04em' }}>YÜKLENIYOR</div>
         </div>
     </div>
@@ -2786,7 +2786,7 @@ const App = () => {
                     <div>
                         <div style={{ position: 'relative', display: 'inline-block' }}>
                             <div className="sidebar-logo-text">Shintea</div>
-                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.062</span>
+                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.063</span>
                         </div>
                     </div>
                 </div>

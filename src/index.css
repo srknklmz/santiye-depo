@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
 
 /* ═══════════════════════════════════════════
    DESIGN SYSTEM — Minimal / Corporate
@@ -9,110 +9,120 @@
 ═══════════════════════════════════════════ */
 
 :root {
-  /* Brand */
-  --primary: #4f46e5;
-  --primary-dark: #4338ca;
-  --primary-light: #a5b4fc;
-  --primary-glow: rgba(79, 70, 229, 0.08);
+  /* ── IBM Carbon Design System — White Theme ── */
 
-  /* Semantic */
-  --success: #16a34a;
-  --success-soft: rgba(22, 163, 74, 0.08);
-  --warning: #d97706;
-  --warning-soft: rgba(217, 119, 6, 0.08);
-  --danger: #dc2626;
-  --danger-soft: rgba(220, 38, 38, 0.08);
+  /* Brand — Blue 60 ($interactive) */
+  --primary: #0f62fe;
+  --primary-dark: #0353e9;
+  --primary-light: #4589ff;
+  --primary-glow: rgba(15, 98, 254, 0.1);
 
-  /* Sidebar — LIGHT (matches light content) */
-  --sidebar-bg: #f0f4f8;
-  --sidebar-border: #dde3ea;
-  --sidebar-text: #7a90a8;
-  --sidebar-text-hover: #374151;
-  --sidebar-active-text: #4f46e5;
-  --sidebar-active-bg: rgba(79, 70, 229, 0.09);
-  --sidebar-hover-bg: rgba(0, 0, 0, 0.04);
+  /* Semantic — $support-* tokens */
+  --success: #24a148;
+  --success-soft: rgba(36, 161, 72, 0.1);
+  --warning: #f1c21b;
+  --warning-soft: rgba(241, 194, 27, 0.12);
+  --danger: #da1e28;
+  --danger-soft: rgba(218, 30, 40, 0.1);
+
+  /* Sidebar — Carbon Shell (always dark, independent of theme) */
+  --sidebar-bg: #161616;
+  --sidebar-border: #393939;
+  --sidebar-text: #8d8d8d;
+  --sidebar-text-hover: #f4f4f4;
+  --sidebar-active-text: #ffffff;
+  --sidebar-active-bg: #0f62fe;
+  --sidebar-hover-bg: rgba(255, 255, 255, 0.06);
   --sidebar-width: 208px;
 
-  /* Content — LIGHT */
-  --bg-main: #f5f7fa;
+  /* Content — Carbon White / Gray-10 layer */
+  --bg-main: #f4f4f4;
   --bg-card: #ffffff;
-  --bg-input: #ffffff;
-  --bg-table-header: #f0f4f8;
-  --text-table-header: #374151;
-  --bg-hover-row: #f4f7ff;
-  --text-main: #111827;
-  --text-secondary: #1f2937;
-  --text-muted: #6b7280;
-  --border: #e5e7eb;
-  --border-light: #f3f4f6;
+  --bg-input: #f4f4f4;
+  --bg-table-header: #e0e0e0;
+  --text-table-header: #161616;
+  --bg-hover-row: #e8e8e8;
+  --text-main: #161616;
+  --text-secondary: #525252;
+  --text-muted: #6f6f6f;
+  --border: #e0e0e0;
+  --border-light: #f4f4f4;
 
-  /* Shadows — minimal */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
-  --shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.07);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.09);
-  --shadow-xl: 0 16px 40px rgba(0, 0, 0, 0.12);
+  /* Shadows — Carbon uses restrained depth */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.08);
+  --shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.12);
+  --shadow-xl: 0 16px 32px rgba(0, 0, 0, 0.16);
 
-  /* Radius */
-  --radius-xs: 4px;
-  --radius-sm: 6px;
-  --radius: 8px;
-  --radius-lg: 10px;
-  --radius-xl: 14px;
-  --radius-2xl: 16px;
+  /* Radius — Carbon uses sharp/square edges (industrial) */
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius: 0px;
+  --radius-lg: 2px;
+  --radius-xl: 2px;
+  --radius-2xl: 2px;
   --radius-full: 9999px;
 
-  /* Animation durations */
-  --duration-fast:   120ms;
-  --duration-normal: 180ms;
-  --duration-slow:   250ms;
-  --duration-bounce: 450ms;
+  /* Animation — Carbon uses faster, snappier transitions */
+  --duration-fast:   70ms;
+  --duration-normal: 110ms;
+  --duration-slow:   240ms;
+  --duration-bounce: 240ms;
 
-  /* Row reference (matches .nav-item) */
-  --row-pad-v: 8px;
-  --row-pad-h: 12px;
+  /* Row reference — Carbon table rows */
+  --row-pad-v: 11px;
+  --row-pad-h: 16px;
 }
 
 /* ═══════════════════════════════════════════
    DARK THEME
 ═══════════════════════════════════════════ */
 [data-theme="dark"] {
-  /* Sidebar — DARK (matches dark content) */
-  --sidebar-bg: #0d1117;
-  --sidebar-border: rgba(255, 255, 255, 0.07);
-  --sidebar-text: #4d6480;
-  --sidebar-text-hover: #8fa3ba;
-  --sidebar-active-text: #a5b4fc;
-  --sidebar-active-bg: rgba(79, 70, 229, 0.14);
-  --sidebar-hover-bg: rgba(255, 255, 255, 0.04);
+  /* ── IBM Carbon g100 Dark Theme ── */
 
-  /* Content — DARK */
-  --bg-main: #0f1117;
-  --bg-card: #171c28;
-  --bg-input: #1e2433;
-  --bg-table-header: #1a2035;
-  --text-table-header: #8fa3ba;
-  --bg-hover-row: #1e2640;
-  --text-main: #e2e8f0;
-  --text-secondary: #cbd5e1;
-  --text-muted: #64748b;
-  --border: #2a3347;
-  --border-light: #1e2433;
+  /* Sidebar stays the same — Carbon Shell is always dark */
+  --sidebar-bg: #161616;
+  --sidebar-border: #393939;
+  --sidebar-text: #8d8d8d;
+  --sidebar-text-hover: #f4f4f4;
+  --sidebar-active-text: #ffffff;
+  --sidebar-active-bg: #0f62fe;
+  --sidebar-hover-bg: rgba(255, 255, 255, 0.06);
+
+  /* Content — Carbon g100 */
+  --bg-main: #161616;
+  --bg-card: #262626;
+  --bg-input: #393939;
+  --bg-table-header: #393939;
+  --text-table-header: #c6c6c6;
+  --bg-hover-row: #353535;
+  --text-main: #f4f4f4;
+  --text-secondary: #c6c6c6;
+  --text-muted: #a8a8a8;
+  --border: #393939;
+  --border-light: #262626;
 
   /* Shadows */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.25);
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
-  --shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
-  --shadow-xl: 0 16px 40px rgba(0, 0, 0, 0.5);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.5);
+  --shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.6);
+  --shadow-xl: 0 16px 32px rgba(0, 0, 0, 0.7);
 
-  /* Semantic — slightly adjusted for dark */
-  --success-soft: rgba(22, 163, 74, 0.15);
-  --warning-soft: rgba(217, 119, 6, 0.15);
-  --danger-soft: rgba(220, 38, 38, 0.15);
-  --primary-glow: rgba(79, 70, 229, 0.15);
+  /* Semantic — Carbon dark adjusted */
+  --success: #42be65;
+  --success-soft: rgba(66, 190, 101, 0.12);
+  --warning: #f1c21b;
+  --warning-soft: rgba(241, 194, 27, 0.15);
+  --danger: #fa4d56;
+  --danger-soft: rgba(250, 77, 86, 0.15);
+  --primary: #4589ff;
+  --primary-dark: #0f62fe;
+  --primary-light: #a6c8ff;
+  --primary-glow: rgba(69, 137, 255, 0.15);
 }
 
 /* ═══════════════════════════════════════════
@@ -135,7 +145,7 @@ body,
 }
 
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
   background-color: var(--bg-main);
   color: var(--text-main);
   font-size: 13px;
@@ -149,7 +159,7 @@ body {
 h1, h2, h3, h4,
 .section-title,
 .modal-title {
-  font-family: 'Inter', sans-serif;
+  font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
   font-weight: 600;
   color: var(--text-main);
 }
@@ -158,7 +168,7 @@ button,
 input,
 select,
 textarea {
-  font-family: 'Inter', sans-serif;
+  font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
   font-size: 13px;
 }
 
@@ -208,7 +218,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 }
 
 ::-webkit-datetime-edit {
-  font-family: 'Inter', sans-serif;
+  font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
   font-size: 13px;
   font-weight: 500;
   letter-spacing: 0.02em;
@@ -262,9 +272,7 @@ input[type="date"]::-webkit-date-and-time-value {
   overflow: hidden; /* taşmayı engelle */
 }
 
-[data-theme="dark"] .sidebar {
-  box-shadow: 6px 0 32px rgba(0, 0, 0, 0.4);
-}
+/* Carbon Shell sidebar is always dark — no theme override needed */
 
 .sidebar-brand {
   display: flex;
@@ -279,23 +287,23 @@ input[type="date"]::-webkit-date-and-time-value {
   width: 32px;
   height: 32px;
   background: var(--primary);
-  border-radius: 8px;
+  border-radius: 0px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-weight: 800;
+  font-weight: 700;
   font-size: 16px;
-  font-family: 'Inter', sans-serif;
+  font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
   flex-shrink: 0;
 }
 
 .sidebar-logo-text {
-  font-family: 'Inter', sans-serif;
-  font-weight: 700;
-  font-size: 15px;
-  color: var(--text-secondary);
-  letter-spacing: -0.2px;
+  font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  color: #f4f4f4;
+  letter-spacing: 0.01em;
 }
 
 .sidebar-logo-sub {
@@ -368,10 +376,12 @@ input[type="date"]::-webkit-date-and-time-value {
   background: var(--sidebar-active-bg);
   color: var(--sidebar-active-text);
   font-weight: 600;
+  border-left: 3px solid #ffffff;
+  padding-left: calc(var(--row-pad-h) - 3px);
 }
 
 .nav-item.active svg {
-  color: var(--primary-light);
+  color: #ffffff;
 }
 
 .nav-badge {
@@ -1436,76 +1446,101 @@ table thead tr[style*="background"] th {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--sidebar-bg);
+  background: #161616;
   padding: 20px;
 }
 
 .auth-card {
-  background: var(--bg-card);
-  border-radius: var(--radius-xl);
-  padding: 32px 28px;
+  background: #262626;
+  border-radius: 0px;
+  padding: 40px 32px;
   width: 100%;
-  max-width: 380px;
+  max-width: 400px;
   box-shadow: var(--shadow-xl);
-  border: 1px solid var(--sidebar-border);
+  border: 1px solid #393939;
 }
 
 .auth-logo {
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
 }
 
 .auth-logo-icon {
   width: 48px;
   height: 48px;
-  background: var(--primary);
-  border-radius: 12px;
+  background: #0f62fe;
+  border-radius: 0px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 12px;
+  margin: 0 auto 14px;
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 700;
   color: white;
 }
 
 .auth-logo-text {
-  font-size: 22px;
-  font-weight: 800;
-  color: var(--text-main);
-  letter-spacing: -0.3px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #f4f4f4;
+  letter-spacing: 0.01em;
 }
 
 .auth-logo-sub {
   font-size: 12px;
-  color: var(--text-muted);
+  color: #8d8d8d;
   margin-top: 3px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .auth-section-title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--text-main);
-  margin-bottom: 14px;
+  color: #f4f4f4;
+  margin-bottom: 16px;
+}
+
+.auth-card input,
+.auth-card select {
+  background: #393939;
+  border: 1px solid #525252;
+  color: #f4f4f4;
+  border-radius: 0px;
+}
+
+.auth-card input:focus,
+.auth-card select:focus {
+  border-color: #0f62fe;
+  box-shadow: 0 0 0 2px rgba(15, 98, 254, 0.15);
+}
+
+.auth-card input::placeholder {
+  color: #6f6f6f;
+}
+
+.auth-card label {
+  color: #c6c6c6;
+  font-size: 12px;
 }
 
 .auth-info-box {
-  background: var(--border-light);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 8px 12px;
+  background: #393939;
+  border: 1px solid #525252;
+  border-radius: 0px;
+  padding: 10px 14px;
   margin-bottom: 14px;
   font-size: 12px;
-  color: var(--text-muted);
+  color: #a8a8a8;
   line-height: 1.5;
 }
 
 .auth-error {
-  background: var(--danger-soft);
-  border: 1px solid rgba(220, 38, 38, 0.2);
-  color: var(--danger);
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
+  background: rgba(218, 30, 40, 0.12);
+  border: 1px solid rgba(218, 30, 40, 0.4);
+  color: #ff8389;
+  padding: 10px 14px;
+  border-radius: 0px;
   margin-bottom: 12px;
   font-size: 12px;
 }
@@ -1514,7 +1549,7 @@ table thead tr[style*="background"] th {
   text-align: center;
   margin-top: 16px;
   font-size: 12px;
-  color: var(--text-muted);
+  color: #8d8d8d;
 }
 
 .auth-switch-btn {
@@ -2053,7 +2088,7 @@ table thead tr[style*="background"] th {
   font-size: 13px;
   color: var(--text-main);
   transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
-  font-family: 'Inter', sans-serif;
+  font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
   box-sizing: border-box;
   appearance: none;
   -webkit-appearance: none;
@@ -2090,7 +2125,7 @@ table thead tr[style*="background"] th {
   border-radius: 10px;
   font-size: 13px;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
+  font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
   transition: opacity 0.15s, transform 0.12s;
 }
 
@@ -2135,7 +2170,7 @@ table thead tr[style*="background"] th {
   background: transparent;
   color: var(--primary);
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
+  font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
   font-weight: 600;
   white-space: nowrap;
   transition: all 0.12s;
