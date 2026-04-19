@@ -38,7 +38,9 @@ import {
     ChevronLeft,
     ChevronDown,
     ChevronRight,
-    FileText
+    FileText,
+    Warehouse,
+    ClipboardList
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
@@ -87,16 +89,16 @@ const DEFAULT_DEPO = 'Büyük Depo';
 
 // Sayfa tanımları — sayfa izin sistemi için
 const PAGE_DEFS = [
-    { key: 'summary', label: 'Stok Özeti', icon: '📦' },
-    { key: 'depo', label: 'Depo', icon: '🏭' },
-    { key: 'price', label: 'Fiyat Analizi', icon: '📈' },
-    { key: 'movements', label: 'Tüm Hareketler', icon: '🔄' },
-    { key: 'irsaliyeler', label: 'İrsaliyeler', icon: '📄' },
-    { key: 'zimmet', label: 'Zimmet', icon: '🔑' },
-    { key: 'personel-analiz', label: 'Sarfiyat', icon: '👷' },
-    { key: 'action_giris', label: 'Giriş Ekle', icon: '⬆️', isAction: true },
-    { key: 'action_cikis', label: 'Çıkış Ekle', icon: '⬇️', isAction: true },
-    { key: 'action_zimmet', label: 'Zimmet Ekle', icon: '📋', isAction: true },
+    { key: 'summary', label: 'Stok Özeti', icon: Package },
+    { key: 'depo', label: 'Depo', icon: Warehouse },
+    { key: 'price', label: 'Fiyat Analizi', icon: TrendingUp },
+    { key: 'movements', label: 'Tüm Hareketler', icon: History },
+    { key: 'irsaliyeler', label: 'İrsaliyeler', icon: FileText },
+    { key: 'zimmet', label: 'Zimmet', icon: UserCheck },
+    { key: 'personel-analiz', label: 'Sarfiyat', icon: Users },
+    { key: 'action_giris', label: 'Giriş Ekle', icon: ArrowUpRight, isAction: true },
+    { key: 'action_cikis', label: 'Çıkış Ekle', icon: ArrowDownLeft, isAction: true },
+    { key: 'action_zimmet', label: 'Zimmet Ekle', icon: ClipboardList, isAction: true },
 ];
 
 const normalizeRole = (role) => {
@@ -2784,7 +2786,7 @@ const App = () => {
                     <div>
                         <div style={{ position: 'relative', display: 'inline-block' }}>
                             <div className="sidebar-logo-text">Shintea</div>
-                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.061</span>
+                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.062</span>
                         </div>
                     </div>
                 </div>
@@ -5699,8 +5701,8 @@ const App = () => {
                                                             ];
                                                         return (
                                                             <div key={page.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 12px', background: 'var(--bg-main)', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                                                                <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-main)' }}>
-                                                                    {page.icon} {page.label}
+                                                                <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                    {page.icon && React.createElement(page.icon, { size: 14 })} {page.label}
                                                                 </span>
                                                                 <div style={{ display: 'flex', gap: '4px' }}>
                                                                     {options.map(({ val, lbl, bg, color, border }) => {
