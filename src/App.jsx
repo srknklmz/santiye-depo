@@ -77,8 +77,8 @@ const ROLE_LABELS = {
 const ROLE_COLORS = {
     admin: { bg: '#ede9fe', color: '#6d28d9' },
     yonetici: { bg: '#dcfce7', color: '#166534' },
-    izleyici: { bg: '#f1f5f9', color: '#475569' },
-    viewer: { bg: '#f1f5f9', color: '#475569' },
+    izleyici: { bg: 'var(--border-light)', color: 'var(--text-muted)' },
+    viewer: { bg: 'var(--border-light)', color: 'var(--text-muted)' },
 };
 
 // ─── Depo Sistemi ────────────────────────────────────────────────────────────
@@ -121,9 +121,10 @@ const normalizeUserProfile = (user, uidFallback = '') => {
 const LoadingScreen = () => (
     <div className="auth-screen">
         <div style={{ textAlign: 'center' }}>
-            <div className="auth-logo-icon" style={{ margin: '0 auto 16px' }}>S</div>
-            <div style={{ fontSize: '1.7rem', color: 'white', fontWeight: '800', fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: '-0.5px' }}>Shintea</div>
-            <div style={{ color: 'rgba(255,255,255,0.4)', marginTop: '8px', fontSize: '13px' }}>Yükleniyor...</div>
+            <div className="auth-logo-icon" style={{ margin: '0 auto 24px' }}>S</div>
+            <div className="loading-spinner" />
+            <div style={{ fontSize: '1.5rem', color: 'white', fontWeight: '800', fontFamily: "'Inter', sans-serif", letterSpacing: '-0.5px' }}>Shintea</div>
+            <div style={{ color: 'rgba(255,255,255,0.45)', marginTop: '8px', fontSize: '12px', letterSpacing: '0.04em' }}>YÜKLENIYOR</div>
         </div>
     </div>
 );
@@ -335,16 +336,16 @@ const AdminContextMenu = ({ ctx, onEdit, onDelete, onClose }) => {
     return createPortal(
         <div ref={ref} style={{
             position: 'fixed', top: ctx.y, left: ctx.x, zIndex: 99999,
-            background: 'white', borderRadius: '8px', boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
-            border: '1px solid #e2e8f0', minWidth: '150px', overflow: 'hidden', userSelect: 'none',
+            background: 'var(--bg-card)', borderRadius: '8px', boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
+            border: '1px solid var(--border)', minWidth: '150px', overflow: 'hidden', userSelect: 'none',
         }}>
-            <div onClick={onEdit} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 14px', fontSize: '13px', cursor: 'pointer', color: '#1e293b' }}
-                onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'}
+            <div onClick={onEdit} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 14px', fontSize: '13px', cursor: 'pointer', color: 'var(--text-main)' }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--border-light)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                 Düzenle
             </div>
-            <div style={{ height: '1px', background: '#f1f5f9' }} />
+            <div style={{ height: '1px', background: 'var(--border-light)' }} />
             <div onClick={onDelete} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 14px', fontSize: '13px', cursor: 'pointer', color: '#dc2626' }}
                 onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
@@ -369,7 +370,7 @@ const EditRowModal = ({ ctx, onSave, onClose }) => {
 
     if (!ctx) return null;
     const cfg = EDIT_CONFIGS[ctx.collection];
-    const inputStyle = { width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '13px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' };
+    const inputStyle = { width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '13px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' };
 
     const renderField = (f) => {
         const dynOpts = (ctx.dynamicOptions && ctx.dynamicOptions[f.optionsKey]) || [];
@@ -419,22 +420,22 @@ const EditRowModal = ({ ctx, onSave, onClose }) => {
 
     return createPortal(
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 99998, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
-            <div style={{ background: 'white', borderRadius: '12px', padding: '24px', width: '420px', maxWidth: '95vw', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ background: 'var(--bg-card)', borderRadius: '12px', padding: '24px', width: '420px', maxWidth: '95vw', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-                    <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#111827' }}>{cfg.label} Düzenle</h3>
-                    <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#9ca3af', lineHeight: 1 }}>×</button>
+                    <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: 'var(--text-main)' }}>{cfg.label} Düzenle</h3>
+                    <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: 'var(--text-muted)', lineHeight: 1 }}>×</button>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {cfg.fields.map(f => (
                         <div key={f.key}>
-                            <label style={{ fontSize: '11px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '4px' }}>{f.label}</label>
+                            <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '4px' }}>{f.label}</label>
                             {renderField(f)}
                         </div>
                     ))}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '20px' }}>
-                    <button type="button" onClick={onClose} style={{ padding: '7px 16px', borderRadius: '6px', border: '1px solid #e2e8f0', background: '#f8fafc', color: '#6b7280', fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit' }}>İptal</button>
-                    <button type="button" onClick={() => onSave(form)} style={{ padding: '7px 16px', borderRadius: '6px', border: 'none', background: '#4A90D9', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>Kaydet</button>
+                    <button type="button" onClick={onClose} style={{ padding: '7px 16px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-main)', color: 'var(--text-muted)', fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit' }}>İptal</button>
+                    <button type="button" onClick={() => onSave(form)} style={{ padding: '7px 16px', borderRadius: '6px', border: 'none', background: 'var(--primary)', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>Kaydet</button>
                 </div>
             </div>
         </div>,
@@ -465,7 +466,7 @@ const TableActionBar = ({ count, totalCount, onSelectAll, allSelected, onDelete,
                 {allSelected ? 'Seçimi Kaldır' : 'Tümünü Seç'}
             </button>
             {showDelete && <button onClick={onDelete} style={btn({ background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5' })}>🗑 Sil</button>}
-            {showEdit && <button onClick={onEdit} disabled={count !== 1} style={btn({ background: count === 1 ? '#e0f2fe' : '#f1f5f9', color: count === 1 ? '#0369a1' : '#94a3b8', border: count === 1 ? '1px solid #7dd3fc' : '1px solid #e2e8f0', cursor: count === 1 ? 'pointer' : 'not-allowed' })} title={count === 1 ? 'Seçili satırı düzenle' : 'Düzenlemek için tek satır seçin'}>✏️ Düzenle</button>}
+            {showEdit && <button onClick={onEdit} disabled={count !== 1} style={btn({ background: count === 1 ? '#e0f2fe' : 'var(--border-light)', color: count === 1 ? '#0369a1' : 'var(--text-muted)', border: count === 1 ? '1px solid #7dd3fc' : '1px solid var(--border)', cursor: count === 1 ? 'pointer' : 'not-allowed' })} title={count === 1 ? 'Seçili satırı düzenle' : 'Düzenlemek için tek satır seçin'}>✏️ Düzenle</button>}
             <button onClick={onHighlight} style={btn({ background: '#fefce8', color: '#a16207', border: '1px solid #fde68a' })}>🎨 Vurgula</button>
         </div>
     );
@@ -479,8 +480,8 @@ const HighlightColorPicker = ({ onSelect, onClose }) => {
         return () => document.removeEventListener('mousedown', h);
     }, [onClose]);
     return createPortal(
-        <div ref={pickerRef} style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', zIndex: 99999, background: 'white', borderRadius: '10px', boxShadow: '0 8px 32px rgba(0,0,0,0.18)', border: '1px solid #e2e8f0', padding: '16px 20px' }}>
-            <div style={{ fontSize: '12px', fontWeight: '700', color: '#475569', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Vurgulama Rengi</div>
+        <div ref={pickerRef} style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', zIndex: 99999, background: 'var(--bg-card)', borderRadius: '10px', boxShadow: '0 8px 32px rgba(0,0,0,0.18)', border: '1px solid var(--border)', padding: '16px 20px' }}>
+            <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Vurgulama Rengi</div>
             <div style={{ display: 'flex', gap: '8px' }}>
                 {HIGHLIGHT_COLORS.map(c => (
                     <button key={String(c.key)} onClick={() => { onSelect(c.key); onClose(); }}
@@ -498,13 +499,13 @@ const BulkDeleteModal = ({ data, onConfirm, onCancel }) => {
     if (!data) return null;
     return createPortal(
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 99998, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onCancel}>
-            <div style={{ background: 'white', borderRadius: '12px', padding: '24px', width: '340px', maxWidth: '95vw', boxShadow: '0 8px 32px rgba(0,0,0,0.22)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ background: 'var(--bg-card)', borderRadius: '12px', padding: '24px', width: '340px', maxWidth: '95vw', boxShadow: '0 8px 32px rgba(0,0,0,0.22)' }} onClick={e => e.stopPropagation()}>
                 <div style={{ fontSize: '15px', fontWeight: '700', color: '#dc2626', marginBottom: '10px' }}>⚠️ Silme Onayı</div>
-                <p style={{ margin: '0 0 20px', fontSize: '13px', color: '#475569', lineHeight: 1.6 }}>
+                <p style={{ margin: '0 0 20px', fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.6 }}>
                     <strong>{data.count}</strong> kayıt kalıcı olarak silinecek. Bu işlem geri alınamaz.
                 </p>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                    <button onClick={onCancel} style={{ padding: '7px 16px', borderRadius: '6px', border: '1px solid #e2e8f0', background: '#f8fafc', color: '#6b7280', fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit' }}>İptal</button>
+                    <button onClick={onCancel} style={{ padding: '7px 16px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-main)', color: 'var(--text-muted)', fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit' }}>İptal</button>
                     <button onClick={onConfirm} style={{ padding: '7px 16px', borderRadius: '6px', border: 'none', background: '#dc2626', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>Sil</button>
                 </div>
             </div>
@@ -559,7 +560,7 @@ const MultiSelectDropdown = ({ label, options, selected, onChange }) => {
             {open && (
                 <div ref={dropRef} style={{
                     position: 'fixed', top: dropPos.top, left: dropPos.left, width: Math.max(dropPos.width, 200),
-                    zIndex: 9999, background: '#ffffff', border: '1px solid #e2e8f0',
+                    zIndex: 9999, background: 'var(--bg-card)', border: '1px solid var(--border)',
                     borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
                     maxHeight: '260px', overflowY: 'auto', padding: '4px 0',
                 }}>
@@ -567,20 +568,20 @@ const MultiSelectDropdown = ({ label, options, selected, onChange }) => {
                         <button onClick={() => { onChange(new Set()); setOpen(false); }} style={{
                             width: '100%', textAlign: 'left', padding: '5px 10px', fontSize: '11px',
                             color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer',
-                            borderBottom: '1px solid #e2e8f0', fontWeight: 600,
+                            borderBottom: '1px solid var(--border)', fontWeight: 600,
                         }}>Temizle</button>
                     )}
                     {options.map(opt => (
                         <label key={opt} style={{
                             display: 'grid', gridTemplateColumns: 'auto 1fr', alignItems: 'center', gap: '8px',
-                            padding: '6px 10px', cursor: 'pointer', fontSize: '12px', color: '#1e293b',
+                            padding: '6px 10px', cursor: 'pointer', fontSize: '12px', color: 'var(--text-main)',
                         }}>
                             <input type="checkbox" checked={selected.has(opt)} onChange={() => {
                                 const next = new Set(selected);
                                 if (next.has(opt)) next.delete(opt); else next.add(opt);
                                 onChange(next);
                             }} style={{ accentColor: '#2563eb', cursor: 'pointer' }} />
-                            <span style={{ color: '#1e293b', fontSize: '12px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{opt}</span>
+                            <span style={{ color: 'var(--text-main)', fontSize: '12px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{opt}</span>
                         </label>
                     ))}
                 </div>
@@ -673,7 +674,7 @@ const DateRangePicker = ({ startDate, endDate, onChange }) => {
 
     const triggerStyle = {
         display: 'flex', alignItems: 'center', gap: '6px', padding: '0 10px',
-        height: '32px', borderRadius: '6px', border: `1px solid ${open ? '#4A90D9' : 'var(--border)'}`,
+        height: '32px', borderRadius: '6px', border: `1px solid ${open ? 'var(--primary)' : 'var(--border)'}`,
         background: 'var(--bg-main)', cursor: 'pointer', fontSize: '12px',
         color: 'var(--text-main)', flex: 1, userSelect: 'none',
     };
@@ -681,25 +682,25 @@ const DateRangePicker = ({ startDate, endDate, onChange }) => {
     const calIcon = <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>;
 
     const dropdown = open && createPortal(
-        <div ref={dropdownRef} style={{ position: 'absolute', top: dropdownPos.top, left: dropdownPos.left, background: 'white', borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.18)', padding: '16px', zIndex: 99999, width: '276px', border: '1px solid #e2e8f0' }}>
+        <div ref={dropdownRef} style={{ position: 'absolute', top: dropdownPos.top, left: dropdownPos.left, background: 'var(--bg-card)', borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.18)', padding: '16px', zIndex: 99999, width: '276px', border: '1px solid var(--border)' }}>
             {/* Hızlı seçimler */}
             <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
                 {[['7 Gün', 7], ['30 Gün', 30], ['90 Gün', 90]].map(([label, days]) => (
-                    <button key={label} onClick={() => handlePreset(days)} style={{ flex: 1, padding: '5px 0', borderRadius: '6px', border: '1px solid #e2e8f0', background: '#f8fafc', color: '#374151', fontSize: '11px', cursor: 'pointer', fontWeight: '500', fontFamily: 'inherit' }}>{label}</button>
+                    <button key={label} onClick={() => handlePreset(days)} style={{ flex: 1, padding: '5px 0', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-main)', color: 'var(--text-main)', fontSize: '11px', cursor: 'pointer', fontWeight: '500', fontFamily: 'inherit' }}>{label}</button>
                 ))}
-                <button style={{ flex: 1, padding: '5px 0', borderRadius: '6px', border: '1px solid #4A90D9', background: '#EBF3FC', color: '#4A90D9', fontSize: '11px', cursor: 'default', fontWeight: '600', fontFamily: 'inherit' }}>Özel</button>
+                <button style={{ flex: 1, padding: '5px 0', borderRadius: '6px', border: '1px solid var(--primary)', background: 'var(--primary-glow)', color: 'var(--primary)', fontSize: '11px', cursor: 'default', fontWeight: '600', fontFamily: 'inherit' }}>Özel</button>
             </div>
 
             {/* Ay navigasyonu */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                <button onClick={() => setViewDate(new Date(year, month - 1, 1))} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 8px', fontSize: '18px', color: '#6b7280', lineHeight: 1 }}>‹</button>
-                <span style={{ fontWeight: '600', fontSize: '13px', color: '#111827' }}>{MONTHS[month]} {year}</span>
-                <button onClick={() => setViewDate(new Date(year, month + 1, 1))} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 8px', fontSize: '18px', color: '#6b7280', lineHeight: 1 }}>›</button>
+                <button onClick={() => setViewDate(new Date(year, month - 1, 1))} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 8px', fontSize: '18px', color: 'var(--text-muted)', lineHeight: 1 }}>‹</button>
+                <span style={{ fontWeight: '600', fontSize: '13px', color: 'var(--text-main)' }}>{MONTHS[month]} {year}</span>
+                <button onClick={() => setViewDate(new Date(year, month + 1, 1))} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 8px', fontSize: '18px', color: 'var(--text-muted)', lineHeight: 1 }}>›</button>
             </div>
 
             {/* Gün başlıkları */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', marginBottom: '4px' }}>
-                {DAYS.map(d => <div key={d} style={{ textAlign: 'center', fontSize: '10px', fontWeight: '600', color: '#9ca3af', padding: '3px 0' }}>{d}</div>)}
+                {DAYS.map(d => <div key={d} style={{ textAlign: 'center', fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', padding: '3px 0' }}>{d}</div>)}
             </div>
 
             {/* Günler */}
@@ -712,8 +713,8 @@ const DateRangePicker = ({ startDate, endDate, onChange }) => {
                     return (
                         <div key={day} onClick={() => handleDayClick(day)} style={{
                             textAlign: 'center', padding: '5px 0', fontSize: '12px', cursor: 'pointer', borderRadius: '6px',
-                            background: (start || end) ? '#4A90D9' : inRange ? 'rgba(74,144,217,0.13)' : 'transparent',
-                            color: (start || end) ? 'white' : '#111827',
+                            background: (start || end) ? 'var(--primary)' : inRange ? 'var(--primary-glow)' : 'transparent',
+                            color: (start || end) ? 'white' : 'var(--text-main)',
                             fontWeight: (start || end) ? '700' : '400',
                         }}>
                             {day}
@@ -723,9 +724,9 @@ const DateRangePicker = ({ startDate, endDate, onChange }) => {
             </div>
 
             {/* Footer */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #e2e8f0' }}>
-                <button onClick={() => { setTempStart(''); setTempEnd(''); setSelectingEnd(false); onChange('', ''); setOpen(false); }} style={{ padding: '5px 14px', borderRadius: '6px', border: '1px solid #e2e8f0', background: '#f8fafc', color: '#6b7280', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit' }}>Temizle</button>
-                <button onClick={handleApply} style={{ padding: '5px 16px', borderRadius: '6px', border: 'none', background: '#4A90D9', color: 'white', fontWeight: '600', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit' }}>Seç</button>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
+                <button onClick={() => { setTempStart(''); setTempEnd(''); setSelectingEnd(false); onChange('', ''); setOpen(false); }} style={{ padding: '5px 14px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-main)', color: 'var(--text-muted)', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit' }}>Temizle</button>
+                <button onClick={handleApply} style={{ padding: '5px 16px', borderRadius: '6px', border: 'none', background: 'var(--primary)', color: 'white', fontWeight: '600', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit' }}>Seç</button>
             </div>
         </div>,
         document.body
@@ -2415,28 +2416,43 @@ const App = () => {
             doc.text('PROJE        : AFADEM', 14, 27);
             doc.text(`CIKTI TARIHI : ${ciktTarihi.toUpperCase()}`, 14, 32);
 
-            // [tarih, malzeme, miktar, birim, kisi, irsaliye]
+            // Sütun sırası: Tarih, İrsaliye No, Firma Adı, Malzeme Adı, Miktar, Birim
             const rows = movements.map(m => {
-                const isIn = m.normalizedType === 'in';
-                const tarih = normDateDisplay(m.date);
-                const miktar = isIn ? `+${(m.amount || 0).toLocaleString('tr-TR')}` : `-${(m.amount || 0).toLocaleString('tr-TR')}`;
-                const kisi = isIn ? (m.firmaAdi || m.recipient || '-') : (m.recipient || m.firmaAdi || '-');
-                const irsaliye = isIn ? (m.irsaliyeNo || '-') : (m.kullanimAlani || m.note || '-');
-                return [fixTR(tarih), fixTR(m.itemName || '-'), miktar, fixTR(m.unit || '-'), fixTR(kisi), fixTR(irsaliye)];
+                const firma = m.firmaAdi || m.recipient || '-';
+                const irsaliye = m.irsaliyeNo || '-';
+                const miktar = (m.amount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                return [
+                    fixTR(normDateDisplay(m.date)),
+                    fixTR(irsaliye),
+                    fixTR(firma),
+                    fixTR(m.itemName || '-'),
+                    miktar,
+                    fixTR(m.unit || '-')
+                ];
             });
 
+            // Sütun genişliklerini içeriğe göre hesapla (fontSize 9 ≈ 1.8mm/karakter)
+            const charToMm = (n) => Math.max(n * 1.8 + 6, 14);
+            const maxLen = (colIdx, header) => Math.max(header.length, ...rows.map(r => String(r[colIdx]).length));
+            const wTarih    = Math.min(charToMm(maxLen(0, 'Tarih')),    26);
+            const wIrsaliye = Math.min(charToMm(maxLen(1, 'Irsaliye No')), 34);
+            const wFirma    = Math.min(charToMm(maxLen(2, 'Firma Adi')), 42);
+            const wMiktar   = Math.min(charToMm(maxLen(4, 'Miktar')),   26);
+            const wBirim    = Math.min(charToMm(maxLen(5, 'Birim')),    16);
+            const wMalzeme  = Math.max(14, 182 - wTarih - wIrsaliye - wFirma - wMiktar - wBirim);
+
             autoTable(doc, {
-                head: [['Tarih', 'Malzeme', 'Miktar', 'Birim', 'Kisi / Firma', 'Irsaliye No']],
+                head: [['Tarih', 'Irsaliye No', 'Firma Adi', 'Malzeme Adi', 'Miktar', 'Birim']],
                 body: rows,
                 startY: 38,
                 tableWidth: 182,
                 columnStyles: {
-                    0: { cellWidth: 22, halign: 'center' },
-                    1: { cellWidth: 62, halign: 'center', overflow: 'ellipsize' },
-                    2: { cellWidth: 20, halign: 'right' },
-                    3: { cellWidth: 16, halign: 'center' },
-                    4: { cellWidth: 30, halign: 'center', overflow: 'ellipsize' },
-                    5: { cellWidth: 32, halign: 'center', overflow: 'ellipsize' }
+                    0: { cellWidth: wTarih,    halign: 'center' },
+                    1: { cellWidth: wIrsaliye, halign: 'center' },
+                    2: { cellWidth: wFirma,    halign: 'center', overflow: 'ellipsize' },
+                    3: { cellWidth: wMalzeme,  halign: 'center', overflow: 'ellipsize' },
+                    4: { cellWidth: wMiktar,   halign: 'right' },
+                    5: { cellWidth: wBirim,    halign: 'center' }
                 },
                 styles: { fontSize: 9, cellPadding: { top: 1.8, bottom: 1.8, left: 3, right: 3 }, textColor: [30, 30, 30], lineColor: [210, 210, 210], lineWidth: 0.2, overflow: 'ellipsize' },
                 headStyles: { fillColor: [248, 250, 252], textColor: [80, 80, 80], fontStyle: 'bold', fontSize: 9, cellPadding: { top: 2, bottom: 2, left: 3, right: 3 }, lineWidth: 0.3, lineColor: [190, 190, 190] },
@@ -2448,18 +2464,16 @@ const App = () => {
             // Tek malzeme filtreliyse toplam satırı
             const uniqueMaterials = [...new Set(movements.map(m => m.itemName).filter(Boolean))];
             if (uniqueMaterials.length === 1) {
-                const total = movements.reduce((sum, m) => {
-                    const isIn = m.normalizedType === 'in';
-                    return sum + (isIn ? (m.amount || 0) : -(m.amount || 0));
-                }, 0);
+                const total = movements.reduce((sum, m) => sum + (m.amount || 0), 0);
                 const unit = fixTR(movements[0]?.unit || '');
                 const finalY = doc.lastAutoTable.finalY + 5;
-                const miktarRightX = 118;
+                // Miktar sütununun sağ kenarı: sol margin + wTarih + wIrsaliye + wFirma + wMalzeme + wMiktar
+                const miktarRightX = 14 + wTarih + wIrsaliye + wFirma + wMalzeme + wMiktar;
                 doc.setPage(doc.getNumberOfPages());
                 doc.setFontSize(9);
                 doc.setFont(undefined, 'bold');
                 doc.setTextColor(30, 30, 30);
-                doc.text(`Toplam: ${total.toLocaleString('tr-TR')} ${unit}`, miktarRightX, finalY, { align: 'right' });
+                doc.text(`Toplam: ${total.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${unit}`, miktarRightX, finalY, { align: 'right' });
                 doc.setFont(undefined, 'normal');
             }
 
@@ -2564,7 +2578,8 @@ const App = () => {
             worksheet.insertRow(1, [fixTR(filename.replace(/_/g, ' ')).toUpperCase()]);
             worksheet.getRow(1).height = 25;
             worksheet.getRow(1).getCell(1).font = { size: 13, bold: true, color: { argb: 'FF1E293B' } };
-            worksheet.mergeCells('A1:F1');
+            const lastExcelCol = String.fromCharCode(64 + Math.max(columns.length, 1));
+            worksheet.mergeCells(`A1:${lastExcelCol}1`);
 
             worksheet.addRow([`FIRMA        : CIZEL INSAAT`]);
             worksheet.addRow([`PROJE        : AFADEM`]);
@@ -2578,10 +2593,15 @@ const App = () => {
 
             // ─── 2. COLUMN DEFINITIONS ────────────
             worksheet.columns = columns.map(c => {
-                let width = 15;
-                if (c.key === 'name') width = 45;
-                else if (c.key === 'category' || c.key.includes('firma')) width = 25;
-                else if (c.key === 'unit') width = 10;
+                const headerLen = c.label.length;
+                const maxDataLen = data.reduce((mx, row) => {
+                    const v = row[c.key];
+                    const len = typeof v === 'number'
+                        ? v.toLocaleString('tr-TR', { minimumFractionDigits: 2 }).length
+                        : String(v ?? '').length;
+                    return Math.max(mx, len);
+                }, 0);
+                const width = Math.min(Math.max(headerLen, maxDataLen) + 2, 55);
                 return { header: c.label, key: c.key, width };
             });
 
@@ -2611,11 +2631,10 @@ const App = () => {
                     const colKey = (columns[i - 1]?.key || '').toLowerCase();
                     const isNum = typeof cell.value === 'number';
 
+                    const colDef = columns[i - 1];
+                    const colAlign = colDef?.align || (isNum ? 'right' : 'left');
                     cell.font = { size: 9, color: { argb: 'FF1F1F1F' } };
-                    cell.alignment = {
-                        horizontal: colKey.includes('unit') || colKey.includes('birim') ? 'center' : (isNum ? 'right' : 'left'),
-                        vertical: 'middle'
-                    };
+                    cell.alignment = { horizontal: colAlign, vertical: 'middle' };
 
                     if (isNum) cell.numFmt = '#,##0.00';
 
@@ -2765,7 +2784,7 @@ const App = () => {
                     <div>
                         <div style={{ position: 'relative', display: 'inline-block' }}>
                             <div className="sidebar-logo-text">Shintea</div>
-                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.060</span>
+                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.061</span>
                         </div>
                     </div>
                 </div>
@@ -2948,7 +2967,7 @@ const App = () => {
                         <span className="mobile-header-logo-text">Shintea</span>
                     </div>
                     <button
-                        style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 6 }}
+                        style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 6 }}
                         onClick={() => setMobileSidebarOpen(true)}
                     >
                         <Menu size={22} />
@@ -3013,8 +3032,8 @@ const App = () => {
                                     warning: { label: 'AZALIYOR', color: '#f59e0b', bg: '#fffbeb', barColor: '#f59e0b' },
                                     healthy: { label: 'NORMAL', color: '#10b981', bg: '#ecfdf5', barColor: '#10b981' },
                                     surplus: { label: 'FAZLA', color: '#10b981', bg: '#ecfdf5', barColor: '#10b981' },
-                                    inactive: { label: 'ATIL', color: '#94a3b8', bg: '#f8fafc', barColor: '#94a3b8' },
-                                }[status] || { label: 'BELİRSİZ', color: '#94a3b8', bg: '#f8fafc', barColor: '#94a3b8' });
+                                    inactive: { label: 'ATIL', color: 'var(--text-muted)', bg: 'var(--bg-main)', barColor: 'var(--text-muted)' },
+                                }[status] || { label: 'BELİRSİZ', color: 'var(--text-muted)', bg: 'var(--bg-main)', barColor: 'var(--text-muted)' });
 
                                 return (
                                     <>
@@ -3022,9 +3041,9 @@ const App = () => {
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 0', flexShrink: 0, flexWrap: 'nowrap' }}>
                                             {/* Başlık + sayaç */}
                                             <h1 className="summary-title" style={{ fontSize: '18px', margin: 0, flexShrink: 0 }}>Stok Özeti</h1>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '20px', background: '#f1f5f9', border: '1px solid #e2e8f0', flexShrink: 0 }}>
-                                                <span style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a' }}>{summaryStats.totalProducts}</span>
-                                                <span style={{ fontSize: '10px', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Malzeme</span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '20px', background: 'var(--border-light)', border: '1px solid var(--border)', flexShrink: 0 }}>
+                                                <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-main)' }}>{summaryStats.totalProducts}</span>
+                                                <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Malzeme</span>
                                             </div>
                                             {/* Filtreler */}
                                             <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
@@ -3042,7 +3061,7 @@ const App = () => {
                                                 />
                                             </div>
                                             {/* Ayraç */}
-                                            <div style={{ width: '1px', background: '#e2e8f0', alignSelf: 'stretch', margin: '2px 4px', flexShrink: 0 }} />
+                                            <div style={{ width: '1px', background: 'var(--border)', alignSelf: 'stretch', margin: '2px 4px', flexShrink: 0 }} />
                                             {/* Stok değerleri */}
                                             {[
                                                 { lbl: 'Toplam Alınan', val: summaryStats.totalAlinan },
@@ -3051,15 +3070,15 @@ const App = () => {
                                                 { lbl: 'Kalan — Zimmet', val: summaryStats.totalZimmetDeger },
                                             ].map((item, i) => (
                                                 <React.Fragment key={i}>
-                                                    {i > 0 && <div style={{ width: '1px', background: '#e2e8f0', alignSelf: 'stretch', margin: '2px 0', flexShrink: 0 }} />}
+                                                    {i > 0 && <div style={{ width: '1px', background: 'var(--border)', alignSelf: 'stretch', margin: '2px 0', flexShrink: 0 }} />}
                                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0 12px', flexShrink: 0 }}>
-                                                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap', marginBottom: '3px' }}>{item.lbl}</span>
-                                                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap' }}>₺ {item.val > 0 ? item.val.toLocaleString('tr-TR', { maximumFractionDigits: 0 }) : '—'}</span>
+                                                        <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap', marginBottom: '3px' }}>{item.lbl}</span>
+                                                        <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap' }}>₺ {item.val > 0 ? item.val.toLocaleString('tr-TR', { maximumFractionDigits: 0 }) : '—'}</span>
                                                     </div>
                                                 </React.Fragment>
                                             ))}
                                             {/* Stok Değeri — gradient toplam */}
-                                            <div style={{ width: '1px', background: '#e2e8f0', alignSelf: 'stretch', margin: '2px 0', flexShrink: 0 }} />
+                                            <div style={{ width: '1px', background: 'var(--border)', alignSelf: 'stretch', margin: '2px 0', flexShrink: 0 }} />
                                             <div style={{ display: 'flex', alignItems: 'center', padding: '0 8px', flexShrink: 0 }}>
                                                 <div style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', borderRadius: '8px', padding: '5px 14px', textAlign: 'center' }}>
                                                     <div style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '2px', whiteSpace: 'nowrap' }}>Stok Değeri</div>
@@ -3193,7 +3212,7 @@ const App = () => {
                                                                                 const isNeg = qty < 0;
                                                                                 return (
                                                                                     <div key={d} style={{ flex: 1, textAlign: 'center', padding: '10px', background: qty !== 0 ? (isNeg ? '#fff1f2' : 'var(--bg-hover)') : 'transparent', borderRadius: '8px', border: `1px solid ${isNeg ? '#fca5a5' : 'var(--border)'}` }}>
-                                                                                        <div style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4px' }}>{d}</div>
+                                                                                        <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>{d}</div>
                                                                                         <div style={{ fontSize: '18px', fontWeight: 800, color: qty !== 0 ? (isNeg ? '#ef4444' : 'var(--text-main)') : '#cbd5e1' }}>{qty !== 0 ? formatNumber(qty) : '—'}</div>
                                                                                         <div style={{ fontSize: '10px', color: isNeg ? '#ef4444' : 'var(--text-muted)' }}>{selRow.unit}</div>
                                                                                     </div>
@@ -3523,9 +3542,9 @@ const App = () => {
                                 <div className="table-toolbar">
                                     <div className="flex align-center gap-3">
                                         <span className="section-title"><UserCheck size={17} /> Zimmet Yönetimi</span>
-                                        <div className="tab-pill-container" style={{ marginLeft: '12px', background: '#f1f5f9', padding: '4px', borderRadius: '8px', display: 'flex', gap: '4px' }}>
-                                            <button onClick={() => setZimmetView('active')} style={{ padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', border: 'none', cursor: 'pointer', background: zimmetView === 'active' ? 'white' : 'transparent', color: zimmetView === 'active' ? '#4f46e5' : '#64748b', boxShadow: zimmetView === 'active' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>Aktif Zimmetler</button>
-                                            <button onClick={() => setZimmetView('history')} style={{ padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', border: 'none', cursor: 'pointer', background: zimmetView === 'history' ? 'white' : 'transparent', color: zimmetView === 'history' ? '#4f46e5' : '#64748b', boxShadow: zimmetView === 'history' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>Zimmet Geçmişi</button>
+                                        <div className="tab-pill-container" style={{ marginLeft: '12px', background: 'var(--border-light)', padding: '4px', borderRadius: '8px', display: 'flex', gap: '4px' }}>
+                                            <button onClick={() => setZimmetView('active')} style={{ padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', border: 'none', cursor: 'pointer', background: zimmetView === 'active' ? 'var(--bg-card)' : 'transparent', color: zimmetView === 'active' ? '#4f46e5' : '#64748b', boxShadow: zimmetView === 'active' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>Aktif Zimmetler</button>
+                                            <button onClick={() => setZimmetView('history')} style={{ padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', border: 'none', cursor: 'pointer', background: zimmetView === 'history' ? 'var(--bg-card)' : 'transparent', color: zimmetView === 'history' ? '#4f46e5' : '#64748b', boxShadow: zimmetView === 'history' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>Zimmet Geçmişi</button>
                                         </div>
                                     </div>
                                     <div className="table-toolbar-right">
@@ -3907,13 +3926,20 @@ const App = () => {
                                                 <button className="btn-export-sm" onClick={() => exportToExcelGeneral(
                                                     movementsFiltered.map(m => ({
                                                         Tarih: normDateDisplay(m.date),
-                                                        Tur: m.normalizedType === 'in' ? 'Giriş' : 'Çıkış',
-                                                        Malzeme: m.itemName || '',
+                                                        IrsaliyeNo: m.irsaliyeNo || '-',
                                                         Firma: m.firmaAdi || m.recipient || '-',
+                                                        Malzeme: m.itemName || '',
                                                         Miktar: m.amount || 0,
-                                                        IrsaliyeNo: m.irsaliyeNo || '-'
+                                                        Birim: m.unit || '-'
                                                     })),
-                                                    [{ key: 'Tarih', label: 'Tarih' }, { key: 'Tur', label: 'Tür' }, { key: 'Malzeme', label: 'Malzeme' }, { key: 'Firma', label: 'Firma' }, { key: 'Miktar', label: 'Miktar' }, { key: 'IrsaliyeNo', label: 'İrsaliye No' }],
+                                                    [
+                                                        { key: 'Tarih',      label: 'Tarih',       align: 'center' },
+                                                        { key: 'IrsaliyeNo', label: 'İrsaliye No', align: 'center' },
+                                                        { key: 'Firma',      label: 'Firma Adı',   align: 'center' },
+                                                        { key: 'Malzeme',    label: 'Malzeme Adı', align: 'center' },
+                                                        { key: 'Miktar',     label: 'Miktar',      align: 'right'  },
+                                                        { key: 'Birim',      label: 'Birim',       align: 'center' }
+                                                    ],
                                                     'Hareket_Kayitlari'
                                                 )}>
                                                     <FileSpreadsheet size={14} className="icon-excel" /> Excel
@@ -4206,9 +4232,9 @@ const App = () => {
                                 {/* ── HEADER ── */}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap', flexShrink: 0 }}>
                                     <h1 className="summary-title" style={{ fontSize: '18px', margin: 0, flexShrink: 0 }}>Sarfiyat</h1>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '20px', background: '#f1f5f9', border: '1px solid #e2e8f0', flexShrink: 0 }}>
-                                        <span style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a' }}>{filteredPersonel.length}</span>
-                                        <span style={{ fontSize: '10px', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Personel</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '20px', background: 'var(--border-light)', border: '1px solid var(--border)', flexShrink: 0 }}>
+                                        <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-main)' }}>{filteredPersonel.length}</span>
+                                        <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Personel</span>
                                     </div>
                                     <div className="search-container" style={{ margin: 0, flexShrink: 0 }}>
                                         <Search size={13} className="search-icon" />
@@ -4240,10 +4266,10 @@ const App = () => {
                                             const barW = totalCount > 0 ? Math.round((data.count / totalCount) * 100) : 0;
                                             return (
                                                 <div key={ad} style={{ flex: '0 0 auto', minWidth: '130px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                                    <span style={{ fontSize: '9px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ad}</span>
+                                                    <span style={{ fontSize: '9px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ad}</span>
                                                     <span style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-main)', lineHeight: 1 }}>₺{fmtK(data.tutar)}</span>
                                                     <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
-                                                        <span style={{ fontSize: '10px', color: '#94a3b8', background: 'var(--bg-main)', borderRadius: '4px', padding: '1px 5px', whiteSpace: 'nowrap' }}>{data.count} hareket</span>
+                                                        <span style={{ fontSize: '10px', color: 'var(--text-muted)', background: 'var(--bg-main)', borderRadius: '4px', padding: '1px 5px', whiteSpace: 'nowrap' }}>{data.count} hareket</span>
                                                         {pct > 0 && <span style={{ fontSize: '10px', fontWeight: 700, color: color, background: `${color}22`, borderRadius: '4px', padding: '1px 5px' }}>%{pct}</span>}
                                                     </div>
                                                     <div style={{ height: '3px', borderRadius: '2px', background: 'var(--bg-main)', overflow: 'hidden' }}>
@@ -4292,7 +4318,7 @@ const App = () => {
                                                             onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = isSel ? '#eff6ff' : 'transparent'; }}
                                                         >
                                                             <td style={{ padding: '6px 10px', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                                                                <span style={{ marginRight: '5px', color: '#94a3b8', fontSize: '10px' }}>▶</span>
+                                                                <span style={{ marginRight: '5px', color: 'var(--text-muted)', fontSize: '10px' }}>▶</span>
                                                                 {ad}
                                                             </td>
                                                             <td style={{ padding: '6px 10px', whiteSpace: 'nowrap' }}>
@@ -4327,16 +4353,16 @@ const App = () => {
                                                 </div>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                     <ExportButtons data={detayExportData} title={`${paSelectedPersonel} - Hareketler`} columns={detayExportCols} filename={`${paSelectedPersonel}_Hareketler`} />
-                                                    <button onClick={() => setPaSelectedPersonel(null)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#94a3b8', fontSize: '18px', lineHeight: 1, padding: '0 4px' }}>×</button>
+                                                    <button onClick={() => setPaSelectedPersonel(null)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '18px', lineHeight: 1, padding: '0 4px' }}>×</button>
                                                 </div>
                                             </div>
                                             {/* Detay tablo */}
                                             <div style={{ overflow: 'auto', flex: 1 }}>
                                                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                                                     <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
-                                                        <tr style={{ background: '#e2e8f0' }}>
+                                                        <tr style={{ background: 'var(--border)' }}>
                                                             {['TARİH', 'MALZEME', 'MİKTAR', 'BİRİM', 'TUTAR'].map((h, i) => (
-                                                                <th key={i} style={{ padding: '6px 10px', textAlign: i >= 2 ? 'right' : 'left', fontWeight: 700, fontSize: '10px', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{h}</th>
+                                                                <th key={i} style={{ padding: '6px 10px', textAlign: i >= 2 ? 'right' : 'left', fontWeight: 700, fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{h}</th>
                                                             ))}
                                                         </tr>
                                                     </thead>
@@ -4344,7 +4370,7 @@ const App = () => {
                                                         {detayRows.map((m, di) => {
                                                             const tutar = (Number(m.amount) || 0) * unitPrice(m.itemId, m);
                                                             return (
-                                                                <tr key={m.id || di} style={{ borderBottom: '1px solid #e2e8f0', background: di % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                                                                <tr key={m.id || di} style={{ borderBottom: '1px solid var(--border)', background: di % 2 === 0 ? 'var(--bg-card)' : 'var(--bg-main)' }}>
                                                                     <td style={{ padding: '6px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{normDateDisplay(m.date)}</td>
                                                                     <td style={{ padding: '6px 10px', whiteSpace: 'nowrap' }}>{m.itemName || '—'}</td>
                                                                     <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 600, whiteSpace: 'nowrap' }}>{Number(m.amount).toLocaleString('tr-TR')}</td>
@@ -4491,12 +4517,12 @@ const App = () => {
                                     </div>
                                     <div className="flex flex-column gap-3">
                                         {pendingUsers.map(u => (
-                                            <div key={u.uid} style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px 16px' }}>
+                                            <div key={u.uid} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px 16px' }}>
                                                 <div className="flex justify-between align-center" style={{ flexWrap: 'wrap', gap: '10px' }}>
                                                     <div>
                                                         <div style={{ fontWeight: '600', fontSize: '13px' }}>{u.name}</div>
-                                                        <div style={{ color: '#6b7280', fontSize: '12px', marginTop: '2px' }}>{u.email}</div>
-                                                        <div style={{ color: '#94a3b8', fontSize: '12px', marginTop: '2px' }}>
+                                                        <div style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '2px' }}>{u.email}</div>
+                                                        <div style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '2px' }}>
                                                             Kayıt: {u.createdAt ? new Date(u.createdAt).toLocaleDateString('tr-TR') : '-'}
                                                         </div>
                                                     </div>
@@ -4838,7 +4864,7 @@ const App = () => {
                                                 {DEPOLAR.map(d => <option key={d} value={d}>{d}</option>)}
                                             </select>
                                         </div>
-                                        <div style={{ paddingTop: '18px', color: '#94a3b8', flexShrink: 0 }}>→</div>
+                                        <div style={{ paddingTop: '18px', color: 'var(--text-muted)', flexShrink: 0 }}>→</div>
                                         <div style={{ flex: 1 }}>
                                             <label className="label">Hedef Depo</label>
                                             <select
@@ -4858,7 +4884,7 @@ const App = () => {
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 80px 28px', gap: '6px', marginBottom: '6px' }}>
                                             <span className="label" style={{ margin: 0 }}>Malzeme</span>
                                             <span className="label" style={{ margin: 0 }}>Miktar</span>
-                                            <span className="label" style={{ margin: 0, fontSize: '10px', color: '#94a3b8' }}>Mevcut</span>
+                                            <span className="label" style={{ margin: 0, fontSize: '10px', color: 'var(--text-muted)' }}>Mevcut</span>
                                             <span />
                                         </div>
                                         {transferForm.rows.map((row, idx) => {
@@ -4928,7 +4954,7 @@ const App = () => {
 
                                     {/* Not */}
                                     <div className="mb-2">
-                                        <label className="label">Not <span style={{ fontWeight: 400, color: '#94a3b8' }}>(opsiyonel)</span></label>
+                                        <label className="label">Not <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(opsiyonel)</span></label>
                                         <input
                                             type="text"
                                             placeholder="Transfer nedeni..."
@@ -5603,7 +5629,7 @@ const App = () => {
                                             defaultValue={editingUser?.email || ''}
                                             disabled={!!editingUser}
                                             placeholder="ornek@email.com"
-                                            style={editingUser ? { background: '#f1f5f9', color: '#94a3b8' } : {}}
+                                            style={editingUser ? { background: 'var(--border-light)', color: 'var(--text-muted)' } : {}}
                                         />
                                     </div>
 
@@ -6003,7 +6029,7 @@ class AppErrorBoundary extends React.Component {
                         <p style={{ color: '#64748b', lineHeight: 1.6 }}>
                             Ekran yüklenirken bir hata oluştu. Sayfayı yenileyin. Sorun devam ederse yöneticinize bu mesajı iletin.
                         </p>
-                        <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: '#f8fafc', border: '1px solid #e2e8f0', padding: 12, borderRadius: 8, fontSize: 12, color: '#334155' }}>
+                        <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: 'var(--bg-main)', border: '1px solid var(--border)', padding: 12, borderRadius: 8, fontSize: 12, color: 'var(--text-main)' }}>
                             {this.state.errorMessage}
                         </pre>
                     </div>
