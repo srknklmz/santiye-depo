@@ -2786,7 +2786,7 @@ const App = () => {
                     <div>
                         <div style={{ position: 'relative', display: 'inline-block' }}>
                             <div className="sidebar-logo-text">Shintea</div>
-                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.063</span>
+                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.064</span>
                         </div>
                     </div>
                 </div>
@@ -4109,6 +4109,15 @@ const App = () => {
                     {activeTab === 'personel-analiz' && (() => {
                         const cikislar = movements.filter(m => m.type === 'out');
 
+                        // Ekip adı normalleştirme — "diğer", "Diğer", "DIGER", boş = hepsi "Diğer"
+                        const normalizeTeamName = (v) => {
+                            const cleaned = (v || '').trim();
+                            if (!cleaned) return 'Diğer';
+                            const lower = cleaned.toLocaleLowerCase('tr');
+                            if (lower === 'diğer' || lower === 'diger') return 'Diğer';
+                            return cleaned;
+                        };
+
                         // Item bazlı birim fiyat — summaryStats ile AYNI yöntem (tutarlı toplam için)
                         // Sadece birimFiyat > 0 olan girişler ortalamaya giriyor
                         const itemPriceMap = {};
@@ -4126,8 +4135,8 @@ const App = () => {
                         Object.entries(_acc).forEach(([id, d]) => { itemPriceMap[id] = d.v / d.a; });
                         const unitPrice = (itemId, mov) => Number(mov?.birimFiyat) || itemPriceMap[String(itemId)] || 0;
 
-                        // Ekip listesi
-                        const ekipList = [...new Set(cikislar.map(m => m.verilenBirim || '').filter(Boolean))].sort();
+                        // Ekip listesi — normalize edilmiş
+                        const ekipList = [...new Set(cikislar.map(m => normalizeTeamName(m.verilenBirim)))].sort((a, b) => a.localeCompare(b, 'tr'));
 
                         // Personel bazlı özet
                         const personelMap = {};
@@ -4140,7 +4149,7 @@ const App = () => {
                             p.hareketler.push(m);
                             p.malzemeler.add((m.itemName || '').trim());
                             p.tutar += (Number(m.amount) || 0) * unitPrice(m.itemId, m);
-                            if (m.verilenBirim && p.ekip === '—') p.ekip = m.verilenBirim;
+                            if (p.ekip === '—') p.ekip = normalizeTeamName(m.verilenBirim);
                         });
                         Object.values(personelMap).forEach(p => {
                             const dates = p.hareketler.map(m => m.date || '').filter(Boolean).sort();
@@ -4176,7 +4185,7 @@ const App = () => {
                         // Taşeron (ekip) bazlı özet kartlar için
                         const taseronMap = {};
                         cikislar.forEach(m => {
-                            const key = (m.verilenBirim || '').trim() || 'Diğer';
+                            const key = normalizeTeamName(m.verilenBirim);
                             if (!taseronMap[key]) taseronMap[key] = { tutar: 0, count: 0 };
                             taseronMap[key].tutar += (Number(m.amount) || 0) * unitPrice(m.itemId, m);
                             taseronMap[key].count += 1;
@@ -4186,12 +4195,26 @@ const App = () => {
                         const totalCount = taseronSorted.reduce((s, [, v]) => s + v.count, 0);
                         const TOP_N = 7;
                         const topTaseronlar = taseronSorted.slice(0, TOP_N);
-                        const digerTaseronlar = taseronSorted.slice(TOP_N);
-                        const digerTutar = digerTaseronlar.reduce((s, [, v]) => s + v.tutar, 0);
-                        const digerCount = digerTaseronlar.reduce((s, [, v]) => s + v.count, 0);
-                        const taseronCards = digerTaseronlar.length > 0
-                            ? [...topTaseronlar, [`Diğer (${digerTaseronlar.length})`, { tutar: digerTutar, count: digerCount, isDiger: true }]]
-                            : topTaseronlar;
+                        const overflowTaseronlar = taseronSorted.slice(TOP_N);
+                        const overflowTutar = overflowTaseronlar.reduce((s, [, v]) => s + v.tutar, 0);
+                        const overflowCount = overflowTaseronlar.reduce((s, [, v]) => s + v.count, 0);
+
+                        // Top N dışı ekipleri "Diğer" kartıyla birleştir (varsa) veya yeni "Diğer" kartı oluştur
+                        let taseronCards;
+                        if (overflowTaseronlar.length > 0) {
+                            const digerIdx = topTaseronlar.findIndex(([k]) => k === 'Diğer');
+                            if (digerIdx >= 0) {
+                                // Zaten "Diğer" var → overflow verilerini üstüne topla
+                                const [dKey, dVal] = topTaseronlar[digerIdx];
+                                const merged = [dKey, { tutar: dVal.tutar + overflowTutar, count: dVal.count + overflowCount, isDiger: true }];
+                                taseronCards = [...topTaseronlar.slice(0, digerIdx), merged, ...topTaseronlar.slice(digerIdx + 1)];
+                            } else {
+                                // "Diğer" yok → aggregate olarak ekle
+                                taseronCards = [...topTaseronlar, ['Diğer', { tutar: overflowTutar, count: overflowCount, isDiger: true }]];
+                            }
+                        } else {
+                            taseronCards = topTaseronlar;
+                        }
                         const CARD_COLORS = ['#6366f1','#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
                         const fmtK = (v) => v >= 1000000 ? `${(v/1000000).toFixed(1).replace('.0','')}M` : v >= 1000 ? `${Math.round(v/1000)}K` : Math.round(v).toString();
 
