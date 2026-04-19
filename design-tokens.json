@@ -1,0 +1,269 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "$meta": {
+    "name": "Şantiye Depo Design System",
+    "version": "1.0.0",
+    "description": "Design tokens for the Şantiye Depo construction site inventory management application.",
+    "generatedAt": "2026-04-19",
+    "competitors": ["Procore HELIX", "Fieldwire by Hilti", "Odoo 19"]
+  },
+
+  "color": {
+    "$description": "Core color palette. Primary is indigo — consistent with modern ERP conventions (Procore HELIX, Odoo). Semantic colors map directly to construction-domain meanings: green=entry, red=exit/alert, amber=warning/low-stock.",
+
+    "brand": {
+      "primary":       { "$value": "#4f46e5", "$type": "color", "$description": "Indigo 600 — primary actions, active nav, focus rings" },
+      "primary-dark":  { "$value": "#4338ca", "$type": "color", "$description": "Indigo 700 — hover state for primary" },
+      "primary-light": { "$value": "#a5b4fc", "$type": "color", "$description": "Indigo 300 — active nav icon tint in sidebar" },
+      "primary-glow":  { "$value": "rgba(79, 70, 229, 0.08)", "$type": "color", "$description": "Primary at 8% — focus shadow, soft highlights" }
+    },
+
+    "semantic": {
+      "success":       { "$value": "#16a34a", "$type": "color", "$description": "Green 600 — stock IN movements, healthy status" },
+      "success-soft":  { "$value": "rgba(22, 163, 74, 0.08)", "$type": "color", "$description": "Green at 8% — badge backgrounds, row tints" },
+      "warning":       { "$value": "#d97706", "$type": "color", "$description": "Amber 600 — low stock, pending actions" },
+      "warning-soft":  { "$value": "rgba(217, 119, 6, 0.08)", "$type": "color", "$description": "Amber at 8% — warning badge backgrounds" },
+      "danger":        { "$value": "#dc2626", "$type": "color", "$description": "Red 600 — stock OUT movements, critical stock, delete actions" },
+      "danger-soft":   { "$value": "rgba(220, 38, 38, 0.08)", "$type": "color", "$description": "Red at 8% — danger badge backgrounds" }
+    },
+
+    "neutral": {
+      "50":  { "$value": "#f8fafc", "$type": "color" },
+      "100": { "$value": "#f1f5f9", "$type": "color" },
+      "200": { "$value": "#e2e8f0", "$type": "color" },
+      "300": { "$value": "#cbd5e1", "$type": "color" },
+      "400": { "$value": "#94a3b8", "$type": "color" },
+      "500": { "$value": "#64748b", "$type": "color" },
+      "600": { "$value": "#475569", "$type": "color" },
+      "700": { "$value": "#374151", "$type": "color" },
+      "800": { "$value": "#1f2937", "$type": "color" },
+      "900": { "$value": "#111827", "$type": "color" }
+    },
+
+    "surface": {
+      "light": {
+        "bg-main":         { "$value": "#f5f7fa", "$type": "color", "$description": "App background" },
+        "bg-card":         { "$value": "#ffffff", "$type": "color", "$description": "Card / panel background" },
+        "bg-input":        { "$value": "#ffffff", "$type": "color", "$description": "Form input background" },
+        "bg-table-header": { "$value": "#f0f4f8", "$type": "color", "$description": "Sticky table header background" },
+        "bg-hover-row":    { "$value": "#f4f7ff", "$type": "color", "$description": "Table row hover state" },
+        "sidebar-bg":      { "$value": "#f0f4f8", "$type": "color", "$description": "Sidebar panel background" }
+      },
+      "dark": {
+        "bg-main":         { "$value": "#0f1117", "$type": "color" },
+        "bg-card":         { "$value": "#171c28", "$type": "color" },
+        "bg-input":        { "$value": "#1e2433", "$type": "color" },
+        "bg-table-header": { "$value": "#1a2035", "$type": "color" },
+        "bg-hover-row":    { "$value": "#1e2640", "$type": "color" },
+        "sidebar-bg":      { "$value": "#0d1117", "$type": "color" }
+      }
+    },
+
+    "text": {
+      "light": {
+        "main":      { "$value": "#111827", "$type": "color" },
+        "secondary": { "$value": "#1f2937", "$type": "color" },
+        "muted":     { "$value": "#6b7280", "$type": "color" }
+      },
+      "dark": {
+        "main":      { "$value": "#e2e8f0", "$type": "color" },
+        "secondary": { "$value": "#cbd5e1", "$type": "color" },
+        "muted":     { "$value": "#64748b", "$type": "color" }
+      }
+    },
+
+    "border": {
+      "light": {
+        "default": { "$value": "#e5e7eb", "$type": "color" },
+        "subtle":  { "$value": "#f3f4f6", "$type": "color" }
+      },
+      "dark": {
+        "default": { "$value": "#2a3347", "$type": "color" },
+        "subtle":  { "$value": "#1e2433", "$type": "color" }
+      }
+    }
+  },
+
+  "typography": {
+    "$description": "Single typeface (Inter) with a 10-step scale anchored at 13px base. ERP apps run denser than consumer apps — 13px is intentional. Scale steps are named by role, not arbitrary px values.",
+
+    "fontFamily": {
+      "base": { "$value": "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", "$type": "fontFamily" }
+    },
+
+    "fontSize": {
+      "2xs":  { "$value": "9px",  "$type": "fontSize", "$description": "Mini labels, stat sub-labels" },
+      "xs":   { "$value": "10px", "$type": "fontSize", "$description": "Badge text, sidebar sub-text" },
+      "sm":   { "$value": "11px", "$type": "fontSize", "$description": "Table column headers (uppercase), secondary meta" },
+      "base": { "$value": "13px", "$type": "fontSize", "$description": "Default body text, table cells, form inputs" },
+      "md":   { "$value": "14px", "$type": "fontSize", "$description": "Section titles, modal titles" },
+      "lg":   { "$value": "15px", "$type": "fontSize", "$description": "Sidebar brand name, auth headings" },
+      "xl":   { "$value": "17px", "$type": "fontSize", "$description": "Form modal panel title" },
+      "2xl":  { "$value": "22px", "$type": "fontSize", "$description": "Page/summary titles" },
+      "3xl":  { "$value": "28px", "$type": "fontSize", "$description": "KPI stat values" }
+    },
+
+    "fontWeight": {
+      "regular":   { "$value": "400", "$type": "fontWeight" },
+      "medium":    { "$value": "500", "$type": "fontWeight" },
+      "semibold":  { "$value": "600", "$type": "fontWeight" },
+      "bold":      { "$value": "700", "$type": "fontWeight" },
+      "extrabold": { "$value": "800", "$type": "fontWeight" }
+    },
+
+    "lineHeight": {
+      "tight":  { "$value": "1.2", "$type": "lineHeight" },
+      "normal": { "$value": "1.5", "$type": "lineHeight" },
+      "relaxed":{ "$value": "1.65", "$type": "lineHeight" }
+    },
+
+    "letterSpacing": {
+      "tight":    { "$value": "-0.5px", "$type": "letterSpacing", "$description": "Large KPI numbers" },
+      "normal":   { "$value": "0",      "$type": "letterSpacing" },
+      "wide":     { "$value": "0.04em", "$type": "letterSpacing", "$description": "Uppercase filter labels" },
+      "widest":   { "$value": "0.08em", "$type": "letterSpacing", "$description": "Uppercase micro labels in panels" }
+    }
+  },
+
+  "spacing": {
+    "$description": "4px base grid. All values are multiples of 4. Named by index number (1=4px, 2=8px, etc). Use these tokens for padding, gap, and margin — never arbitrary values.",
+
+    "0":  { "$value": "0px",   "$type": "dimension" },
+    "1":  { "$value": "4px",   "$type": "dimension" },
+    "2":  { "$value": "8px",   "$type": "dimension", "$description": "Default row vertical padding (--row-pad-v)" },
+    "3":  { "$value": "12px",  "$type": "dimension", "$description": "Default row horizontal padding (--row-pad-h)" },
+    "4":  { "$value": "16px",  "$type": "dimension", "$description": "Standard gap, section padding" },
+    "5":  { "$value": "20px",  "$type": "dimension" },
+    "6":  { "$value": "24px",  "$type": "dimension", "$description": "Page content horizontal padding" },
+    "7":  { "$value": "28px",  "$type": "dimension" },
+    "8":  { "$value": "32px",  "$type": "dimension" },
+    "10": { "$value": "40px",  "$type": "dimension" },
+    "12": { "$value": "48px",  "$type": "dimension" },
+    "14": { "$value": "56px",  "$type": "dimension" },
+    "16": { "$value": "64px",  "$type": "dimension" }
+  },
+
+  "borderRadius": {
+    "$description": "Consistent radius scale. Smaller radii for data-dense contexts (tables, inputs), larger for cards and modals.",
+
+    "xs":   { "$value": "4px",    "$type": "dimension", "$description": "Tight controls, compact badges" },
+    "sm":   { "$value": "6px",    "$type": "dimension", "$description": "Inputs, small buttons, export buttons" },
+    "md":   { "$value": "8px",    "$type": "dimension", "$description": "Standard buttons, action buttons" },
+    "lg":   { "$value": "10px",   "$type": "dimension", "$description": "Cards, table cards" },
+    "xl":   { "$value": "14px",   "$type": "dimension", "$description": "Modals" },
+    "2xl":  { "$value": "16px",   "$type": "dimension", "$description": "Large action cards, form modals" },
+    "full": { "$value": "9999px", "$type": "dimension", "$description": "Pills, badges, status dots" }
+  },
+
+  "shadow": {
+    "$description": "5-level shadow scale. Very low opacity — suits both light and dark mode. Level 0/xs for subtle depth, xl for overlapping elements like modals.",
+
+    "xs": { "$value": "0 1px 2px rgba(0,0,0,0.04)",    "$type": "shadow" },
+    "sm": { "$value": "0 1px 3px rgba(0,0,0,0.05)",    "$type": "shadow" },
+    "md": { "$value": "0 2px 6px rgba(0,0,0,0.05)",    "$type": "shadow" },
+    "lg": { "$value": "0 4px 12px rgba(0,0,0,0.07)",   "$type": "shadow" },
+    "xl": { "$value": "0 8px 24px rgba(0,0,0,0.09)",   "$type": "shadow" },
+    "2xl":{ "$value": "0 16px 40px rgba(0,0,0,0.12)",  "$type": "shadow" }
+  },
+
+  "breakpoint": {
+    "$description": "4-breakpoint system. Mobile-first. Sidebar collapses at sm; stat grids reflow at sm and tablet.",
+
+    "mobile":  { "$value": "400px",  "$type": "dimension", "$description": "Very small phones" },
+    "sm":      { "$value": "600px",  "$type": "dimension", "$description": "Mobile — sidebar hidden, single-column layout" },
+    "tablet":  { "$value": "768px",  "$type": "dimension", "$description": "Tablet — sidebar shrinks to 180px, 2-col stat grid" },
+    "lg":      { "$value": "1024px", "$type": "dimension", "$description": "Desktop — full layout" },
+    "xl":      { "$value": "1280px", "$type": "dimension", "$description": "Wide desktop — max content width candidate" }
+  },
+
+  "animation": {
+    "duration": {
+      "fast":    { "$value": "120ms", "$type": "duration", "$description": "Nav hover, button active" },
+      "normal":  { "$value": "180ms", "$type": "duration", "$description": "Modal entrance" },
+      "slow":    { "$value": "250ms", "$type": "duration", "$description": "Theme transitions" },
+      "bounce":  { "$value": "450ms", "$type": "duration", "$description": "Success card scale-in (cubic-bezier bounce)" }
+    },
+    "easing": {
+      "default": { "$value": "ease",                              "$type": "cubicBezier" },
+      "bounce":  { "$value": "cubic-bezier(0.175, 0.885, 0.32, 1.275)", "$type": "cubicBezier" }
+    }
+  },
+
+  "component": {
+    "$description": "Component-level tokens derived from primitive tokens. These are the values to use when building new components.",
+
+    "sidebar": {
+      "width":       { "$value": "208px", "$type": "dimension" },
+      "widthTablet": { "$value": "180px", "$type": "dimension" }
+    },
+
+    "table": {
+      "headerFontSize":   { "$value": "{typography.fontSize.sm}", "$type": "fontSize" },
+      "headerFontWeight": { "$value": "{typography.fontWeight.bold}", "$type": "fontWeight" },
+      "headerTransform":  { "$value": "uppercase", "$type": "other" },
+      "cellPaddingV":     { "$value": "{spacing.2}", "$type": "dimension" },
+      "cellPaddingH":     { "$value": "{spacing.3}", "$type": "dimension" }
+    },
+
+    "button": {
+      "primary": {
+        "bg":           { "$value": "{color.brand.primary}", "$type": "color" },
+        "text":         { "$value": "#ffffff", "$type": "color" },
+        "radius":       { "$value": "{borderRadius.sm}", "$type": "dimension" },
+        "paddingV":     { "$value": "7px", "$type": "dimension" },
+        "paddingH":     { "$value": "14px", "$type": "dimension" },
+        "fontSize":     { "$value": "{typography.fontSize.base}", "$type": "fontSize" },
+        "fontWeight":   { "$value": "{typography.fontWeight.semibold}", "$type": "fontWeight" },
+        "hoverOpacity": { "$value": "0.88", "$type": "other" }
+      },
+      "ghost": {
+        "bg":       { "$value": "transparent", "$type": "color" },
+        "text":     { "$value": "{color.text.light.muted}", "$type": "color" },
+        "radius":   { "$value": "{borderRadius.sm}", "$type": "dimension" }
+      },
+      "formSubmit": {
+        "$description": "Full-width submit button in modals — extends primary with larger padding",
+        "radius":     { "$value": "10px", "$type": "dimension" },
+        "paddingV":   { "$value": "11px", "$type": "dimension" },
+        "fontWeight": { "$value": "{typography.fontWeight.bold}", "$type": "fontWeight" }
+      }
+    },
+
+    "badge": {
+      "paddingV":    { "$value": "2px",  "$type": "dimension" },
+      "paddingH":    { "$value": "8px",  "$type": "dimension" },
+      "radius":      { "$value": "{borderRadius.full}", "$type": "dimension" },
+      "fontSize":    { "$value": "{typography.fontSize.xs}", "$type": "fontSize" },
+      "fontWeight":  { "$value": "{typography.fontWeight.semibold}", "$type": "fontWeight" }
+    },
+
+    "card": {
+      "bg":      { "$value": "{color.surface.light.bg-card}", "$type": "color" },
+      "radius":  { "$value": "{borderRadius.lg}", "$type": "dimension" },
+      "border":  { "$value": "1px solid {color.border.light.default}", "$type": "border" },
+      "padding": { "$value": "18px", "$type": "dimension" }
+    },
+
+    "modal": {
+      "radius":    { "$value": "{borderRadius.xl}", "$type": "dimension" },
+      "padding":   { "$value": "22px", "$type": "dimension" },
+      "maxWidth":  { "$value": "460px", "$type": "dimension" },
+      "animation": { "$value": "modalIn 180ms ease", "$type": "other" }
+    },
+
+    "input": {
+      "height":       { "$value": "42px", "$type": "dimension", "$description": "Form modal inputs (fm-input)" },
+      "heightCompact":{ "$value": "32px", "$type": "dimension", "$description": "Toolbar/filter inputs" },
+      "radius":       { "$value": "{borderRadius.md}", "$type": "dimension" },
+      "borderWidth":  { "$value": "1.5px", "$type": "dimension" },
+      "focusShadow":  { "$value": "0 0 0 3px rgba(79,70,229,0.09)", "$type": "shadow" }
+    },
+
+    "statCard": {
+      "valueSize":   { "$value": "{typography.fontSize.3xl}", "$type": "fontSize" },
+      "labelSize":   { "$value": "{typography.fontSize.sm}", "$type": "fontSize" },
+      "iconSize":    { "$value": "38px", "$type": "dimension" },
+      "iconRadius":  { "$value": "11px", "$type": "dimension" }
+    }
+  }
+}

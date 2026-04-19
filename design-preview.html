@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Şantiye Depo — Design System Preview</title>
+<style>
+/* ═══════════════════════════ DESIGN TOKENS ═══════════════════════════ */
+:root {
+  --primary:       #4f46e5;
+  --primary-dark:  #4338ca;
+  --primary-light: #a5b4fc;
+  --primary-glow:  rgba(79,70,229,0.08);
+
+  --success:      #16a34a;
+  --success-soft: rgba(22,163,74,0.08);
+  --warning:      #d97706;
+  --warning-soft: rgba(217,119,6,0.08);
+  --danger:       #dc2626;
+  --danger-soft:  rgba(220,38,38,0.08);
+
+  --bg-main:        #f5f7fa;
+  --bg-card:        #ffffff;
+  --bg-input:       #ffffff;
+  --bg-table-header:#f0f4f8;
+  --bg-hover-row:   #f4f7ff;
+  --text-main:      #111827;
+  --text-secondary: #1f2937;
+  --text-muted:     #6b7280;
+  --border:         #e5e7eb;
+  --border-light:   #f3f4f6;
+
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+  --shadow:    0 2px 6px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.07);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.09);
+  --shadow-xl: 0 16px 40px rgba(0,0,0,0.12);
+
+  --radius-xs: 4px; --radius-sm: 6px; --radius: 8px;
+  --radius-lg: 10px; --radius-xl: 14px; --radius-full: 9999px;
+
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+[data-theme="dark"] {
+  --bg-main:        #0f1117;
+  --bg-card:        #171c28;
+  --bg-input:       #1e2433;
+  --bg-table-header:#1a2035;
+  --bg-hover-row:   #1e2640;
+  --text-main:      #e2e8f0;
+  --text-secondary: #cbd5e1;
+  --text-muted:     #64748b;
+  --border:         #2a3347;
+  --border-light:   #1e2433;
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.25);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.30);
+  --shadow:    0 2px 6px rgba(0,0,0,0.30);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.35);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.40);
+  --shadow-xl: 0 16px 40px rgba(0,0,0,0.50);
+  --success-soft: rgba(22,163,74,0.15);
+  --warning-soft: rgba(217,119,6,0.15);
+  --danger-soft:  rgba(220,38,38,0.15);
+  --primary-glow: rgba(79,70,229,0.15);
+}
+
+/* ═══════════════════════════ RESET / BASE ═══════════════════════════ */
+*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font);
+  background: var(--bg-main);
+  color: var(--text-main);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.25s, color 0.25s;
+}
+
+/* ═══════════════════════════ LAYOUT ═══════════════════════════ */
+.preview-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.preview-nav {
+  width: 200px;
+  flex-shrink: 0;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 24px 0;
+}
+
+.preview-nav-brand {
+  padding: 0 16px 16px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+.preview-nav-brand h1 {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--primary);
+  letter-spacing: -0.2px;
+}
+.preview-nav-brand p {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.preview-nav a {
+  display: block;
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-decoration: none;
+  border-radius: 0;
+  transition: color 0.12s, background 0.12s;
+  border-left: 2px solid transparent;
+}
+.preview-nav a:hover {
+  color: var(--text-main);
+  background: var(--border-light);
+}
+.preview-nav a.active {
+  color: var(--primary);
+  font-weight: 600;
+  border-left-color: var(--primary);
+  background: var(--primary-glow);
+}
+
+.preview-main {
+  flex: 1;
+  padding: 40px 48px;
+  max-width: 1000px;
+}
+
+/* ═══════════════════════════ SECTION ═══════════════════════════ */
+.section {
+  margin-bottom: 64px;
+}
+.section-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.5px;
+  margin-bottom: 4px;
+}
+.section-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 28px;
+}
+.sub-section {
+  margin-bottom: 32px;
+}
+.sub-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 14px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ═══════════════════════════ COLORS ═══════════════════════════ */
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+.color-swatch {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+}
+.color-swatch-block {
+  height: 60px;
+}
+.color-swatch-info {
+  padding: 8px 10px;
+}
+.color-swatch-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+.color-swatch-hex {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  margin-top: 1px;
+}
+.color-swatch-var {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  margin-top: 2px;
+  opacity: 0.7;
+}
+
+/* ═══════════════════════════ TYPOGRAPHY ═══════════════════════════ */
+.type-row {
+  display: flex;
+  align-items: baseline;
+  gap: 20px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.type-row:last-child { border-bottom: none; }
+.type-meta {
+  width: 120px;
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+.type-label {
+  width: 60px;
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.type-sample {
+  color: var(--text-main);
+}
+
+/* ═══════════════════════════ SPACING ═══════════════════════════ */
+.spacing-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.spacing-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.spacing-bar-wrap {
+  flex: 1;
+}
+.spacing-bar {
+  height: 28px;
+  background: var(--primary-glow);
+  border: 1px solid rgba(79,70,229,0.2);
+  border-radius: 4px;
+  position: relative;
+}
+.spacing-meta {
+  width: 200px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════ RADIUS ═══════════════════════════ */
+.radius-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-end;
+}
+.radius-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.radius-box {
+  width: 64px;
+  height: 64px;
+  background: var(--primary-glow);
+  border: 2px solid var(--primary-light);
+}
+.radius-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+/* ═══════════════════════════ SHADOWS ═══════════════════════════ */
+.shadow-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 20px;
+}
+.shadow-item {
+  background: var(--bg-card);
+  padding: 20px 16px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--border);
+}
+.shadow-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ═══════════════════════════ BUTTONS ═══════════════════════════ */
+.component-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  padding: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 12px;
+}
+.btn-primary {
+  background: var(--primary);
+  color: white;
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font);
+  transition: opacity 0.15s;
+}
+.btn-primary:hover { opacity: 0.88; }
+.btn-primary:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font);
+  transition: background 0.12s, color 0.12s;
+}
+.btn-ghost:hover { background: var(--border-light); color: var(--text-main); }
+
+.btn-danger { background: var(--danger); color: white; padding: 7px 14px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; border: none; cursor: pointer; font-family: var(--font); transition: opacity 0.15s; }
+.btn-danger:hover { opacity: 0.88; }
+
+.btn-success { background: var(--success); color: white; padding: 7px 14px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; border: none; cursor: pointer; font-family: var(--font); transition: opacity 0.15s; }
+.btn-success:hover { opacity: 0.88; }
+
+.btn-icon {
+  width: 30px; height: 30px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  font-family: var(--font);
+}
+.btn-icon:hover { background: var(--border-light); color: var(--text-main); }
+
+.btn-export {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 10px; font-size: 12px; border-radius: var(--radius-sm);
+  background: var(--bg-card); border: 1px solid var(--border);
+  color: var(--text-muted); font-weight: 500; cursor: pointer;
+  font-family: var(--font); transition: border-color 0.12s, color 0.12s;
+}
+.btn-export:hover { border-color: var(--primary); color: var(--primary); }
+
+.action-card-demo {
+  display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; padding: 16px 24px; border-radius: 16px; color: white; cursor: pointer;
+  border: none; font-weight: 700; font-size: 13px; font-family: var(--font);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.action-card-demo:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(0,0,0,0.18); }
+.green  { background: linear-gradient(145deg, #34d399, #059669); }
+.red    { background: linear-gradient(145deg, #f87171, #dc2626); }
+.purple { background: linear-gradient(145deg, #a78bfa, #6d28d9); }
+
+/* ═══════════════════════════ BADGES ═══════════════════════════ */
+.badge {
+  padding: 2px 8px; border-radius: var(--radius-full);
+  font-size: 11px; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 3px;
+}
+.badge-success { background: var(--success-soft); color: #166534; }
+.badge-warning { background: var(--warning-soft); color: #92400e; }
+.badge-danger  { background: var(--danger-soft);  color: #991b1b; }
+.badge-primary { background: var(--primary-glow); color: var(--primary-dark); }
+.badge-neutral { background: var(--border-light); color: var(--text-muted); }
+
+/* ═══════════════════════════ CARDS ═══════════════════════════ */
+.card-demo {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  transition: box-shadow 0.2s, transform 0.18s;
+}
+.card-demo:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+
+.stat-card-demo {
+  background: var(--bg-card); border-radius: 16px; padding: 18px 20px;
+  border: 1px solid var(--border); cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.18s;
+}
+.stat-card-demo:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.09); transform: translateY(-2px); }
+.stat-icon-demo {
+  width: 38px; height: 38px; border-radius: 11px;
+  display: flex; align-items: center; justify-content: center; font-size: 18px;
+}
+.stat-value-demo { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; line-height: 1; margin-top: 14px; }
+.stat-label-demo { font-size: 12px; color: var(--text-muted); font-weight: 500; margin-top: 5px; }
+
+.card-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+
+/* ═══════════════════════════ TABLE ═══════════════════════════ */
+.table-card-demo {
+  background: var(--bg-card); border-radius: var(--radius-lg);
+  border: 1px solid var(--border); overflow: hidden;
+}
+.table-toolbar-demo {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; border-bottom: 1px solid var(--border-light);
+  font-size: 13px; font-weight: 600;
+}
+table.demo {
+  width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px;
+}
+table.demo th {
+  background: var(--bg-table-header); padding: 10px 12px;
+  text-align: left; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-muted); border-bottom: 2px solid var(--border);
+}
+table.demo td {
+  padding: 8px 12px; border-bottom: 1px solid var(--border-light);
+  color: var(--text-main); vertical-align: middle;
+}
+table.demo tr:hover td { background: var(--bg-hover-row); }
+table.demo tr:last-child td { border-bottom: none; }
+
+/* ═══════════════════════════ INPUT ═══════════════════════════ */
+.input-demo {
+  width: 100%; height: 42px; background: var(--bg-main);
+  border: 1.5px solid var(--border); border-radius: 10px;
+  padding: 0 14px; font-size: 13px; color: var(--text-main);
+  font-family: var(--font); transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+.input-demo:focus {
+  outline: none; border-color: var(--primary);
+  background: var(--bg-card); box-shadow: 0 0 0 3px rgba(79,70,229,0.09);
+}
+
+/* ═══════════════════════════ LOADING SPINNER ═══════════════════════════ */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  width: 28px; height: 28px;
+  border: 3px solid var(--primary-glow);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+
+/* ═══════════════════════════ MOVEMENT PILL ═══════════════════════════ */
+.pill-in  { background: var(--success-soft); color: #166534; padding: 2px 8px; border-radius: var(--radius-full); font-size: 11px; font-weight: 600; }
+.pill-out { background: var(--danger-soft);  color: #991b1b; padding: 2px 8px; border-radius: var(--radius-full); font-size: 11px; font-weight: 600; }
+
+/* ═══════════════════════════ DARK TOGGLE ═══════════════════════════ */
+.theme-toggle {
+  position: fixed; top: 16px; right: 20px;
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-full); padding: 6px 14px;
+  cursor: pointer; font-size: 12px; font-weight: 600;
+  color: var(--text-muted); z-index: 100;
+  box-shadow: var(--shadow-md); transition: all 0.15s;
+  font-family: var(--font);
+}
+.theme-toggle:hover { color: var(--primary); border-color: var(--primary); }
+
+/* ═══════════════════════════ STATUS BADGES ═══════════════════════════ */
+.status-badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+.status-critical { background: #fef2f2; color: #991b1b; border: 1px solid #fee2e2; }
+.status-warning  { background: #fffbeb; color: #92400e; border: 1px solid #fef3c7; }
+.status-healthy  { background: #f0fdf4; color: #166534; border: 1px solid #dcfce7; }
+.status-neutral  { background: #f8fafc; color: #475569; border: 1px solid #f1f5f9; }
+
+/* ═══════════════════════════ DIVIDER ═══════════════════════════ */
+hr.token-divider { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+/* ═══════════════════════════ SCROLLBAR ═══════════════════════════ */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+
+/* ═══════════════════════════ SIDEBAR NAV ACTIVE SCROLL ═══════════════════════════ */
+@media (max-width: 700px) {
+  .preview-nav { display: none; }
+  .preview-main { padding: 24px 20px; }
+}
+</style>
+</head>
+<body>
+
+<button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">
+  <span id="themeIcon">🌙</span> <span id="themeLabel">Karanlık</span>
+</button>
+
+<div class="preview-shell">
+
+  <!-- ── SIDEBAR NAV ── -->
+  <nav class="preview-nav">
+    <div class="preview-nav-brand">
+      <h1>⬡ Design System</h1>
+      <p>Şantiye Depo v1.0</p>
+    </div>
+    <a href="#colors" class="active">Renkler</a>
+    <a href="#typography">Tipografi</a>
+    <a href="#spacing">Boşluk</a>
+    <a href="#radius">Köşe Yarıçapı</a>
+    <a href="#shadows">Gölgeler</a>
+    <a href="#buttons">Butonlar</a>
+    <a href="#badges">Rozetler</a>
+    <a href="#cards">Kartlar</a>
+    <a href="#table">Tablo</a>
+    <a href="#inputs">Girişler</a>
+    <a href="#misc">Diğer</a>
+  </nav>
+
+  <!-- ── MAIN CONTENT ── -->
+  <main class="preview-main">
+
+    <!-- HEADER -->
+    <div style="margin-bottom:48px">
+      <div style="font-size:11px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">Şantiye Depo</div>
+      <h1 style="font-size:32px;font-weight:800;letter-spacing:-1px;color:var(--text-main);line-height:1.1">Design System</h1>
+      <p style="color:var(--text-muted);margin-top:8px;font-size:14px">Tüm bileşenler, tokenlar ve kullanım örnekleri</p>
+      <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
+        <span class="badge badge-primary">v1.0.0</span>
+        <span class="badge badge-neutral">React + CSS Custom Properties</span>
+        <span class="badge badge-neutral">Inter Font</span>
+        <span class="badge badge-success">Audit Geçti</span>
+      </div>
+    </div>
+
+    <!-- ══════════════ COLORS ══════════════ -->
+    <section class="section" id="colors">
+      <div class="section-title">Renkler</div>
+      <div class="section-sub">Tüm renkler CSS custom property olarak tanımlıdır. Asla inline hex kullanmayın.</div>
+
+      <div class="sub-section">
+        <div class="sub-title">Marka Renkleri</div>
+        <div class="color-grid">
+          <div class="color-swatch">
+            <div class="color-swatch-block" style="background:#4f46e5"></div>
+            <div class="color-swatch-info">
+              <div class="color-swatch-name">Primary</div>
+              <div class="color-swatch-hex">#4f46e5</div>
+              <div class="color-swatch-var">--primary</div>
+            </div>
+          </div>
+          <div class="color-swatch">
+            <div class="color-swatch-block" style="background:#4338ca"></div>
+            <div class="color-swatch-info">
+              <div class="color-swatch-name">Primary Dark</div>
+              <div class="color-swatch-hex">#4338ca</div>
+              <div class="color-swatch-var">--primary-dark</div>
+            </div>
+          </div>
+          <div class="color-swatch">
+            <div class="color-swatch-block" style="background:#a5b4fc"></div>
+            <div class="color-swatch-info">
+              <div class="color-swatch-name">Primary Light</div>
+              <div class="color-swatch-hex">#a5b4fc</div>
+              <div class="color-swatch-var">--primary-light</div>
+            </div>
+          </div>
+          <div class="color-swatch">
+            <div class="color-swatch-block" style="background:rgba(79,70,229,0.08);border-bottom:1px solid var(--border)"></div>
+            <div class="color-swatch-info">
+              <div class="color-swatch-name">Primary Glow</div>
+              <div class="color-swatch-hex">rgba(79,70,229,0.08)</div>
+              <div class="color-swatch-var">--primary-glow</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Semantik Renkler</div>
+        <div class="color-grid">
+          <div class="color-swatch">
+            <div class="color-swatch-block" style="background:#16a34a"></div>
+            <div class="color-swatch-info">
+              <div class="color-swatch-name">Başarı / Giriş</div>
+              <div class="color-swatch-hex">#16a34a</div>
+              <div class="color-swatch-var">--success</div>
+            </div>
+          </div>
+          <div class="color-swatch">
+            <div class="color-swatch-block" style="background:#d97706"></div>
+            <div class="color-swatch-info">
+              <div class="color-swatch-name">Uyarı / Düşük Stok</div>
+              <div class="color-swatch-hex">#d97706</div>
+              <div class="color-swatch-var">--warning</div>
+            </div>
+          </div>
+          <div class="color-swatch">
+            <div class="color-swatch-block" style="background:#dc2626"></div>
+            <div class="color-swatch-info">
+              <div class="color-swatch-name">Tehlike / Çıkış</div>
+              <div class="color-swatch-hex">#dc2626</div>
+              <div class="color-swatch-var">--danger</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Nötr Skala</div>
+        <div style="display:flex;gap:4px;border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--border)">
+          <div style="flex:1;height:48px;background:#f8fafc" title="#f8fafc — 50"></div>
+          <div style="flex:1;height:48px;background:#f1f5f9" title="#f1f5f9 — 100"></div>
+          <div style="flex:1;height:48px;background:#e2e8f0" title="#e2e8f0 — 200"></div>
+          <div style="flex:1;height:48px;background:#cbd5e1" title="#cbd5e1 — 300"></div>
+          <div style="flex:1;height:48px;background:#94a3b8" title="#94a3b8 — 400"></div>
+          <div style="flex:1;height:48px;background:#64748b" title="#64748b — 500"></div>
+          <div style="flex:1;height:48px;background:#475569" title="#475569 — 600"></div>
+          <div style="flex:1;height:48px;background:#374151" title="#374151 — 700"></div>
+          <div style="flex:1;height:48px;background:#1f2937" title="#1f2937 — 800"></div>
+          <div style="flex:1;height:48px;background:#111827" title="#111827 — 900"></div>
+        </div>
+        <div style="display:flex;gap:4px;margin-top:4px;padding:0 2px">
+          <div style="flex:1;font-size:9px;color:var(--text-muted);text-align:center">50</div>
+          <div style="flex:1;font-size:9px;color:var(--text-muted);text-align:center">100</div>
+          <div style="flex:1;font-size:9px;color:var(--text-muted);text-align:center">200</div>
+          <div style="flex:1;font-size:9px;color:var(--text-muted);text-align:center">300</div>
+          <div style="flex:1;font-size:9px;color:var(--text-muted);text-align:center">400</div>
+          <div style="flex:1;font-size:9px;color:var(--text-muted);text-align:center">500</div>
+          <div style="flex:1;font-size:9px;color:var(--text-muted);text-align:center">600</div>
+          <div style="flex:1;font-size:9px;color:var(--text-muted);text-align:center">700</div>
+          <div style="flex:1;font-size:9px;color:var(--text-muted);text-align:center">800</div>
+          <div style="flex:1;font-size:9px;color:var(--text-muted);text-align:center">900</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════ TYPOGRAPHY ══════════════ -->
+    <section class="section" id="typography">
+      <div class="section-title">Tipografi</div>
+      <div class="section-sub">Tek yazı tipi: Inter. 13px taban — ERP yoğunluğu için bilinçli tercih.</div>
+
+      <div class="sub-section">
+        <div class="sub-title">Boyut Skalası</div>
+        <div>
+          <div class="type-row">
+            <div class="type-label">2xs</div>
+            <div class="type-meta">9px / regular</div>
+            <div class="type-sample" style="font-size:9px;font-weight:400">Stat alt etiketleri, mini başlıklar</div>
+          </div>
+          <div class="type-row">
+            <div class="type-label">xs</div>
+            <div class="type-meta">10px / semibold</div>
+            <div class="type-sample" style="font-size:10px;font-weight:600">Rozet metni, sidebar meta bilgi</div>
+          </div>
+          <div class="type-row">
+            <div class="type-label">sm</div>
+            <div class="type-meta">11px / bold / UPPERCASE</div>
+            <div class="type-sample" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">Tablo Sütun Başlıkları</div>
+          </div>
+          <div class="type-row" style="background:var(--primary-glow);border-radius:6px;padding:10px;margin:0 -10px">
+            <div class="type-label">base ←</div>
+            <div class="type-meta">13px / regular</div>
+            <div class="type-sample" style="font-size:13px;font-weight:400">Gövde metni, tablo hücreleri, form girdileri</div>
+          </div>
+          <div class="type-row">
+            <div class="type-label">md</div>
+            <div class="type-meta">14px / semibold</div>
+            <div class="type-sample" style="font-size:14px;font-weight:600">Bölüm Başlıkları, Modal Başlığı</div>
+          </div>
+          <div class="type-row">
+            <div class="type-label">lg</div>
+            <div class="type-meta">15px / bold</div>
+            <div class="type-sample" style="font-size:15px;font-weight:700">Sidebar Marka Adı</div>
+          </div>
+          <div class="type-row">
+            <div class="type-label">xl</div>
+            <div class="type-meta">17px / bold</div>
+            <div class="type-sample" style="font-size:17px;font-weight:700">Form Modal Panel Başlığı</div>
+          </div>
+          <div class="type-row">
+            <div class="type-label">2xl</div>
+            <div class="type-meta">22px / extrabold</div>
+            <div class="type-sample" style="font-size:22px;font-weight:800;letter-spacing:-0.5px">Sayfa Özet Başlığı</div>
+          </div>
+          <div class="type-row">
+            <div class="type-label">3xl</div>
+            <div class="type-meta">28px / bold</div>
+            <div class="type-sample" style="font-size:28px;font-weight:700;letter-spacing:-0.5px">1.284</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════ SPACING ══════════════ -->
+    <section class="section" id="spacing">
+      <div class="section-title">Boşluk (4px Grid)</div>
+      <div class="section-sub">Tüm boşluk değerleri 4'ün katıdır. Keyfi pixel değeri kullanmayın.</div>
+      <div class="spacing-rows">
+        <div class="spacing-row"><div class="spacing-meta">1 → 4px</div><div class="spacing-bar-wrap"><div class="spacing-bar" style="width:4px;min-width:4px"></div></div></div>
+        <div class="spacing-row"><div class="spacing-meta">2 → 8px (row-pad-v)</div><div class="spacing-bar-wrap"><div class="spacing-bar" style="width:8px"></div></div></div>
+        <div class="spacing-row"><div class="spacing-meta">3 → 12px (row-pad-h)</div><div class="spacing-bar-wrap"><div class="spacing-bar" style="width:12px"></div></div></div>
+        <div class="spacing-row"><div class="spacing-meta">4 → 16px (standart gap)</div><div class="spacing-bar-wrap"><div class="spacing-bar" style="width:16px"></div></div></div>
+        <div class="spacing-row"><div class="spacing-meta">5 → 20px</div><div class="spacing-bar-wrap"><div class="spacing-bar" style="width:20px"></div></div></div>
+        <div class="spacing-row"><div class="spacing-meta">6 → 24px (sayfa padding)</div><div class="spacing-bar-wrap"><div class="spacing-bar" style="width:24px"></div></div></div>
+        <div class="spacing-row"><div class="spacing-meta">8 → 32px</div><div class="spacing-bar-wrap"><div class="spacing-bar" style="width:32px"></div></div></div>
+        <div class="spacing-row"><div class="spacing-meta">10 → 40px</div><div class="spacing-bar-wrap"><div class="spacing-bar" style="width:40px"></div></div></div>
+        <div class="spacing-row"><div class="spacing-meta">12 → 48px</div><div class="spacing-bar-wrap"><div class="spacing-bar" style="width:48px"></div></div></div>
+      </div>
+    </section>
+
+    <!-- ══════════════ RADIUS ══════════════ -->
+    <section class="section" id="radius">
+      <div class="section-title">Köşe Yarıçapı</div>
+      <div class="section-sub">Küçük radii = yoğun veri bağlamı. Büyük radii = kart ve modal.</div>
+      <div class="radius-grid">
+        <div class="radius-item"><div class="radius-box" style="border-radius:4px"></div><div class="radius-label">xs<br>4px<br>rozetler</div></div>
+        <div class="radius-item"><div class="radius-box" style="border-radius:6px"></div><div class="radius-label">sm<br>6px<br>girişler, butonlar</div></div>
+        <div class="radius-item"><div class="radius-box" style="border-radius:8px"></div><div class="radius-label">md<br>8px<br>butonlar</div></div>
+        <div class="radius-item"><div class="radius-box" style="border-radius:10px"></div><div class="radius-label">lg<br>10px<br>kartlar</div></div>
+        <div class="radius-item"><div class="radius-box" style="border-radius:14px"></div><div class="radius-label">xl<br>14px<br>modaller</div></div>
+        <div class="radius-item"><div class="radius-box" style="border-radius:16px"></div><div class="radius-label">2xl<br>16px<br>form modal</div></div>
+        <div class="radius-item"><div class="radius-box" style="border-radius:9999px"></div><div class="radius-label">full<br>9999px<br>hap / nokta</div></div>
+      </div>
+    </section>
+
+    <!-- ══════════════ SHADOWS ══════════════ -->
+    <section class="section" id="shadows">
+      <div class="section-title">Gölgeler</div>
+      <div class="section-sub">Düşük opaklık — hem açık hem koyu modda çalışır. Renkli gölge yok.</div>
+      <div class="shadow-grid">
+        <div class="shadow-item" style="box-shadow:var(--shadow-xs)"><span class="shadow-label">xs</span><span style="font-size:10px;color:var(--text-muted)">toolbar btn</span></div>
+        <div class="shadow-item" style="box-shadow:var(--shadow-sm)"><span class="shadow-label">sm</span><span style="font-size:10px;color:var(--text-muted)">subtle lift</span></div>
+        <div class="shadow-item" style="box-shadow:var(--shadow)"><span class="shadow-label">md</span><span style="font-size:10px;color:var(--text-muted)">kart varsayılan</span></div>
+        <div class="shadow-item" style="box-shadow:var(--shadow-lg)"><span class="shadow-label">lg</span><span style="font-size:10px;color:var(--text-muted)">kart hover</span></div>
+        <div class="shadow-item" style="box-shadow:var(--shadow-xl)"><span class="shadow-label">xl</span><span style="font-size:10px;color:var(--text-muted)">dropdown</span></div>
+        <div class="shadow-item" style="box-shadow:0 16px 40px rgba(0,0,0,0.12)"><span class="shadow-label">2xl</span><span style="font-size:10px;color:var(--text-muted)">modal</span></div>
+      </div>
+    </section>
+
+    <!-- ══════════════ BUTTONS ══════════════ -->
+    <section class="section" id="buttons">
+      <div class="section-title">Butonlar</div>
+      <div class="section-sub">2 temel varyant (primary, ghost) + bağlam spesifik boyut modifikatörleri.</div>
+
+      <div class="sub-section">
+        <div class="sub-title">Temel Varyantlar</div>
+        <div class="component-row">
+          <button class="btn-primary">Kaydet</button>
+          <button class="btn-primary" style="background:var(--success)">Giriş Ekle</button>
+          <button class="btn-primary" style="background:var(--danger)">Çıkış Ekle</button>
+          <button class="btn-ghost">İptal</button>
+          <button class="btn-primary" disabled style="opacity:0.5;cursor:not-allowed">Devre Dışı</button>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">İkon Butonlar</div>
+        <div class="component-row">
+          <button class="btn-icon" title="Düzenle">✏️</button>
+          <button class="btn-icon" title="Sil">🗑</button>
+          <button class="btn-icon" title="Filtrele">⚙</button>
+          <button class="btn-export">📊 Excel</button>
+          <button class="btn-export">📄 PDF</button>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Ana Eylem Kartları</div>
+        <div class="component-row">
+          <button class="action-card-demo green">📦 Giriş Ekle</button>
+          <button class="action-card-demo red">📤 Çıkış Ekle</button>
+          <button class="action-card-demo purple">📋 Zimmet</button>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Form Butonları (Modal Bağlamı)</div>
+        <div class="component-row">
+          <button style="flex:1;padding:11px;border-radius:10px;border:1.5px solid var(--border);background:transparent;color:var(--text-muted);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font)">İptal</button>
+          <button style="flex:2;padding:11px;border-radius:10px;border:none;background:var(--primary);color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font)">Kaydet</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════ BADGES ══════════════ -->
+    <section class="section" id="badges">
+      <div class="section-title">Rozetler</div>
+      <div class="section-sub">Anlamsal renk varyantları. Dekorasyon için kullanmayın — her renk bir anlam taşır.</div>
+      <div class="component-row">
+        <span class="badge badge-success">✓ Giriş</span>
+        <span class="badge badge-danger">↓ Çıkış</span>
+        <span class="badge badge-warning">⚠ Düşük Stok</span>
+        <span class="badge badge-primary">● Aktif</span>
+        <span class="badge badge-neutral">Taslak</span>
+      </div>
+      <div class="component-row" style="margin-top:8px">
+        <span class="status-badge status-healthy">Sağlıklı</span>
+        <span class="status-badge status-warning">Uyarı</span>
+        <span class="status-badge status-critical">Kritik</span>
+        <span class="status-badge status-neutral">Bilinmiyor</span>
+      </div>
+      <div class="component-row" style="margin-top:8px">
+        <span class="pill-in">+ Giriş</span>
+        <span class="pill-out">− Çıkış</span>
+      </div>
+    </section>
+
+    <!-- ══════════════ CARDS ══════════════ -->
+    <section class="section" id="cards">
+      <div class="section-title">Kartlar</div>
+      <div class="section-sub">Üzerine gelindiğinde hafifçe yükselen kart — uygun bağlamda kullanın.</div>
+
+      <div class="sub-section">
+        <div class="sub-title">KPI Stat Kartları</div>
+        <div class="card-grid">
+          <div class="stat-card-demo">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between">
+              <div class="stat-icon-demo" style="background:var(--primary-glow);color:var(--primary)">📦</div>
+              <span class="badge badge-success">+12%</span>
+            </div>
+            <div class="stat-value-demo">284</div>
+            <div class="stat-label-demo">Toplam Malzeme</div>
+          </div>
+          <div class="stat-card-demo">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between">
+              <div class="stat-icon-demo" style="background:var(--danger-soft);color:var(--danger)">⚠</div>
+              <span class="badge badge-danger">Kritik</span>
+            </div>
+            <div class="stat-value-demo" style="color:var(--danger)">7</div>
+            <div class="stat-label-demo">Düşük Stok</div>
+          </div>
+          <div class="stat-card-demo">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between">
+              <div class="stat-icon-demo" style="background:var(--success-soft);color:var(--success)">↑</div>
+              <span class="badge badge-success">Bu ay</span>
+            </div>
+            <div class="stat-value-demo" style="color:var(--success)">1.284</div>
+            <div class="stat-label-demo">Toplam Giriş</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Standart Kart</div>
+        <div class="card-demo" style="max-width:360px">
+          <div style="font-size:14px;font-weight:600;margin-bottom:8px">Kart Başlığı</div>
+          <div style="font-size:13px;color:var(--text-muted);line-height:1.6">Bu standart bir içerik kartıdır. Üzerine gelince hafifçe yükselir ve gölgesi artar.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════ TABLE ══════════════ -->
+    <section class="section" id="table">
+      <div class="section-title">Tablo</div>
+      <div class="section-sub">table-layout: fixed — Türkçe uzun kelimeler için zorunlu. Sütun sınıfları semantik.</div>
+      <div class="table-card-demo">
+        <div class="table-toolbar-demo">
+          <span style="display:flex;align-items:center;gap:7px">📋 Stok Hareketleri</span>
+          <div style="display:flex;gap:4px">
+            <button class="btn-export">📊 Excel</button>
+            <button class="btn-export">📄 PDF</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="demo">
+            <thead>
+              <tr>
+                <th style="width:100px">Tarih</th>
+                <th>Malzeme</th>
+                <th style="width:90px;text-align:right">Miktar</th>
+                <th style="width:70px;text-align:center">Birim</th>
+                <th style="width:120px">Firma</th>
+                <th style="width:90px;text-align:center">Tür</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>18.04.2026</td>
+                <td>Çimento CEM I 42.5R 50 kg</td>
+                <td style="text-align:right;font-weight:600;color:var(--success)">+250,00</td>
+                <td style="text-align:center">Çuval</td>
+                <td>Çizel İnşaat</td>
+                <td style="text-align:center"><span class="pill-in">+ Giriş</span></td>
+              </tr>
+              <tr>
+                <td>17.04.2026</td>
+                <td>Nervürlü Demir Φ12</td>
+                <td style="text-align:right;font-weight:600;color:var(--danger)">−1.200,00</td>
+                <td style="text-align:center">kg</td>
+                <td>Yapı A.Ş.</td>
+                <td style="text-align:center"><span class="pill-out">− Çıkış</span></td>
+              </tr>
+              <tr>
+                <td>16.04.2026</td>
+                <td>Gaz Beton Blok 20x25x60</td>
+                <td style="text-align:right;font-weight:600;color:var(--success)">+500,00</td>
+                <td style="text-align:center">Adet</td>
+                <td>ABC Yapı</td>
+                <td style="text-align:center"><span class="pill-in">+ Giriş</span></td>
+              </tr>
+              <tr>
+                <td>15.04.2026</td>
+                <td>Su Yalıtım Membranı</td>
+                <td style="text-align:right;font-weight:600;color:var(--warning)">35,00</td>
+                <td style="text-align:center">m²</td>
+                <td style="color:var(--warning)">⚠ Düşük Stok</td>
+                <td style="text-align:center"><span class="badge badge-warning">Kritik</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════ INPUTS ══════════════ -->
+    <section class="section" id="inputs">
+      <div class="section-title">Girişler</div>
+      <div class="section-sub">42px yükseklik (form modal) / 32px (araç çubuğu). Odaklandığında indigo border + glow.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:600px">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px">Malzeme Adı</div>
+          <input class="input-demo" type="text" placeholder="Malzeme ara..." />
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px">Miktar</div>
+          <input class="input-demo" type="number" placeholder="0,00" />
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px">Tarih</div>
+          <input class="input-demo" type="date" />
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px">Firma</div>
+          <select class="input-demo" style="cursor:pointer">
+            <option>Tümü</option>
+            <option>Çizel İnşaat</option>
+            <option>ABC Yapı</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════ MISC ══════════════ -->
+    <section class="section" id="misc">
+      <div class="section-title">Diğer</div>
+
+      <div class="sub-section">
+        <div class="sub-title">Loading Spinner</div>
+        <div style="display:flex;align-items:center;gap:20px">
+          <div class="spinner"></div>
+          <div style="font-size:12px;color:var(--text-muted);letter-spacing:0.04em">YÜKLENIYOR</div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Focus Ring (klavye ile sekme yapın)</div>
+        <div style="display:flex;gap:10px">
+          <button class="btn-primary">Tab ile geç →</button>
+          <button class="btn-ghost">Sonraki →</button>
+          <button class="btn-primary" style="background:var(--danger)">Sil</button>
+        </div>
+        <p style="font-size:11px;color:var(--text-muted);margin-top:8px">Tab tuşuna basarak yukarıdaki butonlara odaklandığınızda 2px indigo outline görünmeli.</p>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Breakpoint Referansı</div>
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
+          <table class="demo">
+            <thead><tr><th>İsim</th><th>Değer</th><th>Davranış</th></tr></thead>
+            <tbody>
+              <tr><td>mobile</td><td>400px</td><td>Font 16px'e yükselir (dokunma için)</td></tr>
+              <tr><td>sm</td><td>600px</td><td>Sidebar gizlenir, hamburger menü</td></tr>
+              <tr><td>tablet</td><td>768px</td><td>Sidebar 180px, 2 kolonlu stat ızgarası</td></tr>
+              <tr><td>lg</td><td>1024px</td><td>Tam masaüstü düzeni</td></tr>
+              <tr><td>xl</td><td>1280px</td><td>Geniş masaüstü</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Animasyon Süresi</div>
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
+          <table class="demo">
+            <thead><tr><th>Bağlam</th><th>Süre</th><th>Easing</th></tr></thead>
+            <tbody>
+              <tr><td>Nav / buton hover</td><td>120ms</td><td>ease</td></tr>
+              <tr><td>Modal girişi</td><td>180ms</td><td>ease</td></tr>
+              <tr><td>Kart hover</td><td>200ms</td><td>ease</td></tr>
+              <tr><td>Tema geçişi</td><td>250ms</td><td>ease</td></tr>
+              <tr><td>Başarı kartı</td><td>450ms</td><td>cubic-bezier bounce</td></tr>
+              <tr><td>Yükleme spinner</td><td>750ms</td><td>linear ∞</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- FOOTER -->
+    <div style="border-top:1px solid var(--border);padding-top:24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;color:var(--text-muted);font-size:11px">
+      <div>Şantiye Depo Design System v1.0.0 · 2026</div>
+      <div>Rakip referanslar: Procore HELIX · Fieldwire by Hilti · Odoo 19</div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('themeIcon').textContent = isDark ? '🌙' : '☀️';
+  document.getElementById('themeLabel').textContent = isDark ? 'Karanlık' : 'Aydınlık';
+}
+
+// Active nav on scroll
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('.preview-nav a');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navLinks.forEach(l => l.classList.remove('active'));
+      const link = document.querySelector(`.preview-nav a[href="#${e.target.id}"]`);
+      if (link) link.classList.add('active');
+    }
+  });
+}, { rootMargin: '-20% 0px -70% 0px' });
+sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
