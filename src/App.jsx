@@ -2786,7 +2786,7 @@ const App = () => {
                     <div>
                         <div style={{ position: 'relative', display: 'inline-block' }}>
                             <div className="sidebar-logo-text">Shintea</div>
-                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.064</span>
+                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.065</span>
                         </div>
                     </div>
                 </div>
@@ -4289,9 +4289,34 @@ const App = () => {
                                             const color = data.isDiger ? '#64748b' : CARD_COLORS[i % CARD_COLORS.length];
                                             const pct = totalTutar > 0 ? Math.round((data.tutar / totalTutar) * 100) : 0;
                                             const barW = totalCount > 0 ? Math.round((data.count / totalCount) * 100) : 0;
+                                            const isActive = paEkip === ad;
+                                            const toggle = () => {
+                                                setPaEkip(isActive ? '' : ad);
+                                                setPaSelectedPersonel(null);
+                                            };
                                             return (
-                                                <div key={ad} style={{ flex: '0 0 auto', minWidth: '130px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                                    <span style={{ fontSize: '9px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ad}</span>
+                                                <div key={ad}
+                                                    role="button"
+                                                    tabIndex={0}
+                                                    onClick={toggle}
+                                                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }}
+                                                    title={isActive ? `"${ad}" filtresini kaldır` : `"${ad}" ekibinin personelini filtrele`}
+                                                    style={{
+                                                        flex: '0 0 auto',
+                                                        minWidth: '130px',
+                                                        background: isActive ? color + '14' : 'var(--bg-card)',
+                                                        border: `1px solid ${isActive ? color : 'var(--border)'}`,
+                                                        boxShadow: isActive ? `inset 0 0 0 1px ${color}` : 'none',
+                                                        borderRadius: '10px',
+                                                        padding: '10px 12px',
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        gap: '5px',
+                                                        cursor: 'pointer',
+                                                        userSelect: 'none',
+                                                        transition: 'background 0.12s, border-color 0.12s, box-shadow 0.12s'
+                                                    }}>
+                                                    <span style={{ fontSize: '9px', fontWeight: 700, color: isActive ? color : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ad}</span>
                                                     <span style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-main)', lineHeight: 1 }}>₺{fmtK(data.tutar)}</span>
                                                     <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
                                                         <span style={{ fontSize: '10px', color: 'var(--text-muted)', background: 'var(--bg-main)', borderRadius: '4px', padding: '1px 5px', whiteSpace: 'nowrap' }}>{data.count} hareket</span>
