@@ -744,6 +744,259 @@ const DateRangePicker = ({ startDate, endDate, onChange }) => {
     );
 };
 
+// ─── Veritabanı Page Component ───────────────────────────────────────────────
+
+const DatabasePage = ({ items, firmalar, taseronlar, personel, birimlerList, malzemeTurleri }) => {
+    const [dbSection, setDbSection] = useState('malzeme');
+    const [dbForm, setDbForm] = useState({});
+    const [dbEditing, setDbEditing] = useState(null);
+    const [dbSaving, setDbSaving] = useState(false);
+    const [dbSearch, setDbSearch] = useState('');
+    const [dbKategoriler, setDbKategoriler] = useState([]);
+
+    const DB_SECTIONS = [
+        { key: 'malzeme', label: 'Malzemeler', icon: '📦' },
+        { key: 'firma', label: 'Firmalar', icon: '🏢' },
+        { key: 'taseron', label: 'Taşeronlar / Ekipler', icon: '👷' },
+        { key: 'personel', label: 'Personel', icon: '👤' },
+        { key: 'birim', label: 'Birimler', icon: '📏' },
+        { key: 'kategori', label: 'Kategoriler', icon: '🏷️' },
+    ];
+
+    useEffect(() => {
+        const r = ref(db, 'malzemeTurleri');
+        const unsub = onValue(r, snap => {
+            const data = snap.val();
+            const defaults = ['Yapı Malzemesi', 'Elektrik Malzemesi', 'Tesisat Malzemesi', 'İSG Malzemesi', 'Sarf Malzeme', 'Diğer'];
+            const custom = data ? Object.entries(data).map(([k, v]) => ({ id: k, name: v.name || v })) : [];
+            const customNames = custom.map(c => c.name);
+            const defaultItems = defaults.filter(d => !customNames.includes(d)).map(d => ({ id: d, name: d, isDefault: true }));
+            setDbKategoriler([...custom, ...defaultItems]);
+        });
+        return () => unsub();
+    }, []);
+
+    const resetForm = () => { setDbForm({}); setDbEditing(null); };
+
+    const startEdit = (item) => {
+        setDbEditing(item.id || item._key);
+        if (dbSection === 'malzeme') setDbForm({ name: item.name || '', unit: item.unit || 'Adet', category: item.category || 'Genel', minStock: item.minStock || 0 });
+        else if (dbSection === 'firma') setDbForm({ name: item.name || '' });
+        else if (dbSection === 'taseron') setDbForm({ name: item.name || '' });
+        else if (dbSection === 'personel') setDbForm({ adSoyad: item.adSoyad || '', tc: item.tc || '', taseron: item.taseron || '', girisTarihi: item.girisTarihi || '', cikisTarihi: item.cikisTarihi || '' });
+        else if (dbSection === 'birim') setDbForm({ name: item.name || '' });
+        else if (dbSection === 'kategori') setDbForm({ name: item.name || '' });
+    };
+
+    const handleSave = async () => {
+        setDbSaving(true);
+        try {
+            if (dbSection === 'malzeme') {
+                const nm = (dbForm.name || '').trim();
+                if (!nm) return;
+                if (dbEditing) {
+                    await update(ref(db, `items/${dbEditing}`), { name: nm, unit: dbForm.unit || 'Adet', category: dbForm.category || 'Genel', minStock: Number(dbForm.minStock) || 0 });
+                } else {
+                    const id = String(Date.now());
+                    await set(ref(db, `items/${id}`), { id: Number(id), name: nm, unit: dbForm.unit || 'Adet', category: dbForm.category || 'Genel', quantity: 0, minStock: Number(dbForm.minStock) || 0 });
+                }
+            } else if (dbSection === 'firma') {
+                const nm = (dbForm.name || '').trim();
+                if (!nm) return;
+                if (dbEditing) {
+                    await update(ref(db, `firmalar/${dbEditing}`), { name: nm });
+                } else {
+                    const id = String(Date.now());
+                    await set(ref(db, `firmalar/${id}`), { id, name: nm });
+                }
+            } else if (dbSection === 'taseron') {
+                const nm = (dbForm.name || '').trim();
+                if (!nm) return;
+                if (dbEditing) {
+                    await update(ref(db, `taseronlar/${dbEditing}`), { name: nm });
+                } else {
+                    const id = String(Date.now());
+                    await set(ref(db, `taseronlar/${id}`), { id, name: nm });
+                }
+            } else if (dbSection === 'personel') {
+                const nm = (dbForm.adSoyad || '').trim();
+                if (!nm) return;
+                if (dbEditing) {
+                    await update(ref(db, `personel/${dbEditing}`), { adSoyad: nm, tc: dbForm.tc || '', taseron: dbForm.taseron || '', girisTarihi: dbForm.girisTarihi || '', cikisTarihi: dbForm.cikisTarihi || '' });
+                } else {
+                    const id = String(Date.now());
+                    await set(ref(db, `personel/${id}`), { id, adSoyad: nm, tc: dbForm.tc || '', taseron: dbForm.taseron || '', girisTarihi: dbForm.girisTarihi || '', cikisTarihi: dbForm.cikisTarihi || '' });
+                }
+            } else if (dbSection === 'birim') {
+                const nm = (dbForm.name || '').trim();
+                if (!nm) return;
+                if (dbEditing) {
+                    await update(ref(db, `birimler/${dbEditing}`), { name: nm });
+                } else {
+                    const id = String(Date.now());
+                    await set(ref(db, `birimler/${id}`), { id, name: nm });
+                }
+            } else if (dbSection === 'kategori') {
+                const nm = (dbForm.name || '').trim();
+                if (!nm) return;
+                if (dbEditing) {
+                    await update(ref(db, `malzemeTurleri/${dbEditing}`), { name: nm });
+                } else {
+                    const id = String(Date.now());
+                    await set(ref(db, `malzemeTurleri/${id}`), { id, name: nm });
+                }
+            }
+            resetForm();
+        } finally {
+            setDbSaving(false);
+        }
+    };
+
+    const handleDelete = async (item) => {
+        if (!confirm(`"${item.name || item.adSoyad}" silinecek. Emin misiniz?`)) return;
+        const pathMap = {
+            malzeme: `items/${item._key || item.id}`,
+            firma: `firmalar/${item.id}`,
+            taseron: `taseronlar/${item.id}`,
+            personel: `personel/${item.id}`,
+            birim: `birimler/${item.id}`,
+            kategori: `malzemeTurleri/${item.id}`,
+        };
+        await remove(ref(db, pathMap[dbSection]));
+    };
+
+    const getListData = () => {
+        const q = dbSearch.toLowerCase();
+        if (dbSection === 'malzeme') return items.filter(i => !q || i.name.toLowerCase().includes(q));
+        if (dbSection === 'firma') return firmalar.filter(i => !q || (i.name || '').toLowerCase().includes(q));
+        if (dbSection === 'taseron') return taseronlar.filter(i => !q || (i.name || '').toLowerCase().includes(q));
+        if (dbSection === 'personel') return personel.filter(i => !q || (i.adSoyad || '').toLowerCase().includes(q));
+        if (dbSection === 'birim') return birimlerList.map((b) => ({ id: b, name: b, isBuiltin: true })).filter(i => !q || i.name.toLowerCase().includes(q));
+        if (dbSection === 'kategori') return dbKategoriler.filter(i => !q || (i.name || '').toLowerCase().includes(q));
+        return [];
+    };
+
+    const inp = (label, key, type = 'text', opts) => (
+        <div key={key} style={{ marginBottom: '10px' }}>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>{label}</label>
+            {opts
+                ? <select value={dbForm[key] || ''} onChange={e => setDbForm(f => ({ ...f, [key]: e.target.value }))} style={{ width: '100%', padding: '8px 10px', borderRadius: '7px', border: '1px solid var(--border)', background: 'var(--bg-main)', fontSize: '13px', fontFamily: 'inherit', color: 'var(--text-main)', outline: 'none' }}>
+                    <option value="">— Seçin —</option>
+                    {opts.map(o => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                : <input type={type} value={dbForm[key] || ''} onChange={e => setDbForm(f => ({ ...f, [key]: type === 'number' ? Number(e.target.value) : e.target.value }))} style={{ width: '100%', padding: '8px 10px', borderRadius: '7px', border: '1px solid var(--border)', background: 'var(--bg-main)', fontSize: '13px', fontFamily: 'inherit', color: 'var(--text-main)', outline: 'none', boxSizing: 'border-box' }} />
+            }
+        </div>
+    );
+
+    const renderForm = () => {
+        if (dbSection === 'malzeme') return [
+            inp('Malzeme Adı', 'name'),
+            inp('Birim', 'unit', 'text', birimlerList),
+            inp('Kategori', 'category', 'text', malzemeTurleri),
+            inp('Min. Stok', 'minStock', 'number'),
+        ];
+        if (dbSection === 'firma') return [inp('Firma Adı', 'name')];
+        if (dbSection === 'taseron') return [inp('Taşeron / Ekip Adı', 'name')];
+        if (dbSection === 'personel') return [
+            inp('Ad Soyad', 'adSoyad'),
+            inp('TC Kimlik No', 'tc'),
+            inp('Taşeron', 'taseron', 'text', taseronlar.map(t => t.name)),
+            inp('Giriş Tarihi', 'girisTarihi'),
+            inp('Çıkış Tarihi', 'cikisTarihi'),
+        ];
+        if (dbSection === 'birim') return [inp('Birim Adı', 'name')];
+        if (dbSection === 'kategori') return [inp('Kategori Adı', 'name')];
+        return [];
+    };
+
+    const itemLabel = (item) => item.name || item.adSoyad || '—';
+    const itemSubLabel = (item) => {
+        if (dbSection === 'malzeme') return `${item.unit || ''}${item.category ? ' · ' + item.category : ''}`;
+        if (dbSection === 'personel') return item.taseron || '';
+        return '';
+    };
+
+    const cardStyle = { background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '10px', padding: '24px' };
+    const tabBtnStyle = (active) => ({
+        display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: '13px', fontWeight: active ? '700' : '500',
+        background: active ? 'var(--primary)' : 'transparent', color: active ? 'white' : 'var(--text-muted)', transition: 'all 0.15s',
+    });
+
+    const listData = getListData();
+
+    return (
+        <div className="animate-fade">
+            <div style={{ marginBottom: '20px' }}>
+                <h2 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--text-main)', margin: 0 }}>Veritabanı</h2>
+                <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>Malzeme, firma, taşeron ve personel verilerini buradan yönetin. Formlarda sadece bu listeden seçim yapılabilir.</p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                <div style={{ ...cardStyle, width: '200px', flexShrink: 0, padding: '12px' }}>
+                    {DB_SECTIONS.map(s => (
+                        <button key={s.key} onClick={() => { setDbSection(s.key); resetForm(); setDbSearch(''); }} style={{ ...tabBtnStyle(dbSection === s.key), width: '100%', justifyContent: 'flex-start', marginBottom: '2px' }}>
+                            <span>{s.icon}</span> {s.label}
+                        </button>
+                    ))}
+                </div>
+
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                    <div style={{ ...cardStyle, flex: '1 1 300px', minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                            <div style={{ fontWeight: '700', fontSize: '14px', color: 'var(--text-main)' }}>
+                                {DB_SECTIONS.find(s => s.key === dbSection)?.label}
+                                <span style={{ fontSize: '11px', fontWeight: '400', color: 'var(--text-muted)', marginLeft: '8px' }}>({listData.length} kayıt)</span>
+                            </div>
+                            <div style={{ position: 'relative' }}>
+                                <Search size={13} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+                                <input value={dbSearch} onChange={e => setDbSearch(e.target.value)} placeholder="Ara..." style={{ paddingLeft: '26px', paddingRight: '8px', paddingTop: '5px', paddingBottom: '5px', borderRadius: '7px', border: '1px solid var(--border)', background: 'var(--bg-main)', fontSize: '12px', fontFamily: 'inherit', color: 'var(--text-main)', outline: 'none', width: '140px' }} />
+                            </div>
+                        </div>
+                        <div style={{ maxHeight: '420px', overflowY: 'auto' }}>
+                            {listData.length === 0
+                                ? <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-muted)', fontSize: '13px' }}>Kayıt bulunamadı</div>
+                                : listData.map((item, idx) => {
+                                    const isEdit = String(dbEditing) === String(item.id || item._key);
+                                    return (
+                                        <div key={item.id || item._key || idx} style={{ display: 'flex', alignItems: 'center', padding: '8px 10px', borderRadius: '8px', marginBottom: '2px', background: isEdit ? 'var(--primary-glow)' : 'transparent', border: isEdit ? '1px solid var(--primary)' : '1px solid transparent', transition: 'background 0.1s' }}>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{itemLabel(item)}</div>
+                                                {itemSubLabel(item) && <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '1px' }}>{itemSubLabel(item)}</div>}
+                                            </div>
+                                            {!item.isDefault && !item.isBuiltin && (
+                                                <div style={{ display: 'flex', gap: '4px', marginLeft: '8px', flexShrink: 0 }}>
+                                                    <button onClick={() => startEdit(item)} title="Düzenle" style={{ background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '6px', padding: '4px 7px', cursor: 'pointer', color: 'var(--primary)', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '3px' }}><Edit3 size={12} /></button>
+                                                    <button onClick={() => handleDelete(item)} title="Sil" style={{ background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '6px', padding: '4px 7px', cursor: 'pointer', color: '#ef4444', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '3px' }}><Trash2 size={12} /></button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })
+                            }
+                        </div>
+                    </div>
+
+                    <div style={{ ...cardStyle, width: '260px', flexShrink: 0, alignSelf: 'flex-start' }}>
+                        <div style={{ fontWeight: '700', fontSize: '14px', color: 'var(--text-main)', marginBottom: '16px' }}>
+                            {dbEditing ? 'Düzenle' : 'Yeni Ekle'}
+                        </div>
+                        {renderForm()}
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
+                            {dbEditing && (
+                                <button onClick={resetForm} style={{ flex: '0 0 auto', padding: '8px 12px', borderRadius: '7px', border: '1px solid var(--border)', background: 'var(--bg-main)', color: 'var(--text-muted)', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit' }}>İptal</button>
+                            )}
+                            <button onClick={handleSave} disabled={dbSaving} style={{ flex: 1, padding: '8px 14px', borderRadius: '7px', border: 'none', background: 'var(--primary)', color: 'white', fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}>
+                                {dbSaving ? 'Kaydediliyor...' : (dbEditing ? 'Güncelle' : '+ Ekle')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // ─── Main App ─────────────────────────────────────────────────────────────────
 
 const App = () => {
@@ -2764,7 +3017,7 @@ const App = () => {
                     <div>
                         <div style={{ position: 'relative', display: 'inline-block' }}>
                             <div className="sidebar-logo-text">Shintea</div>
-                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.061</span>
+                            <span style={{ position: 'absolute', bottom: '-2px', right: '-28px', fontSize: '8px', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '0.2px', opacity: 0.7 }}>v0.062</span>
                         </div>
                     </div>
                 </div>
@@ -4681,262 +4934,9 @@ const App = () => {
 
 
                     {/* ── VERİTABANI TAB ── */}
-                    {activeTab === 'database' && canEdit && (() => {
-                        // ── Local state for DB page ──
-                        const [dbSection, setDbSection] = React.useState('malzeme');
-                        const [dbForm, setDbForm] = React.useState({});
-                        const [dbEditing, setDbEditing] = React.useState(null);
-                        const [dbSaving, setDbSaving] = React.useState(false);
-                        const [dbSearch, setDbSearch] = React.useState('');
-
-                        const DB_SECTIONS = [
-                            { key: 'malzeme', label: 'Malzemeler', icon: '📦' },
-                            { key: 'firma', label: 'Firmalar', icon: '🏢' },
-                            { key: 'taseron', label: 'Taşeronlar / Ekipler', icon: '👷' },
-                            { key: 'personel', label: 'Personel', icon: '👤' },
-                            { key: 'birim', label: 'Birimler', icon: '📏' },
-                            { key: 'kategori', label: 'Kategoriler', icon: '🏷️' },
-                        ];
-
-                        const resetForm = () => { setDbForm({}); setDbEditing(null); };
-
-                        const startEdit = (item) => {
-                            setDbEditing(item.id || item._key);
-                            if (dbSection === 'malzeme') setDbForm({ name: item.name || '', unit: item.unit || 'Adet', category: item.category || 'Genel', minStock: item.minStock || 0 });
-                            else if (dbSection === 'firma') setDbForm({ name: item.name || '' });
-                            else if (dbSection === 'taseron') setDbForm({ name: item.name || '' });
-                            else if (dbSection === 'personel') setDbForm({ adSoyad: item.adSoyad || '', tc: item.tc || '', taseron: item.taseron || '', girisTarihi: item.girisTarihi || '', cikisTarihi: item.cikisTarihi || '' });
-                            else if (dbSection === 'birim') setDbForm({ name: item.name || '' });
-                            else if (dbSection === 'kategori') setDbForm({ name: item.name || '' });
-                        };
-
-                        const handleSave = async () => {
-                            setDbSaving(true);
-                            try {
-                                if (dbSection === 'malzeme') {
-                                    const nm = (dbForm.name || '').trim();
-                                    if (!nm) return;
-                                    if (dbEditing) {
-                                        await update(ref(db, `items/${dbEditing}`), { name: nm, unit: dbForm.unit || 'Adet', category: dbForm.category || 'Genel', minStock: Number(dbForm.minStock) || 0 });
-                                    } else {
-                                        const id = String(Date.now());
-                                        await set(ref(db, `items/${id}`), { id: Number(id), name: nm, unit: dbForm.unit || 'Adet', category: dbForm.category || 'Genel', quantity: 0, minStock: Number(dbForm.minStock) || 0 });
-                                    }
-                                } else if (dbSection === 'firma') {
-                                    const nm = (dbForm.name || '').trim();
-                                    if (!nm) return;
-                                    if (dbEditing) {
-                                        await update(ref(db, `firmalar/${dbEditing}`), { name: nm });
-                                    } else {
-                                        const id = String(Date.now());
-                                        await set(ref(db, `firmalar/${id}`), { id, name: nm });
-                                    }
-                                } else if (dbSection === 'taseron') {
-                                    const nm = (dbForm.name || '').trim();
-                                    if (!nm) return;
-                                    if (dbEditing) {
-                                        await update(ref(db, `taseronlar/${dbEditing}`), { name: nm });
-                                    } else {
-                                        const id = String(Date.now());
-                                        await set(ref(db, `taseronlar/${id}`), { id, name: nm });
-                                    }
-                                } else if (dbSection === 'personel') {
-                                    const nm = (dbForm.adSoyad || '').trim();
-                                    if (!nm) return;
-                                    if (dbEditing) {
-                                        await update(ref(db, `personel/${dbEditing}`), { adSoyad: nm, tc: dbForm.tc || '', taseron: dbForm.taseron || '', girisTarihi: dbForm.girisTarihi || '', cikisTarihi: dbForm.cikisTarihi || '' });
-                                    } else {
-                                        const id = String(Date.now());
-                                        await set(ref(db, `personel/${id}`), { id, adSoyad: nm, tc: dbForm.tc || '', taseron: dbForm.taseron || '', girisTarihi: dbForm.girisTarihi || '', cikisTarihi: dbForm.cikisTarihi || '' });
-                                    }
-                                } else if (dbSection === 'birim') {
-                                    const nm = (dbForm.name || '').trim();
-                                    if (!nm) return;
-                                    if (dbEditing) {
-                                        await update(ref(db, `birimler/${dbEditing}`), { name: nm });
-                                    } else {
-                                        const id = String(Date.now());
-                                        await set(ref(db, `birimler/${id}`), { id, name: nm });
-                                    }
-                                } else if (dbSection === 'kategori') {
-                                    const nm = (dbForm.name || '').trim();
-                                    if (!nm) return;
-                                    if (dbEditing) {
-                                        await update(ref(db, `malzemeTurleri/${dbEditing}`), { name: nm });
-                                    } else {
-                                        const id = String(Date.now());
-                                        await set(ref(db, `malzemeTurleri/${id}`), { id, name: nm });
-                                    }
-                                }
-                                resetForm();
-                            } finally {
-                                setDbSaving(false);
-                            }
-                        };
-
-                        const handleDelete = async (item) => {
-                            if (!confirm(`"${item.name || item.adSoyad}" silinecek. Emin misiniz?`)) return;
-                            const pathMap = {
-                                malzeme: `items/${item._key || item.id}`,
-                                firma: `firmalar/${item.id}`,
-                                taseron: `taseronlar/${item.id}`,
-                                personel: `personel/${item.id}`,
-                                birim: `birimler/${item.id}`,
-                                kategori: `malzemeTurleri/${item.id}`,
-                            };
-                            await remove(ref(db, pathMap[dbSection]));
-                        };
-
-                        // Kategori list: malzeme türleri (DB) + defaults
-                        const [dbKategoriler, setDbKategoriler] = React.useState([]);
-                        React.useEffect(() => {
-                            const r = ref(db, 'malzemeTurleri');
-                            const unsub = onValue(r, snap => {
-                                const data = snap.val();
-                                const defaults = ['Yapı Malzemesi', 'Elektrik Malzemesi', 'Tesisat Malzemesi', 'İSG Malzemesi', 'Sarf Malzeme', 'Diğer'];
-                                const custom = data ? Object.entries(data).map(([k, v]) => ({ id: k, name: v.name || v })) : [];
-                                const customNames = custom.map(c => c.name);
-                                const defaultItems = defaults.filter(d => !customNames.includes(d)).map(d => ({ id: d, name: d, isDefault: true }));
-                                setDbKategoriler([...custom, ...defaultItems]);
-                            });
-                            return () => unsub();
-                        }, []);
-
-                        const getListData = () => {
-                            const q = dbSearch.toLowerCase();
-                            if (dbSection === 'malzeme') return items.filter(i => !q || i.name.toLowerCase().includes(q));
-                            if (dbSection === 'firma') return firmalar.filter(i => !q || (i.name || '').toLowerCase().includes(q));
-                            if (dbSection === 'taseron') return taseronlar.filter(i => !q || (i.name || '').toLowerCase().includes(q));
-                            if (dbSection === 'personel') return personel.filter(i => !q || (i.adSoyad || '').toLowerCase().includes(q));
-                            if (dbSection === 'birim') return [...birimlerList.map((b, i) => ({ id: b, name: b, isBuiltin: true })), ...[]]
-                                .filter(i => !q || i.name.toLowerCase().includes(q));
-                            if (dbSection === 'kategori') return dbKategoriler.filter(i => !q || (i.name || '').toLowerCase().includes(q));
-                            return [];
-                        };
-
-                        const listData = getListData();
-                        const inp = (label, key, type = 'text', opts) => (
-                            <div key={key} style={{ marginBottom: '10px' }}>
-                                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>{label}</label>
-                                {opts
-                                    ? <select value={dbForm[key] || ''} onChange={e => setDbForm(f => ({ ...f, [key]: e.target.value }))} style={{ width: '100%', padding: '8px 10px', borderRadius: '7px', border: '1px solid var(--border)', background: 'var(--bg-main)', fontSize: '13px', fontFamily: 'inherit', color: 'var(--text-main)', outline: 'none' }}>
-                                        <option value="">— Seçin —</option>
-                                        {opts.map(o => <option key={o} value={o}>{o}</option>)}
-                                      </select>
-                                    : <input type={type} value={dbForm[key] || ''} onChange={e => setDbForm(f => ({ ...f, [key]: type === 'number' ? Number(e.target.value) : e.target.value }))} style={{ width: '100%', padding: '8px 10px', borderRadius: '7px', border: '1px solid var(--border)', background: 'var(--bg-main)', fontSize: '13px', fontFamily: 'inherit', color: 'var(--text-main)', outline: 'none', boxSizing: 'border-box' }} />
-                                }
-                            </div>
-                        );
-
-                        const renderForm = () => {
-                            if (dbSection === 'malzeme') return [
-                                inp('Malzeme Adı', 'name'),
-                                inp('Birim', 'unit', 'text', birimlerList),
-                                inp('Kategori', 'category', 'text', malzemeTurleri),
-                                inp('Min. Stok', 'minStock', 'number'),
-                            ];
-                            if (dbSection === 'firma') return [inp('Firma Adı', 'name')];
-                            if (dbSection === 'taseron') return [inp('Taşeron / Ekip Adı', 'name')];
-                            if (dbSection === 'personel') return [
-                                inp('Ad Soyad', 'adSoyad'),
-                                inp('TC Kimlik No', 'tc'),
-                                inp('Taşeron', 'taseron', 'text', taseronlar.map(t => t.name)),
-                                inp('Giriş Tarihi', 'girisTarihi'),
-                                inp('Çıkış Tarihi', 'cikisTarihi'),
-                            ];
-                            if (dbSection === 'birim') return [inp('Birim Adı', 'name')];
-                            if (dbSection === 'kategori') return [inp('Kategori Adı', 'name')];
-                            return [];
-                        };
-
-                        const itemLabel = (item) => item.name || item.adSoyad || '—';
-                        const itemSubLabel = (item) => {
-                            if (dbSection === 'malzeme') return `${item.unit || ''}${item.category ? ' · ' + item.category : ''}`;
-                            if (dbSection === 'personel') return item.taseron || '';
-                            return '';
-                        };
-
-                        const cardStyle = { background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '10px', padding: '24px' };
-                        const tabBtnStyle = (active) => ({
-                            display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: '13px', fontWeight: active ? '700' : '500',
-                            background: active ? 'var(--primary)' : 'transparent', color: active ? 'white' : 'var(--text-muted)', transition: 'all 0.15s',
-                        });
-
-                        return (
-                            <div className="animate-fade">
-                                <div style={{ marginBottom: '20px' }}>
-                                    <h2 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--text-main)', margin: 0 }}>Veritabanı</h2>
-                                    <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>Malzeme, firma, taşeron ve personel verilerini buradan yönetin. Formlarda sadece bu listeden seçim yapılabilir.</p>
-                                </div>
-
-                                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                                    {/* Sol: bölüm seçici */}
-                                    <div style={{ ...cardStyle, width: '200px', flexShrink: 0, padding: '12px' }}>
-                                        {DB_SECTIONS.map(s => (
-                                            <button key={s.key} onClick={() => { setDbSection(s.key); resetForm(); setDbSearch(''); }} style={{ ...tabBtnStyle(dbSection === s.key), width: '100%', justifyContent: 'flex-start', marginBottom: '2px' }}>
-                                                <span>{s.icon}</span> {s.label}
-                                            </button>
-                                        ))}
-                                    </div>
-
-                                    {/* Sağ: liste + form */}
-                                    <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                                        {/* Liste kartı */}
-                                        <div style={{ ...cardStyle, flex: '1 1 300px', minWidth: 0 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-                                                <div style={{ fontWeight: '700', fontSize: '14px', color: 'var(--text-main)' }}>
-                                                    {DB_SECTIONS.find(s => s.key === dbSection)?.label}
-                                                    <span style={{ fontSize: '11px', fontWeight: '400', color: 'var(--text-muted)', marginLeft: '8px' }}>({listData.length} kayıt)</span>
-                                                </div>
-                                                <div style={{ position: 'relative' }}>
-                                                    <Search size={13} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-                                                    <input value={dbSearch} onChange={e => setDbSearch(e.target.value)} placeholder="Ara..." style={{ paddingLeft: '26px', paddingRight: '8px', paddingTop: '5px', paddingBottom: '5px', borderRadius: '7px', border: '1px solid var(--border)', background: 'var(--bg-main)', fontSize: '12px', fontFamily: 'inherit', color: 'var(--text-main)', outline: 'none', width: '140px' }} />
-                                                </div>
-                                            </div>
-                                            <div style={{ maxHeight: '420px', overflowY: 'auto' }}>
-                                                {listData.length === 0
-                                                    ? <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-muted)', fontSize: '13px' }}>Kayıt bulunamadı</div>
-                                                    : listData.map((item, idx) => {
-                                                        const isEdit = String(dbEditing) === String(item.id || item._key);
-                                                        return (
-                                                            <div key={item.id || item._key || idx} style={{ display: 'flex', alignItems: 'center', padding: '8px 10px', borderRadius: '8px', marginBottom: '2px', background: isEdit ? 'var(--primary-glow)' : 'transparent', border: isEdit ? '1px solid var(--primary)' : '1px solid transparent', transition: 'background 0.1s' }}>
-                                                                <div style={{ flex: 1, minWidth: 0 }}>
-                                                                    <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{itemLabel(item)}</div>
-                                                                    {itemSubLabel(item) && <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '1px' }}>{itemSubLabel(item)}</div>}
-                                                                </div>
-                                                                {!item.isDefault && !item.isBuiltin && (
-                                                                    <div style={{ display: 'flex', gap: '4px', marginLeft: '8px', flexShrink: 0 }}>
-                                                                        <button onClick={() => startEdit(item)} title="Düzenle" style={{ background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '6px', padding: '4px 7px', cursor: 'pointer', color: 'var(--primary)', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '3px' }}><Edit3 size={12} /></button>
-                                                                        <button onClick={() => handleDelete(item)} title="Sil" style={{ background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '6px', padding: '4px 7px', cursor: 'pointer', color: '#ef4444', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '3px' }}><Trash2 size={12} /></button>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    })
-                                                }
-                                            </div>
-                                        </div>
-
-                                        {/* Form kartı */}
-                                        <div style={{ ...cardStyle, width: '260px', flexShrink: 0, alignSelf: 'flex-start' }}>
-                                            <div style={{ fontWeight: '700', fontSize: '14px', color: 'var(--text-main)', marginBottom: '16px' }}>
-                                                {dbEditing ? 'Düzenle' : 'Yeni Ekle'}
-                                            </div>
-                                            {renderForm()}
-                                            <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
-                                                {dbEditing && (
-                                                    <button onClick={resetForm} style={{ flex: '0 0 auto', padding: '8px 12px', borderRadius: '7px', border: '1px solid var(--border)', background: 'var(--bg-main)', color: 'var(--text-muted)', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit' }}>İptal</button>
-                                                )}
-                                                <button onClick={handleSave} disabled={dbSaving} style={{ flex: 1, padding: '8px 14px', borderRadius: '7px', border: 'none', background: 'var(--primary)', color: 'white', fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}>
-                                                    {dbSaving ? 'Kaydediliyor...' : (dbEditing ? 'Güncelle' : '+ Ekle')}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })()}
+                    {activeTab === 'database' && canEdit && (
+                        <DatabasePage items={items} firmalar={firmalar} taseronlar={taseronlar} personel={personel} birimlerList={birimlerList} malzemeTurleri={malzemeTurleri} />
+                    )}
 
                     {/* ── AYARLAR TAB ── */}
                     {activeTab === 'settings' && canEdit && (

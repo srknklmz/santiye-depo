@@ -33,6 +33,7 @@
         }
     },
     "dependencies": {
+        "@rolldown/binding-darwin-arm64": "^1.0.0-rc.12",
         "exceljs": "^4.4.0",
         "firebase": "^12.11.0",
         "jspdf": "^4.2.0",
